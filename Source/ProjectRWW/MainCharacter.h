@@ -1,0 +1,73 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Character.h"
+#include "MainCharacter.generated.h"
+
+class UInputMappingContext;
+class UInputAction;
+struct FInputActionValue;
+
+UCLASS()
+class PROJECTRWW_API AMainCharacter : public ACharacter
+{
+	GENERATED_BODY()
+
+public:
+	AMainCharacter();
+
+	UPROPERTY(VisibleAnywhere, Category = "Health")
+	TObjectPtr<class UMainHealthComponent> HealthComponent;
+
+	// 디버그용: PIE 콘솔에서 데미지 적용을 테스트.
+	UFUNCTION(Exec)
+	void RWW_TestDamage(float Amount);
+
+	// 나중에 스탯 시스템이 생기면 이 두 값을 스탯에서 계산해서 넣는 방식으로 변경 예정.
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float WalkSpeed = 600.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float SprintSpeed = 900.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Weapon")
+	TObjectPtr<class UMainWeaponComponent> WeaponComponent;
+
+protected:
+	virtual void BeginPlay() override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+	// IA_Move가 들어오는 동안 계속 호출
+	void OnMove(const FInputActionValue& Value);
+	// IA_Look이 들어오는 동안 계속 호출
+	void OnLook(const FInputActionValue& Value);
+
+	void OnSprintStart(const FInputActionValue& Value);
+	void OnSprintStop(const FInputActionValue& Value);
+
+	// 클라이언트 요청을 받아 서버 쪽 이동 속도를 실제로 바꾸는 함수. 속도 변경은 항상 이 함수를 거처야 한다.
+	UFUNCTION(Server, Reliable)
+	void ServerSetSprinting(bool bNewSprinting);
+
+	void OnFire(const FInputActionValue& Value);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputMappingContext> DefaultMappingContext;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> MoveAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> LookAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> JumpAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> SprintAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> FireAction;
+};
