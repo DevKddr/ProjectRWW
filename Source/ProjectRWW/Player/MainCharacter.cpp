@@ -6,8 +6,8 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
-#include "MainHealthComponent.h"
-#include "MainWeaponComponent.h"
+#include "Combat/MainHealthComponent.h"
+#include "Combat/MainWeaponComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 AMainCharacter::AMainCharacter()

@@ -1,8 +1,8 @@
 #include "MainGameMode.h"
 #include "MainGameState.h"
-#include "MainPlayerController.h"
-#include "MainPlayerState.h"
-#include "MainCharacter.h"
+#include "Player/MainPlayerController.h"
+#include "Player/MainPlayerState.h"
+#include "Player/MainCharacter.h"
 
 AMainGameMode::AMainGameMode()
 {
