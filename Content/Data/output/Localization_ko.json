@@ -1,0 +1,14 @@
+{
+  "P_1.Name": "사이드암 Mk1",
+  "P_1.Description": "빠른 발도와 안정적인 명중률을 갖춘 기본 보조무기.",
+  "AR_1.Name": "레인저 AR",
+  "AR_1.Description": "사거리와 화력의 균형이 잡힌 범용 돌격소총.",
+  "AR_2.Name": "뱅가드 AR",
+  "AR_2.Description": "3점사 모드로 헤드샷 딜을 극대화하는 고화력 돌격소총.",
+  "SR_1.Name": "롱샷 SR",
+  "SR_1.Description": "장거리에서 원샷킬을 노릴 수 있는 볼트액션 저격소총.",
+  "SMG_1.Name": "래피드 SMG",
+  "SMG_1.Description": "압도적인 연사속도로 근접전을 지배하는 기관단총.",
+  "SG_1.Name": "브리처 SG",
+  "SG_1.Description": "초근접에서 압도적인 데미지를 뽑아내는 산탄총."
+}

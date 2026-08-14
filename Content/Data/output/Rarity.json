@@ -1,0 +1,23 @@
+[
+  {
+    "RarityID": "Common",
+    "DisplayName": "일반",
+    "Color": "#B0B0B0",
+    "DropWeight": 70.0,
+    "SellValue": 50
+  },
+  {
+    "RarityID": "Rare",
+    "DisplayName": "희귀",
+    "Color": "#3B82F6",
+    "DropWeight": 25.0,
+    "SellValue": 200
+  },
+  {
+    "RarityID": "Epic",
+    "DisplayName": "영웅",
+    "Color": "#A855F7",
+    "DropWeight": 5.0,
+    "SellValue": 800
+  }
+]

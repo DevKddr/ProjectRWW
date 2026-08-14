@@ -1,0 +1,14 @@
+{
+  "P_1.Name": "Sidearm Mk1",
+  "P_1.Description": "A basic sidearm with quick draw speed and reliable accuracy.",
+  "AR_1.Name": "Ranger AR",
+  "AR_1.Description": "A well-rounded assault rifle balancing range and firepower.",
+  "AR_2.Name": "Vanguard AR",
+  "AR_2.Description": "A high-damage assault rifle that maximizes headshot damage in burst mode.",
+  "SR_1.Name": "Longshot SR",
+  "SR_1.Description": "A bolt-action sniper rifle capable of long-range one-shot kills.",
+  "SMG_1.Name": "Rapid SMG",
+  "SMG_1.Description": "A submachine gun that dominates close-quarters combat with overwhelming fire rate.",
+  "SG_1.Name": "Breacher SG",
+  "SG_1.Description": "A shotgun that deals overwhelming damage at extreme close range."
+}

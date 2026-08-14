@@ -1,0 +1,37 @@
+[
+  {
+    "TypeID": "Pistol",
+    "Category": "Gun",
+    "DisplayName": "권총",
+    "Description": "근거리 보조무기, 빠른 발도 속도",
+    "IconPath": "/Game/Weapons/Icons/Icon_Pistol"
+  },
+  {
+    "TypeID": "AssaultRifle",
+    "Category": "Gun",
+    "DisplayName": "돌격소총",
+    "Description": "범용 화기, 안정적인 딜과 사거리",
+    "IconPath": "/Game/Weapons/Icons/Icon_AR"
+  },
+  {
+    "TypeID": "SniperRifle",
+    "Category": "Gun",
+    "DisplayName": "저격소총",
+    "Description": "장거리 원샷킬 특화",
+    "IconPath": "/Game/Weapons/Icons/Icon_SR"
+  },
+  {
+    "TypeID": "SubMachineGun",
+    "Category": "Gun",
+    "DisplayName": "기관단총",
+    "Description": "근접 교전 특화, 높은 연사속도",
+    "IconPath": "/Game/Weapons/Icons/Icon_SMG"
+  },
+  {
+    "TypeID": "ShotGun",
+    "Category": "Gun",
+    "DisplayName": "샷건",
+    "Description": "초근접 고데미지, 산탄형",
+    "IconPath": "/Game/Weapons/Icons/Icon_SG"
+  }
+]
