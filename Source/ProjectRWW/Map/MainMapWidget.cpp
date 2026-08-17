@@ -41,8 +41,12 @@ void UMainMapWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 FVector2D UMainMapWidget::WorldToMapUV(const FVector& WorldLocation) const
 {
-	const float U = (WorldLocation.X - WorldMinX) / (WorldMaxX - WorldMinX);
-	const float V = (WorldLocation.Y - WorldMinY) / (WorldMaxY - WorldMinY);
+	// WorldMinX/MaxX(또는 Y)가 실수로 같은 값으로 설정되면 0으로 나누게 되어 NaN이 발생한다.
+	const float RangeX = WorldMaxX - WorldMinX;
+	const float RangeY = WorldMaxY - WorldMinY;
+
+	const float U = FMath::IsNearlyZero(RangeX) ? 0.0f : (WorldLocation.X - WorldMinX) / RangeX;
+	const float V = FMath::IsNearlyZero(RangeY) ? 0.0f : (WorldLocation.Y - WorldMinY) / RangeY;
 	return FVector2D(FMath::Clamp(U, 0.0f, 1.0f), FMath::Clamp(V, 0.0f, 1.0f));
 }
 
