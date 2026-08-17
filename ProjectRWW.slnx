@@ -76,7 +76,8 @@
       <Platform Project="x64" />
     </Project>
   </Folder>
-  <Folder Name="/Games/">
+  <Folder Name="/Games/" />
+  <Folder Name="/Games/ProjectRWW/">
     <Project Path="Intermediate/ProjectFiles/ProjectRWW.vcxproj" Id="ce127a76-79dc-3366-9abc-3c52f8ef0bf0">
       <BuildType Solution="Debug Client|*" Project="Invalid" />
       <BuildType Solution="Debug Editor|Win64" Project="Debug_Editor" />
@@ -123,6 +124,50 @@
       <Build Solution="Development Client|*" Project="false" />
       <Build Solution="Shipping Client|*" Project="false" />
       <Build Solution="Test Client|*" Project="false" />
+    </Project>
+    <Project Path="Intermediate/ProjectFiles/ProjectRWWServer.vcxproj" Id="36a099cd-7ab7-3d44-a851-bfd790fad7e6">
+      <BuildType Solution="Debug Client|*" Project="Invalid" />
+      <BuildType Solution="Debug Editor|*" Project="Invalid" />
+      <BuildType Solution="Debug Server|Win64" Project="Debug_Server" />
+      <BuildType Solution="Debug Server|Win64-arm64" Project="Win64_arm64_Debug_Server" />
+      <BuildType Solution="Debug Server|Win64-arm64ec" Project="Win64_arm64ec_Debug_Server" />
+      <BuildType Solution="DebugGame Client|*" Project="Invalid" />
+      <BuildType Solution="DebugGame Editor|*" Project="Invalid" />
+      <BuildType Solution="DebugGame Server|Win64" Project="DebugGame_Server" />
+      <BuildType Solution="DebugGame Server|Win64-arm64" Project="Win64_arm64_DebugGame_Server" />
+      <BuildType Solution="DebugGame Server|Win64-arm64ec" Project="Win64_arm64ec_DebugGame_Server" />
+      <BuildType Solution="DebugGame|*" Project="Invalid" />
+      <BuildType Solution="Debug|*" Project="Invalid" />
+      <BuildType Solution="Development Client|*" Project="Invalid" />
+      <BuildType Solution="Development Editor|*" Project="Invalid" />
+      <BuildType Solution="Development Server|Win64" Project="Development_Server" />
+      <BuildType Solution="Development Server|Win64-arm64" Project="Win64_arm64_Development_Server" />
+      <BuildType Solution="Development Server|Win64-arm64ec" Project="Win64_arm64ec_Development_Server" />
+      <BuildType Solution="Development|*" Project="Invalid" />
+      <BuildType Solution="Shipping Client|*" Project="Invalid" />
+      <BuildType Solution="Shipping Server|Win64" Project="Shipping_Server" />
+      <BuildType Solution="Shipping Server|Win64-arm64" Project="Win64_arm64_Shipping_Server" />
+      <BuildType Solution="Shipping Server|Win64-arm64ec" Project="Win64_arm64ec_Shipping_Server" />
+      <BuildType Solution="Shipping|*" Project="Invalid" />
+      <BuildType Solution="Test Client|*" Project="Invalid" />
+      <BuildType Solution="Test Server|Win64" Project="Test_Server" />
+      <BuildType Solution="Test Server|Win64-arm64" Project="Win64_arm64_Test_Server" />
+      <BuildType Solution="Test Server|Win64-arm64ec" Project="Win64_arm64ec_Test_Server" />
+      <BuildType Solution="Test|*" Project="Invalid" />
+      <Platform Project="x64" />
+      <Build Solution="Debug Client|*" Project="false" />
+      <Build Solution="Debug Editor|*" Project="false" />
+      <Build Solution="DebugGame Client|*" Project="false" />
+      <Build Solution="DebugGame Editor|*" Project="false" />
+      <Build Solution="DebugGame|*" Project="false" />
+      <Build Solution="Debug|*" Project="false" />
+      <Build Solution="Development Client|*" Project="false" />
+      <Build Solution="Development Editor|*" Project="false" />
+      <Build Solution="Development|*" Project="false" />
+      <Build Solution="Shipping Client|*" Project="false" />
+      <Build Solution="Shipping|*" Project="false" />
+      <Build Solution="Test Client|*" Project="false" />
+      <Build Solution="Test|*" Project="false" />
     </Project>
   </Folder>
   <Folder Name="/Visualizers/">

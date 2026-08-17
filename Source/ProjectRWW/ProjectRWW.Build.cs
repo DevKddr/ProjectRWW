@@ -12,7 +12,7 @@ public class ProjectRWW : ModuleRules
 		// 하위 폴더 상대 경로로 다른 폴더의 헤더를 include할 수 있다.
 		PublicIncludePaths.Add(ModuleDirectory);
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "SQLiteCore" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
