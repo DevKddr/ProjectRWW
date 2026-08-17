@@ -21,7 +21,8 @@ public class ProjectRWW : ModuleRules
             "EnhancedInput",
             "UMG",
             "Json",
-            "JsonUtilities"
+            "JsonUtilities",
+            "SQLiteCore"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] { });
