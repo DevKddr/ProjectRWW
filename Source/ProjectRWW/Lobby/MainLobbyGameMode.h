@@ -6,12 +6,6 @@
 #include "GameFramework/GameModeBase.h"
 #include "MainLobbyGameMode.generated.h"
 
-struct FMainSessionServerEntry
-{
-	FString Address; // 예: "127.0.0.1:7778"
-	int32 MaxPlayers = 20;
-};
-
 UCLASS()
 class PROJECTRWW_API AMainLobbyGameMode : public AGameModeBase
 {
@@ -27,8 +21,8 @@ public:
 
 protected:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal = TEXT("")) override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	UPROPERTY()
@@ -36,9 +30,4 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<class UMainSessionServerStatusRepository> StatusRepository;
-
-	// 세션 서버 목록. 서버를 추가/변경할 땐 이 배열을 직접 수정하고 다시 빌드한다.
-	TArray<FMainSessionServerEntry> SessionServers = {
-		{ TEXT("127.0.0.1:7778"), 20 }
-	};
 };

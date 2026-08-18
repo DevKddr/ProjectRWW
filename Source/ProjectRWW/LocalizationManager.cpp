@@ -6,7 +6,7 @@
 #include "Serialization/JsonSerializer.h"
 
 const FString ULocalizationManager::DefaultLanguage = TEXT("ko");
-const FString ULocalizationManager::LocalizationDirRelativePath = TEXT("Data");
+const FString ULocalizationManager::LocalizationDirRelativePath = TEXT("Data/output");
 
 void ULocalizationManager::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -39,7 +39,7 @@ bool ULocalizationManager::SetLanguage(const FString& LanguageCode)
 
 bool ULocalizationManager::LoadLanguageFile(const FString& LanguageCode)
 {
-	// Content/Data/Localization_{lang}.json
+	// Content/Data/output/Localization_{lang}.json
 	const FString FileName = FString::Printf(TEXT("Localization_%s.json"), *LanguageCode);
 	const FString FullPath = FPaths::Combine(FPaths::ProjectContentDir(), LocalizationDirRelativePath, FileName);
 

@@ -20,11 +20,6 @@ public:
 	UFUNCTION(Exec)
 	void RWW_ClearMapMarkers();
 
-	// [테스트 코드] Task 2 검증용 — UMainPlayerDataRepository의 SQLite 저장/조회가 실제로 동작하는지 확인.
-	// 검증이 끝나면 삭제해도 된다.
-	UFUNCTION(Exec)
-	void RWW_TestPlayerData();
-
 protected:
 	virtual void SetupInputComponent() override;
 

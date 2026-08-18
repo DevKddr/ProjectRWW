@@ -22,7 +22,8 @@ public class ProjectRWW : ModuleRules
             "UMG",
             "Json",
             "JsonUtilities",
-            "SQLiteCore"
+            "SQLiteCore",
+            "DeveloperSettings"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] { });

@@ -5,22 +5,31 @@
 #include "Database/MainPlayerDataRepository.h"
 #include "Database/MainSessionServerStatusRepository.h"
 #include "GameFramework/PlayerState.h"
+#include "Kismet/GameplayStatics.h"
 
 void AMainLobbyGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 
 	PlayerDataRepository = NewObject<UMainPlayerDataRepository>(this);
-	if (!PlayerDataRepository->Open(UMainPlayerDataRepository::GetDefaultDatabasePath()))
+	StatusRepository = NewObject<UMainSessionServerStatusRepository>(this);
+}
+
+FString AMainLobbyGameMode::InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal)
+{
+	// Super를 먼저 호출한다 — 내부적으로 Options의 "Name="을 파싱해서 ChangeName을 부르는데,
+	// 이걸 우리보다 먼저 실행되게 해야 우리가 마지막에 덮어쓴 값이 살아남는다.
+	const FString ErrorMessage = Super::InitNewPlayer(NewPlayerController, UniqueId, Options, Portal);
+
+	// URL의 예약 키인 "Name"은 OSS(Online Subsystem)가 우선적으로 덮어써서 무시된다.
+	// 그래서 우리만의 커스텀 키 "PlayerID"로 받아서, Super가 끝난 뒤 마지막으로 이름을 설정한다.
+	const FString ParsedPlayerID = UGameplayStatics::ParseOption(Options, TEXT("PlayerID"));
+	if (!ParsedPlayerID.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[ProjectRWW] PlayerData.db 열기 실패"));
+		ChangeName(NewPlayerController, ParsedPlayerID, false);
 	}
 
-	StatusRepository = NewObject<UMainSessionServerStatusRepository>(this);
-	if (!StatusRepository->Open(UMainSessionServerStatusRepository::GetDefaultDatabasePath()))
-	{
-		UE_LOG(LogTemp, Error, TEXT("[ProjectRWW] SessionServerStatus.db 열기 실패"));
-	}
+	return ErrorMessage;
 }
 
 void AMainLobbyGameMode::PostLogin(APlayerController* NewPlayer)
@@ -53,48 +62,30 @@ FString AMainLobbyGameMode::AssignSessionServer()
 		return FString();
 	}
 
-	for (const FMainSessionServerEntry& Entry : SessionServers)
+	const TArray<FMainSessionServerStatus> Servers = StatusRepository->GetAllServerStatuses();
+	if (Servers.Num() == 0)
 	{
-		const int32 CurrentCount = StatusRepository->GetPlayerCount(Entry.Address);
-		if (CurrentCount < Entry.MaxPlayers)
+		UE_LOG(LogTemp, Error, TEXT("[ProjectRWW] 등록된 세션 서버가 없습니다."));
+		return FString();
+	}
+
+	for (const FMainSessionServerStatus& Server : Servers)
+	{
+		if (Server.PlayerCount < Server.MaxPlayers)
 		{
-			return Entry.Address;
+			return Server.Address;
 		}
 	}
 
 	// 모든 서버가 꽉 참 — 인원이 가장 적은 서버로 보낸다.
-	if (SessionServers.Num() == 0)
+	const FMainSessionServerStatus* LeastPlayerServer = &Servers[0];
+	for (const FMainSessionServerStatus& Server : Servers)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[ProjectRWW] SessionServers 배열이 비어있습니다."));
-		return FString();
-	}
-
-	const FMainSessionServerEntry* LeastPlayerServer = &SessionServers[0];
-	int32 LeastPlayerServerCount = StatusRepository->GetPlayerCount(LeastPlayerServer->Address);
-
-	for (const FMainSessionServerEntry& Entry : SessionServers)
-	{
-		const int32 CurrentCount = StatusRepository->GetPlayerCount(Entry.Address);
-		if (CurrentCount < LeastPlayerServerCount)
+		if (Server.PlayerCount < LeastPlayerServer->PlayerCount)
 		{
-			LeastPlayerServer = &Entry;
-			LeastPlayerServerCount = CurrentCount;
+			LeastPlayerServer = &Server;
 		}
 	}
 
 	return LeastPlayerServer->Address;
-}
-
-void AMainLobbyGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	if (PlayerDataRepository)
-	{
-		PlayerDataRepository->Close();
-	}
-	if (StatusRepository)
-	{
-		StatusRepository->Close();
-	}
-
-	Super::EndPlay(EndPlayReason);
 }

@@ -8,7 +8,6 @@
 #include "InputActionValue.h"
 #include "Combat/MainHealthComponent.h"
 #include "Combat/MainWeaponComponent.h"
-#include "Kismet/GameplayStatics.h"
 
 AMainCharacter::AMainCharacter()
 {
@@ -46,21 +45,13 @@ void AMainCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)
 	GetCharacterMovement()->MaxWalkSpeed = bNewSprinting ? SprintSpeed : WalkSpeed;
 }
 
-void AMainCharacter::RWW_TestDamage(float Amount)
-{
-	if (HasAuthority())
-	{
-		UGameplayStatics::ApplyDamage(this, Amount, GetController(), this, UDamageType::StaticClass());
-	}
-}
-
 void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 
-	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
 		{
@@ -69,6 +60,11 @@ void AMainCharacter::BeginPlay()
 				Subsystem->AddMappingContext(DefaultMappingContext, 0);
 			}
 		}
+
+		// 타이틀 화면에서 UIOnly로 전환한 입력 모드가 서버 이동 후에도 유지되므로,
+		// 실제 캐릭터를 조작하는 시점에 게임 입력 모드로 되돌려준다.
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->SetShowMouseCursor(false);
 	}
 }
 

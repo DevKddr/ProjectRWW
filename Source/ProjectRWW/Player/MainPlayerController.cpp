@@ -4,7 +4,6 @@
 #include "Map/MainMapMarker.h"
 #include "Map/MainMapMarkerComponent.h"
 #include "Map/MainMapWidget.h"
-#include "Database/MainPlayerDataRepository.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -53,23 +52,6 @@ void AMainPlayerController::RWW_ClearMapMarkers()
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] Cleared %d map marker(s)"), FoundMarkers.Num());
-}
-
-// [테스트 코드] Task 2 검증용 — UMainPlayerDataRepository의 SQLite 저장/조회가 실제로 동작하는지 확인.
-// 검증이 끝나면 삭제해도 된다.
-void AMainPlayerController::RWW_TestPlayerData()
-{
-	UMainPlayerDataRepository* Repository = NewObject<UMainPlayerDataRepository>();
-	Repository->Open(UMainPlayerDataRepository::GetDefaultDatabasePath());
-
-	FMainPlayerRecord Record = Repository->LoadPlayerData(TEXT("TestPlayer"));
-	UE_LOG(LogTemp, Warning, TEXT("로드됨 - KillCount: %d, DeathCount: %d, Currency: %d"), Record.KillCount, Record.DeathCount, Record.Currency);
-
-	Record.KillCount += 1;
-	Repository->SavePlayerData(Record);
-	UE_LOG(LogTemp, Warning, TEXT("저장 완료 - KillCount: %d"), Record.KillCount);
-
-	Repository->Close();
 }
 
 void AMainPlayerController::SetupInputComponent()
