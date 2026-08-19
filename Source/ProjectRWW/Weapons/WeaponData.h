@@ -2,32 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
-#include "GachaData.generated.h"
-
-// rarities.json 한 항목과 1:1 대응.
-USTRUCT(BlueprintType)
-struct FRarityData : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
-	FName RarityId;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
-	FString DisplayName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
-	FString Color;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
-	float DropWeight = 0.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
-	int32 SellValue = 0;
-};
+#include "WeaponData.generated.h"
 
 // weapons.json 각 항목의 "name"/"description" ({"ko":.., "en":..}) 과 1:1 대응.
-// 언어가 늘어나면 여기 필드를 추가하고 GachaDataManager의 언어 선택 로직만 갱신하면 된다.
 USTRUCT(BlueprintType)
 struct FLocalizedPair
 {
@@ -41,8 +18,6 @@ struct FLocalizedPair
 };
 
 // weapons.json 각 항목의 "stats" 객체와 1:1 대응.
-// WeaponType/Rarity는 상위(FWeaponItem)에도 있지만, 파이썬 컨버터가 stats 안에도
-// 그대로 복제해 넣기 때문에(제외 목록이 Index/NameKey/DescKey뿐이라) 여기에도 선언해둔다.
 USTRUCT(BlueprintType)
 struct FWeaponStats
 {
@@ -173,90 +148,4 @@ struct FWeaponItem : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	FWeaponStats Stats;
-};
-
-// ---------------------------------------------------------------------------
-// gacha_tables.json 구조 (JSON 배열이 아니라 객체 하나이므로
-// JsonObjectStringToUStruct로 파싱한다).
-// ---------------------------------------------------------------------------
-
-USTRUCT(BlueprintType)
-struct FGachaRarityInfo
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	FName RarityId;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	FString DisplayName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	FString Color;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	float DropWeight = 0.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	int32 SellValue = 0;
-};
-
-USTRUCT(BlueprintType)
-struct FGachaPoolItem
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	FName Category;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	FName Index;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	float Weight = 0.f;
-};
-
-USTRUCT(BlueprintType)
-struct FGachaRarityPool
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	float RarityDropWeight = 0.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	TArray<FGachaPoolItem> Items;
-};
-
-USTRUCT(BlueprintType)
-struct FGachaBox
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	FString DisplayName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	FString Description;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	bool IsActive = true;
-
-	// Key = RarityID (Common/Rare/Epic)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	TMap<FString, FGachaRarityPool> Pools;
-};
-
-USTRUCT(BlueprintType)
-struct FGachaTables
-{
-	GENERATED_BODY()
-
-	// Key = RarityID
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	TMap<FString, FGachaRarityInfo> Rarities;
-
-	// Key = BoxID
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gacha")
-	TMap<FString, FGachaBox> Boxes;
 };
