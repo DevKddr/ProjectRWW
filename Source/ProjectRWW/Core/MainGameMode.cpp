@@ -4,6 +4,8 @@
 #include "Player/MainPlayerState.h"
 #include "Player/MainCharacter.h"
 #include "Database/MainSessionServerStatusRepository.h"
+#include "Database/MainPlayerDataRepository.h"
+#include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 
 AMainGameMode::AMainGameMode()
@@ -29,6 +31,7 @@ void AMainGameMode::InitGame(const FString& MapName, const FString& Options, FSt
 	MySessionServerAddress = ServerAddress;
 
 	StatusRepository = NewObject<UMainSessionServerStatusRepository>(this);
+	PlayerDataRepository = NewObject<UMainPlayerDataRepository>(this);
 
 	// 시작하자마자 DB에 자기 존재를 등록해둔다 — 로비가 이 서버를 배정 후보로 인식하려면
 	// 첫 플레이어가 들어오기 전부터 DB에 행이 있어야 하기 때문 (인원 0으로 등록).
@@ -83,10 +86,68 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 
 	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] Player joined: %s"), *GetNameSafe(NewPlayer));
 	UpdatePlayerCount();
+
+	// 로비에서 로드했던 걸 넘겨받는 게 아니라, 세션 서버가 같은 PlayerID로 독립적으로 다시 로드한다.
+	AMainPlayerController* MainPC = Cast<AMainPlayerController>(NewPlayer);
+	if (MainPC && PlayerDataRepository)
+	{
+		const FString PlayerID = NewPlayer->PlayerState ? NewPlayer->PlayerState->GetPlayerName() : FString();
+		MainPC->PlayerRecord = PlayerDataRepository->LoadPlayerData(PlayerID);
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 세션 접속: %s - KillCount %d, DeathCount %d"), *PlayerID, MainPC->PlayerRecord.KillCount, MainPC->PlayerRecord.DeathCount);
+	}
+}
+
+void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Killer)
+{
+	AMainPlayerController* VictimController = Cast<AMainPlayerController>(Victim);
+	if (!VictimController || VictimController->bIsDead)
+	{
+		return;
+	}
+
+	VictimController->PlayerRecord.DeathCount += 1;
+	VictimController->bIsDead = true;
+
+	// 가해자가 있고 자기 자신이 아닐 때만 킬 카운트 반영 (자살/자진 이탈 등은 제외)
+	AMainPlayerController* KillerController = Cast<AMainPlayerController>(Killer);
+	if (KillerController && KillerController != VictimController)
+	{
+		KillerController->PlayerRecord.KillCount += 1;
+		KillerController->KillStreak += 1;
+	}
+
+	// TODO: 재화/아이템 획득 로직이 생기면, 여기서 저장하기 전에
+	// 세션 중 획득분을 되돌리는 처리를 추가해야 함 (사망 시 손실 규칙)
+	if (PlayerDataRepository)
+	{
+		const bool bSaveSuccess = PlayerDataRepository->SavePlayerData(VictimController->PlayerRecord);
+		if (!bSaveSuccess)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[ProjectRWW] 사망 정산 저장 실패: %s"), *VictimController->PlayerRecord.PlayerID);
+		}
+	}
+
+	// 죽은 폰을 파괴한다 — 안 그러면 리스폰 시 RestartPlayer가 이미 폰을 가진
+	// 컨트롤러를 만나게 되고, 기존 시체 액터도 맵에 영원히 남는다.
+	if (APawn* VictimPawn = VictimController->GetPawn())
+	{
+		VictimController->UnPossess();
+		VictimPawn->Destroy();
+	}
+
+	VictimController->Client_OnPlayerDied(VictimController->PlayerRecord, VictimController->KillStreak);
+	VictimController->KillStreak = 0;
 }
 
 void AMainGameMode::Logout(AController* Exiting)
 {
+	// 살아있는 채로 접속이 끊기면(비정상 종료 포함) 사망과 동일하게 정산 처리한다.
+	// bIsDead가 이미 true면 HandlePlayerDeath 내부에서 조기 리턴되어 중복 저장 안 됨.
+	if (AMainPlayerController* ExitingController = Cast<AMainPlayerController>(Exiting))
+	{
+		HandlePlayerDeath(ExitingController, nullptr);
+	}
+
 	Super::Logout(Exiting);
 
 	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] Player left: %s"), *GetNameSafe(Exiting));

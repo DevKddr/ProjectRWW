@@ -35,6 +35,10 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
+	// HealthComponent->OnDeath에 바인딩되는 콜백. 실제 처리는 GameMode에 위임한다.
+	UFUNCTION()
+	void OnDeath(AController* Killer);
+
 	// IA_Move가 들어오는 동안 계속 호출
 	void OnMove(const FInputActionValue& Value);
 	// IA_Look이 들어오는 동안 계속 호출

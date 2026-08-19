@@ -8,6 +8,7 @@
 #include "InputActionValue.h"
 #include "Combat/MainHealthComponent.h"
 #include "Combat/MainWeaponComponent.h"
+#include "Core/MainGameMode.h"
 
 AMainCharacter::AMainCharacter()
 {
@@ -51,6 +52,13 @@ void AMainCharacter::BeginPlay()
 
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 
+	// 서버에서만 등록 — HealthComponent 자체의 델리게이트 등록과 같은 이유(서버 권위 유지).
+	// 클라이언트에도 등록하면 사망 정산(HandlePlayerDeath)이 클라이언트에서도 시도되어 위험하다.
+	if (HasAuthority() && HealthComponent)
+	{
+		HealthComponent->OnDeath.AddDynamic(this, &AMainCharacter::OnDeath);
+	}
+
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
@@ -65,6 +73,14 @@ void AMainCharacter::BeginPlay()
 		// 실제 캐릭터를 조작하는 시점에 게임 입력 모드로 되돌려준다.
 		PC->SetInputMode(FInputModeGameOnly());
 		PC->SetShowMouseCursor(false);
+	}
+}
+
+void AMainCharacter::OnDeath(AController* Killer)
+{
+	if (AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
+	{
+		GameMode->HandlePlayerDeath(Cast<APlayerController>(GetController()), Killer);
 	}
 }
 

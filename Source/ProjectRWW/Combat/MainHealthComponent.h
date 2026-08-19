@@ -6,6 +6,10 @@
 #include "Components/ActorComponent.h"
 #include "MainHealthComponent.generated.h"
 
+// 사망 시 1회만 브로드캐스트된다. Killer는 OnTakeAnyDamage의 InstigatedBy를 그대로 전달한 것 —
+// 자살/환경 데미지 등으로 죽으면 nullptr일 수 있다.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMainOnDeath, AController*, Killer);
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class PROJECTRWW_API UMainHealthComponent : public UActorComponent
 {
@@ -19,6 +23,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Health")
 	bool IsDead() const { return CurrentHealth <= 0.0f; }
+
+	UPROPERTY(BlueprintAssignable, Category = "Health")
+	FMainOnDeath OnDeath;
 
 protected:
 	virtual void BeginPlay() override;

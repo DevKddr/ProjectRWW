@@ -12,6 +12,10 @@ class PROJECTRWW_API AMainGameMode : public AGameModeBase
 public:
 	AMainGameMode();
 
+	// 사망 정산의 진입점. Character의 OnDeath 콜백, 그리고 살아있는 채로 로비 복귀를
+	// 요청한 경우(PlayerController) 양쪽에서 호출된다.
+	void HandlePlayerDeath(APlayerController* Victim, AController* Killer);
+
 protected:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal = TEXT("")) override;
@@ -29,6 +33,10 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<class UMainSessionServerStatusRepository> StatusRepository;
+
+	// 로비 GameMode와 동일한 리포지토리 — 세션 서버도 같은 PlayerData.db를 직접 읽고 쓴다.
+	UPROPERTY()
+	TObjectPtr<class UMainPlayerDataRepository> PlayerDataRepository;
 
 	// -serveraddress= 인자로 받는 "이 서버의 주소". 안 주어지면 127.0.0.1:포트로 기본 동작(로컬 테스트용).
 	FString MySessionServerAddress;

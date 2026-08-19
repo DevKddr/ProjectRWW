@@ -1,6 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MainPlayerController.h"
+#include "MainDeathWidget.h"
+#include "Core/MainNetworkSettings.h"
+#include "Core/MainGameMode.h"
 #include "Map/MainMapMarker.h"
 #include "Map/MainMapMarkerComponent.h"
 #include "Map/MainMapWidget.h"
@@ -9,6 +12,53 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Blueprint/UserWidget.h"
+
+void AMainPlayerController::Client_OnPlayerDied_Implementation(const FMainPlayerRecord& Record, int32 FinalKillStreak)
+{
+	if (DeathWidgetClass)
+	{
+		DeathWidgetInstance = CreateWidget<UMainDeathWidget>(this, DeathWidgetClass);
+		if (DeathWidgetInstance)
+		{
+			DeathWidgetInstance->PlayerRecord = Record;
+			DeathWidgetInstance->FinalKillStreak = FinalKillStreak;
+			DeathWidgetInstance->AddToViewport();
+			SetInputMode(FInputModeUIOnly());
+			SetShowMouseCursor(true);
+		}
+	}
+}
+
+void AMainPlayerController::Server_RequestRespawn_Implementation()
+{
+	if (!bIsDead)
+	{
+		return;
+	}
+
+	bIsDead = false;
+
+	if (AGameModeBase* GameMode = GetWorld()->GetAuthGameMode())
+	{
+		GameMode->RestartPlayer(this);
+	}
+}
+
+void AMainPlayerController::Server_RequestReturnToLobby_Implementation()
+{
+	// 살아있는 채로 로비 복귀를 요청하면, 자진 이탈로 간주해 사망과 동일하게 정산한다.
+	if (!bIsDead)
+	{
+		if (AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
+		{
+			GameMode->HandlePlayerDeath(this, nullptr);
+		}
+	}
+
+	const FString LobbyAddress = GetDefault<UMainNetworkSettings>()->LobbyAddress;
+	const FString TravelURL = FString::Printf(TEXT("%s?PlayerID=%s"), *LobbyAddress, *PlayerRecord.PlayerID);
+	ClientTravel(TravelURL, ETravelType::TRAVEL_Absolute);
+}
 
 void AMainPlayerController::RWW_SpawnExtractionMarker(float X, float Y, float Z)
 {
