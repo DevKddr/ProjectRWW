@@ -79,5 +79,10 @@ private:
 	static const FString WeaponsJsonRelativePath;
 
 	// 콘솔 명령어("WeaponData.PrintAll") 등록/해제용 핸들.
-	IConsoleCommand* DebugPrintWeaponsCommand = nullptr;
+	static IConsoleCommand* DebugPrintWeaponsCommand;
+
+	// 지금 살아있는 인스턴스 수. GameInstanceSubsystem이라 PIE 멀티플레이어 테스트 시
+	// 여러 인스턴스가 동시에 존재할 수 있는데, 콘솔 명령어는 프로세스 전역 자원이라
+	// 첫 인스턴스가 생길 때만 등록하고 마지막 인스턴스가 사라질 때만 해제해야 한다.
+	static int32 ActiveInstanceCount;
 };

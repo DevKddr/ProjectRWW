@@ -21,12 +21,15 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Health")
 	TObjectPtr<class UMainHealthComponent> HealthComponent;
 
-	// 나중에 스탯 시스템이 생기면 이 두 값을 스탯에서 계산해서 넣는 방식으로 변경 예정.
+	// PlayerBaseStat.json의 "WalkSpeed"/"RunSpeed"/"JumpPower"와 이름을 맞춘 이동 스탯값.
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float WalkSpeed = 600.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float SprintSpeed = 900.0f;
+	float RunSpeed = 900.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float JumpPower = 0.0f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Weapon")
 	TObjectPtr<class UMainWeaponComponent> WeaponComponent;

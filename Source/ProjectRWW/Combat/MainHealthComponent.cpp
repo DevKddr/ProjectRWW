@@ -5,6 +5,7 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerState.h"
+#include "PlayerBaseStat/PlayerStatManager.h"
 
 UMainHealthComponent::UMainHealthComponent()
 {
@@ -16,7 +17,17 @@ void UMainHealthComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CurrentHealth = MaxHealth;
+	// PlayerBaseStat.json의 Hp로 최대 체력을 채운다. 로드가 실패했으면 Hp가 0으로 남아
+	// 눈에 띄게 망가지는 쪽을 택했다(조용한 폴백 없음) — 의도적인 선택.
+	if (UGameInstance* GameInstance = GetWorld()->GetGameInstance())
+	{
+		if (UPlayerStatManager* StatManager = GameInstance->GetSubsystem<UPlayerStatManager>())
+		{
+			Hp = StatManager->GetBaseStat().Hp;
+		}
+	}
+
+	CurrentHp = Hp;
 
 	// 서버에서만 델리게이트를 등록한다. 클라이언트에서 등록하면 클라이언트 로컬에서
 	// 체력이 깎이는 경로가 생겨 서버 권위 원칙이 깨진다.
@@ -36,7 +47,7 @@ void UMainHealthComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, c
 		return;
 	}
 
-	CurrentHealth = FMath::Clamp(CurrentHealth - Damage, 0.0f, MaxHealth);
+	CurrentHp = FMath::Clamp(CurrentHp - Damage, 0.0f, Hp);
 
 	// 가해자/피해자 이름은 PlayerState의 PlayerName(=Title 화면에서 입력한 PlayerID)을 쓴다.
 	// 가해자는 InstigatedBy(컨트롤러)에서 바로 접근 가능하지만, 피해자는 DamagedActor(폰)만
@@ -52,7 +63,7 @@ void UMainHealthComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, c
 		: GetNameSafe(DamagedActor);
 
 	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s -> %s: %.1f damage, health now %.1f"),
-		*KillerName, *VictimName, Damage, CurrentHealth);
+		*KillerName, *VictimName, Damage, CurrentHp);
 
 	if (IsDead())
 	{
@@ -61,7 +72,7 @@ void UMainHealthComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, c
 	}
 }
 
-void UMainHealthComponent::OnRep_CurrentHealth()
+void UMainHealthComponent::OnRep_CurrentHp()
 {
 	// TODO: 체력바 UI 갱신 등, 클라이언트 반응 로직이 필요해지면 여기에 추가
 }
@@ -70,5 +81,5 @@ void UMainHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UMainHealthComponent, CurrentHealth);
+	DOREPLIFETIME(UMainHealthComponent, CurrentHp);
 }

@@ -19,10 +19,10 @@ public:
 	UMainHealthComponent();
 
 	UFUNCTION(BlueprintPure, Category = "Health")
-	float GetHealth() const { return CurrentHealth; }
+	float GetHp() const { return CurrentHp; }
 
 	UFUNCTION(BlueprintPure, Category = "Health")
-	bool IsDead() const { return CurrentHealth <= 0.0f; }
+	bool IsDead() const { return CurrentHp <= 0.0f; }
 
 	UPROPERTY(BlueprintAssignable, Category = "Health")
 	FMainOnDeath OnDeath;
@@ -34,15 +34,16 @@ protected:
 	UFUNCTION()
 	void OnTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
-	// CurrentHealth가 클라이언트에 복제되어 도착하면 자동 호출된다.
+	// CurrentHp가 클라이언트에 복제되어 도착하면 자동 호출된다.
 	UFUNCTION()
-	void OnRep_CurrentHealth();
+	void OnRep_CurrentHp();
 
+	// PlayerBaseStat.json의 "Hp"와 이름을 맞춘 최대 체력값.
 	UPROPERTY(EditDefaultsOnly, Category = "Health")
-	float MaxHealth = 100.0f;
+	float Hp = 100.0f;
 
-	UPROPERTY(ReplicatedUsing = OnRep_CurrentHealth, VisibleAnywhere, Category = "Health")
-	float CurrentHealth = 0.0f;
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentHp, VisibleAnywhere, Category = "Health")
+	float CurrentHp = 0.0f;
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

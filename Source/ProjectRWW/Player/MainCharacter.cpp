@@ -9,6 +9,7 @@
 #include "Combat/MainHealthComponent.h"
 #include "Combat/MainWeaponComponent.h"
 #include "Core/MainGameMode.h"
+#include "PlayerBaseStat/PlayerStatManager.h"
 
 AMainCharacter::AMainCharacter()
 {
@@ -31,7 +32,7 @@ void AMainCharacter::OnFire(const FInputActionValue& Value)
 void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 {
 	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 반응.
-	GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
 	ServerSetSprinting(true);
 }
 
@@ -43,14 +44,28 @@ void AMainCharacter::OnSprintStop(const FInputActionValue& Value)
 
 void AMainCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)
 {
-	GetCharacterMovement()->MaxWalkSpeed = bNewSprinting ? SprintSpeed : WalkSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = bNewSprinting ? RunSpeed : WalkSpeed;
 }
 
 void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// PlayerBaseStat.json에서 이동 스탯을 채운다. 로드 실패 시 0으로 남아 눈에 띄게
+	// 망가지는 쪽을 택했다(조용한 폴백 없음) — MainHealthComponent와 동일한 정책.
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UPlayerStatManager* StatManager = GameInstance->GetSubsystem<UPlayerStatManager>())
+		{
+			const FPlayerBaseStat& Stat = StatManager->GetBaseStat();
+			WalkSpeed = Stat.WalkSpeed;
+			RunSpeed = Stat.RunSpeed;
+			JumpPower = Stat.JumpPower;
+		}
+	}
+
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	GetCharacterMovement()->JumpZVelocity = JumpPower;
 
 	// 서버에서만 등록 — HealthComponent 자체의 델리게이트 등록과 같은 이유(서버 권위 유지).
 	// 클라이언트에도 등록하면 사망 정산(HandlePlayerDeath)이 클라이언트에서도 시도되어 위험하다.
