@@ -56,6 +56,18 @@ struct FWeaponStats
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float ReloadTime = 0.f;
 
+	// 장전 가능 여부. FALSE면 장전 자체가 불가능 (탄창 교체 없음).
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
+	bool CanReload = true;
+
+	// 장전 시 필요한 마나(기본 요구치). CanReload=FALSE여도 값은 유지(추후 변경 대비).
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
+	float WeaponReqMana = 0.f;
+
+	// 탄 1발당 요구 마나 감소분.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
+	float ManaPerAmmo = 0.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float MaxRange = 0.f;
 

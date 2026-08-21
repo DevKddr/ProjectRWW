@@ -29,7 +29,7 @@ ItemCategory 로 어느 원본 파일을 봐야 하는지 알고, 그 파일에�
 만 하면 되고, 이 스크립트의 핵심 로직(build_gacha_tables)은 그대로 재사용된다.
 
 사용법:
-    python convert_to_json.py RandomBox.xlsx WeaponData.xlsx ./output
+    python WeaponDataConverter.py RandomBox.xlsx WeaponData.xlsx ./output
     (카테고리 파일은 여러 개 추가 가능: ... RandomBox.xlsx WeaponData.xlsx SkinData.xlsx ./output)
 """
 import sys
@@ -216,7 +216,7 @@ def build_gacha_tables(rarities, category_items, boxes_meta, drop_rows):
 
 def main():
     if len(sys.argv) < 4:
-        print("usage: python convert_to_json.py <RandomBox.xlsx> <CategoryFile1.xlsx> [CategoryFile2.xlsx ...] <output_dir>")
+        print("usage: python WeaponDataConverter.py <RandomBox.xlsx> <CategoryFile1.xlsx> [CategoryFile2.xlsx ...] <output_dir>")
         print("  (현재 지원 카테고리 파일: WeaponData.xlsx 형식 -> 'Weapon' 카테고리)")
         sys.exit(1)
 

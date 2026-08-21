@@ -5,6 +5,8 @@
 #include "WeaponData.h"
 #include "WeaponDataManager.generated.h"
 
+struct IConsoleCommand;
+
 /**
  * weapons.json 전용 매니저. 무기 스탯/이름/설명만 다룬다.
  * 판매가처럼 등급에 종속된 값이 필요할 땐 이 매니저가 직접 계산하지 않고
@@ -42,6 +44,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "WeaponData")
 	bool GetWeaponMaxTotalDamage(FName WeaponIndex, float& OutTotalDamage) const;
 
+	/**
+	 * 장전 시 필요한 마나 계산.
+	 * ReqReloadMana = WeaponReqMana - (MaxAmmo - CurAmmo) x ManaPerAmmo
+	 * (MaxAmmo = Stats.MagazineSize. CurAmmo는 런타임 상태값이라 무기 액터가 들고 있다가 넘겨줘야 함)
+	 * CanReload=FALSE인 무기에 대해 호출하면 false를 반환한다 (장전 자체가 불가능하므로).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "WeaponData")
+	bool GetRequiredReloadMana(FName WeaponIndex, int32 CurAmmo, float& OutRequiredMana) const;
+
 	UFUNCTION(BlueprintCallable, Category = "WeaponData")
 	TArray<FWeaponItem> GetAllWeapons() const;
 
@@ -50,6 +61,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "WeaponData")
 	bool IsDataLoaded() const { return bDataLoaded; }
+
+	/** Output Log에 로드된 모든 무기의 핵심 스탯을 한 줄씩 출력. 파싱 검증용. */
+	UFUNCTION(BlueprintCallable, Category = "WeaponData|Debug")
+	void DebugPrintAllWeapons() const;
 
 private:
 	bool LoadWeapons();
@@ -62,4 +77,7 @@ private:
 	TMap<FName, FWeaponItem> WeaponMap;
 
 	static const FString WeaponsJsonRelativePath;
+
+	// 콘솔 명령어("WeaponData.PrintAll") 등록/해제용 핸들.
+	IConsoleCommand* DebugPrintWeaponsCommand = nullptr;
 };

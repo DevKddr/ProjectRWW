@@ -1,5 +1,8 @@
 {
   "Hp": 100,
   "WalkSpeed": 300.0,
-  "RunSpeed": 600.0
+  "RunSpeed": 600.0,
+  "MaxMana": 1000,
+  "ManaRegen": 10.0,
+  "JumpPower": 420.0
 }

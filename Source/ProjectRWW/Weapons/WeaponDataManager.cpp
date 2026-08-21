@@ -4,6 +4,7 @@
 #include "Misc/Paths.h"
 #include "JsonObjectConverter.h"
 #include "Engine/GameInstance.h"
+#include "HAL/IConsoleManager.h"
 
 // 프로젝트 폴더 구조에 맞춰 조정: Content/Data/output/weapons.json
 const FString UWeaponDataManager::WeaponsJsonRelativePath = TEXT("Data/output/weapons.json");
@@ -20,11 +21,25 @@ void UWeaponDataManager::Initialize(FSubsystemCollectionBase& Collection)
 	else
 	{
 		UE_LOG(LogTemp, Log, TEXT("[WeaponDataManager] 로드 완료: 무기 %d개"), WeaponMap.Num());
+		DebugPrintAllWeapons();
 	}
+
+	// 콘솔에서 "WeaponData.PrintAll" 입력 시 DebugPrintAllWeapons()가 실행되도록 등록.
+	DebugPrintWeaponsCommand = IConsoleManager::Get().RegisterConsoleCommand(
+		TEXT("WeaponData.PrintAll"),
+		TEXT("모든 무기의 파싱된 스탯을 로그에 출력 (파싱 검증용)."),
+		FConsoleCommandDelegate::CreateUObject(this, &UWeaponDataManager::DebugPrintAllWeapons),
+		ECVF_Default
+	);
 }
 
 void UWeaponDataManager::Deinitialize()
 {
+	if (DebugPrintWeaponsCommand)
+	{
+		IConsoleManager::Get().UnregisterConsoleObject(DebugPrintWeaponsCommand);
+		DebugPrintWeaponsCommand = nullptr;
+	}
 	WeaponMap.Empty();
 	Super::Deinitialize();
 }
@@ -122,6 +137,23 @@ bool UWeaponDataManager::GetWeaponMaxTotalDamage(FName WeaponIndex, float& OutTo
 	return true;
 }
 
+bool UWeaponDataManager::GetRequiredReloadMana(FName WeaponIndex, int32 CurAmmo, float& OutRequiredMana) const
+{
+	const FWeaponItem* Weapon = WeaponMap.Find(WeaponIndex);
+	if (!Weapon) return false;
+
+	if (!Weapon->Stats.CanReload)
+	{
+		// 장전 자체가 불가능한 무기 - 마나 계산이 의미가 없으므로 실패 처리.
+		return false;
+	}
+
+	const int32 MaxAmmo = Weapon->Stats.MagazineSize;
+	const int32 MissingAmmo = FMath::Max(MaxAmmo - CurAmmo, 0);
+	OutRequiredMana = Weapon->Stats.WeaponReqMana - static_cast<float>(MissingAmmo) * Weapon->Stats.ManaPerAmmo;
+	return true;
+}
+
 TArray<FWeaponItem> UWeaponDataManager::GetAllWeapons() const
 {
 	TArray<FWeaponItem> Result;
@@ -140,4 +172,26 @@ TArray<FWeaponItem> UWeaponDataManager::GetWeaponsByType(FName WeaponType) const
 		}
 	}
 	return Result;
+}
+
+void UWeaponDataManager::DebugPrintAllWeapons() const
+{
+	UE_LOG(LogTemp, Log, TEXT("========== [WeaponDataManager] 파싱 검증 (무기 %d개) =========="), WeaponMap.Num());
+	for (const auto& Pair : WeaponMap)
+	{
+		const FWeaponItem& W = Pair.Value;
+		UE_LOG(LogTemp, Log,
+			TEXT("[%s] Type=%s Rarity=%s Name(ko)=%s | Damage=%.1f PelletCount=%d FireRate=%.2f FireMode=%s BurstCount=%d "
+				 "| IsHitscan=%s CanADS=%s ScopeZoom=%.1f | MagSize=%d ReloadTime=%.2f "
+				 "| CanReload=%s WeaponReqMana=%.1f ManaPerAmmo=%.1f"),
+			*W.Index.ToString(), *W.WeaponType.ToString(), *W.Rarity.ToString(), *W.Name.Ko,
+			W.Stats.Damage, W.Stats.PelletCount, W.Stats.FireRate_RPS, *W.Stats.FireMode.ToString(), W.Stats.BurstCount,
+			W.Stats.IsHitscan ? TEXT("true") : TEXT("false"),
+			W.Stats.CanADS ? TEXT("true") : TEXT("false"),
+			W.Stats.ScopeZoomLevel,
+			W.Stats.MagazineSize, W.Stats.ReloadTime,
+			W.Stats.CanReload ? TEXT("true") : TEXT("false"),
+			W.Stats.WeaponReqMana, W.Stats.ManaPerAmmo);
+	}
+	UE_LOG(LogTemp, Log, TEXT("========================================================"));
 }
