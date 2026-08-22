@@ -8,8 +8,6 @@
 
 // 프로젝트 폴더 구조에 맞춰 조정: Content/Data/output/weapons.json
 const FString UWeaponDataManager::WeaponsJsonRelativePath = TEXT("Data/output/weapons.json");
-IConsoleCommand* UWeaponDataManager::DebugPrintWeaponsCommand = nullptr;
-int32 UWeaponDataManager::ActiveInstanceCount = 0;
 
 void UWeaponDataManager::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -26,25 +24,18 @@ void UWeaponDataManager::Initialize(FSubsystemCollectionBase& Collection)
 		DebugPrintAllWeapons();
 	}
 
-	// 여러 GameInstance(PIE 멀티플레이어 등)가 동시에 존재해도 딱 한 번만 등록한다.
-	++ActiveInstanceCount;
-	if (ActiveInstanceCount == 1)
-	{
-		// 콘솔에서 "WeaponData.PrintAll" 입력 시 DebugPrintAllWeapons()가 실행되도록 등록.
-		DebugPrintWeaponsCommand = IConsoleManager::Get().RegisterConsoleCommand(
-			TEXT("WeaponData.PrintAll"),
-			TEXT("모든 무기의 파싱된 스탯을 로그에 출력 (파싱 검증용)."),
-			FConsoleCommandDelegate::CreateUObject(this, &UWeaponDataManager::DebugPrintAllWeapons),
-			ECVF_Default
-		);
-	}
+	// 콘솔에서 "WeaponData.PrintAll" 입력 시 DebugPrintAllWeapons()가 실행되도록 등록.
+	DebugPrintWeaponsCommand = IConsoleManager::Get().RegisterConsoleCommand(
+		TEXT("WeaponData.PrintAll"),
+		TEXT("모든 무기의 파싱된 스탯을 로그에 출력 (파싱 검증용)."),
+		FConsoleCommandDelegate::CreateUObject(this, &UWeaponDataManager::DebugPrintAllWeapons),
+		ECVF_Default
+	);
 }
 
 void UWeaponDataManager::Deinitialize()
 {
-	// 마지막 인스턴스가 사라질 때만 실제로 해제한다 (다른 인스턴스가 아직 쓰고 있을 수 있음).
-	--ActiveInstanceCount;
-	if (ActiveInstanceCount == 0 && DebugPrintWeaponsCommand)
+	if (DebugPrintWeaponsCommand)
 	{
 		IConsoleManager::Get().UnregisterConsoleObject(DebugPrintWeaponsCommand);
 		DebugPrintWeaponsCommand = nullptr;
@@ -191,14 +182,14 @@ void UWeaponDataManager::DebugPrintAllWeapons() const
 		const FWeaponItem& W = Pair.Value;
 		UE_LOG(LogTemp, Log,
 			TEXT("[%s] Type=%s Rarity=%s Name(ko)=%s | Damage=%.1f PelletCount=%d FireRate=%.2f FireMode=%s BurstCount=%d "
-				 "| IsHitscan=%s CanADS=%s ScopeZoom=%.1f | MagSize=%d ReloadTime=%.2f "
+				 "| IsHitscan=%s CanADS=%s ScopeZoom=%.1f | MagSize=%d ReloadTime=%.2f ReloadType=%s "
 				 "| CanReload=%s WeaponReqMana=%.1f ManaPerAmmo=%.1f"),
 			*W.Index.ToString(), *W.WeaponType.ToString(), *W.Rarity.ToString(), *W.Name.Ko,
 			W.Stats.Damage, W.Stats.PelletCount, W.Stats.FireRate_RPS, *W.Stats.FireMode.ToString(), W.Stats.BurstCount,
 			W.Stats.IsHitscan ? TEXT("true") : TEXT("false"),
 			W.Stats.CanADS ? TEXT("true") : TEXT("false"),
 			W.Stats.ScopeZoomLevel,
-			W.Stats.MagazineSize, W.Stats.ReloadTime,
+			W.Stats.MagazineSize, W.Stats.ReloadTime, *W.Stats.ReloadType,
 			W.Stats.CanReload ? TEXT("true") : TEXT("false"),
 			W.Stats.WeaponReqMana, W.Stats.ManaPerAmmo);
 	}

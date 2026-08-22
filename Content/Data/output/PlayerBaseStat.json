@@ -1,5 +1,7 @@
 {
-  "Hp": 100,
+  "MaxHP": 100,
+  "HPRegen": 2.0,
+  "HPRegenDelay": 5.0,
   "WalkSpeed": 300.0,
   "RunSpeed": 600.0,
   "MaxMana": 1000,

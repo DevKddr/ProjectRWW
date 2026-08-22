@@ -68,6 +68,10 @@ struct FWeaponStats
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float ManaPerAmmo = 0.f;
 
+	// 장전 방식: "Single"(한 발씩) 또는 "Magazine"(탄창째로 한번에). 값 타입은 요청대로 문자열.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
+	FString ReloadType;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float MaxRange = 0.f;
 

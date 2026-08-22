@@ -70,7 +70,9 @@ class FieldSpec:
 
 
 PLAYER_STAT_SCHEMA: list[FieldSpec] = [
-    FieldSpec(name="Hp", type=int, required=True, min_value=1),
+    FieldSpec(name="MaxHP", type=int, required=True, min_value=1),
+    FieldSpec(name="HPRegen", type=float, required=True, min_value=0.0),
+    FieldSpec(name="HPRegenDelay", type=float, required=True, min_value=0.0),
     FieldSpec(name="WalkSpeed", type=float, required=True, min_value=0.0),
     FieldSpec(name="RunSpeed", type=float, required=True, min_value=0.0),
     FieldSpec(name="MaxMana", type=int, required=True, min_value=0),
@@ -81,13 +83,15 @@ PLAYER_STAT_SCHEMA: list[FieldSpec] = [
 
 # xlsx 템플릿용 표시 정보 (한글 설명, 예시값). PLAYER_STAT_SCHEMA와 순서/이름이 1:1로 맞아야 함.
 TEMPLATE_COLUMNS = [
-    {"key": "Hp",         "header_kr": "체력",                    "type": "int",    "example": 100},
-    {"key": "WalkSpeed",  "header_kr": "걷기 이동속도",            "type": "float",  "example": 300.0},
-    {"key": "RunSpeed",   "header_kr": "달리기 이동속도",          "type": "float",  "example": 600.0},
-    {"key": "MaxMana",    "header_kr": "최대 마나",                "type": "int",    "example": 1000},
-    {"key": "ManaRegen",  "header_kr": "초당 마나 회복량",         "type": "float",  "example": 10.0},
-    {"key": "JumpPower",  "header_kr": "점프력",                   "type": "float",  "example": 420.0},
-    {"key": "Comment",    "header_kr": "기획 메모(변환시 제외)",  "type": "string", "example": "기본 스탯"},
+    {"key": "MaxHP",        "header_kr": "최대 체력",                "type": "int",    "example": 100},
+    {"key": "HPRegen",      "header_kr": "초당 체력 회복량",          "type": "float",  "example": 2.0},
+    {"key": "HPRegenDelay", "header_kr": "피격 후 체력회복 지연시간(초)", "type": "float", "example": 5.0},
+    {"key": "WalkSpeed",    "header_kr": "걷기 이동속도",             "type": "float",  "example": 300.0},
+    {"key": "RunSpeed",     "header_kr": "달리기 이동속도",           "type": "float",  "example": 600.0},
+    {"key": "MaxMana",      "header_kr": "최대 마나",                 "type": "int",    "example": 1000},
+    {"key": "ManaRegen",    "header_kr": "초당 마나 회복량",          "type": "float",  "example": 10.0},
+    {"key": "JumpPower",    "header_kr": "점프력",                    "type": "float",  "example": 420.0},
+    {"key": "Comment",      "header_kr": "기획 메모(변환시 제외)",   "type": "string", "example": "기본 스탯"},
 ]
 
 SHEET_NAME = "PlayerBaseStat"
@@ -135,7 +139,7 @@ def build_template(path: str) -> None:
     ws.freeze_panes = f"A{DATA_START_ROW}"
     ws.row_dimensions[KR_ROW].height = 30
 
-    for key in ("Hp", "WalkSpeed", "RunSpeed", "MaxMana", "ManaRegen", "JumpPower"):
+    for key in ("MaxHP", "HPRegen", "HPRegenDelay", "WalkSpeed", "RunSpeed", "MaxMana", "ManaRegen", "JumpPower"):
         col_idx = next(i for i, c in enumerate(TEMPLATE_COLUMNS, start=1) if c["key"] == key)
         letter = get_column_letter(col_idx)
         dv = DataValidation(
