@@ -2,6 +2,7 @@
 
 #include "MainPlayerController.h"
 #include "MainDeathWidget.h"
+#include "MainHUDWidget.h"
 #include "Core/MainNetworkSettings.h"
 #include "Core/MainGameMode.h"
 #include "Map/MainMapMarker.h"
@@ -12,6 +13,21 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Blueprint/UserWidget.h"
+
+void AMainPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// HUD는 소유 클라이언트에서만 띄운다 (서버/다른 클라이언트에서 실행되면 안 됨).
+	if (IsLocalController() && HUDWidgetClass)
+	{
+		HUDWidgetInstance = CreateWidget<UMainHUDWidget>(this, HUDWidgetClass);
+		if (HUDWidgetInstance)
+		{
+			HUDWidgetInstance->AddToViewport();
+		}
+	}
+}
 
 void AMainPlayerController::Client_OnPlayerDied_Implementation(const FMainPlayerRecord& Record, int32 FinalKillStreak)
 {

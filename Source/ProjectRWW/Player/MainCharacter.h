@@ -18,18 +18,21 @@ class PROJECTRWW_API AMainCharacter : public ACharacter
 public:
 	AMainCharacter();
 
-	UPROPERTY(VisibleAnywhere, Category = "Health")
-	TObjectPtr<class UMainHealthComponent> HealthComponent;
+	UPROPERTY(VisibleAnywhere, Category = "HP")
+	TObjectPtr<class UMainHPComponent> HPComponent;
+
+	UPROPERTY(VisibleAnywhere, Category = "Mana")
+	TObjectPtr<class UMainManaComponent> ManaComponent;
 
 	// PlayerBaseStat.json의 "WalkSpeed"/"RunSpeed"/"JumpPower"와 이름을 맞춘 이동 스탯값.
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float WalkSpeed = 600.0f;
+	float WalkSpeed = 300.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float RunSpeed = 900.0f;
+	float RunSpeed = 600.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float JumpPower = 0.0f;
+	float JumpPower = 420.0f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Weapon")
 	TObjectPtr<class UMainWeaponComponent> WeaponComponent;
@@ -38,7 +41,7 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
-	// HealthComponent->OnDeath에 바인딩되는 콜백. 실제 처리는 GameMode에 위임한다.
+	// HPComponent->OnDeath에 바인딩되는 콜백. 실제 처리는 GameMode에 위임한다.
 	UFUNCTION()
 	void OnDeath(AController* Killer);
 
@@ -55,6 +58,7 @@ protected:
 	void ServerSetSprinting(bool bNewSprinting);
 
 	void OnFire(const FInputActionValue& Value);
+	void OnReload(const FInputActionValue& Value);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
@@ -73,4 +77,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> FireAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> ReloadAction;
 };

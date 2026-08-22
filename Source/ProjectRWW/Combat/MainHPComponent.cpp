@@ -1,33 +1,36 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "MainHealthComponent.h"
+#include "MainHPComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerState.h"
 #include "PlayerBaseStat/PlayerStatManager.h"
 
-UMainHealthComponent::UMainHealthComponent()
+UMainHPComponent::UMainHPComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(true);
 }
 
-void UMainHealthComponent::BeginPlay()
+void UMainHPComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// PlayerBaseStat.json의 Hp로 최대 체력을 채운다. 로드가 실패했으면 Hp가 0으로 남아
-	// 눈에 띄게 망가지는 쪽을 택했다(조용한 폴백 없음) — 의도적인 선택.
-	if (UGameInstance* GameInstance = GetWorld()->GetGameInstance())
+	// 서버에서만 계산한다 — MaxHP/CurrentHP 둘 다 복제되므로 클라이언트는 서버 값을 받기만 하면 된다.
+	// 로드가 실패했으면 MaxHP가 0으로 남아 눈에 띄게 망가지는 쪽을 택했다(조용한 폴백 없음).
+	if (GetOwner() && GetOwner()->HasAuthority())
 	{
-		if (UPlayerStatManager* StatManager = GameInstance->GetSubsystem<UPlayerStatManager>())
+		if (UGameInstance* GameInstance = GetWorld()->GetGameInstance())
 		{
-			Hp = StatManager->GetBaseStat().Hp;
+			if (UPlayerStatManager* StatManager = GameInstance->GetSubsystem<UPlayerStatManager>())
+			{
+				MaxHP = StatManager->GetBaseStat().MaxHP;
+			}
 		}
-	}
 
-	CurrentHp = Hp;
+		CurrentHP = MaxHP;
+	}
 
 	// 서버에서만 델리게이트를 등록한다. 클라이언트에서 등록하면 클라이언트 로컬에서
 	// 체력이 깎이는 경로가 생겨 서버 권위 원칙이 깨진다.
@@ -35,19 +38,19 @@ void UMainHealthComponent::BeginPlay()
 	{
 		if (Owner->HasAuthority())
 		{
-			Owner->OnTakeAnyDamage.AddDynamic(this, &UMainHealthComponent::OnTakeAnyDamage);
+			Owner->OnTakeAnyDamage.AddDynamic(this, &UMainHPComponent::OnTakeAnyDamage);
 		}
 	}
 }
 
-void UMainHealthComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+void UMainHPComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
 	if (Damage <= 0.0f || IsDead())
 	{
 		return;
 	}
 
-	CurrentHp = FMath::Clamp(CurrentHp - Damage, 0.0f, Hp);
+	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.0f, MaxHP);
 
 	// 가해자/피해자 이름은 PlayerState의 PlayerName(=Title 화면에서 입력한 PlayerID)을 쓴다.
 	// 가해자는 InstigatedBy(컨트롤러)에서 바로 접근 가능하지만, 피해자는 DamagedActor(폰)만
@@ -62,8 +65,8 @@ void UMainHealthComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, c
 		? VictimController->PlayerState->GetPlayerName()
 		: GetNameSafe(DamagedActor);
 
-	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s -> %s: %.1f damage, health now %.1f"),
-		*KillerName, *VictimName, Damage, CurrentHp);
+	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s -> %s: %.1f damage, hp now %.1f"),
+		*KillerName, *VictimName, Damage, CurrentHP);
 
 	if (IsDead())
 	{
@@ -72,14 +75,15 @@ void UMainHealthComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, c
 	}
 }
 
-void UMainHealthComponent::OnRep_CurrentHp()
+void UMainHPComponent::OnRep_CurrentHP()
 {
 	// TODO: 체력바 UI 갱신 등, 클라이언트 반응 로직이 필요해지면 여기에 추가
 }
 
-void UMainHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UMainHPComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UMainHealthComponent, CurrentHp);
+	DOREPLIFETIME(UMainHPComponent, CurrentHP);
+	DOREPLIFETIME(UMainHPComponent, MaxHP);
 }

@@ -16,7 +16,6 @@ public:
 	class UMainPlayerDataRepository* GetPlayerDataRepository() const { return PlayerDataRepository; }
 
 	// 목록을 순서대로 훑어 아직 꽉 차지 않은 첫 번째 서버를 배정한다. 전부 꽉 찼으면 빈 문자열.
-	// 서브프로젝트 2 스펙: 나중에 "꽉 찼을 때 새 서버를 띄우는" 로직으로 확장할 지점.
 	FString AssignSessionServer();
 
 protected:

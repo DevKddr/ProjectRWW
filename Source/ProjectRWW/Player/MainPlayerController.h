@@ -41,6 +41,7 @@ public:
 	void RWW_ClearMapMarkers();
 
 protected:
+	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
 
 	void OnToggleMap(const struct FInputActionValue& Value);
@@ -57,10 +58,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Death")
 	TSubclassOf<class UMainDeathWidget> DeathWidgetClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "HUD")
+	TSubclassOf<class UMainHUDWidget> HUDWidgetClass;
+
 private:
 	UPROPERTY()
 	TObjectPtr<UMainMapWidget> MapWidgetInstance;
 
 	UPROPERTY()
 	TObjectPtr<UMainDeathWidget> DeathWidgetInstance;
+
+	UPROPERTY()
+	TObjectPtr<class UMainHUDWidget> HUDWidgetInstance;
 };

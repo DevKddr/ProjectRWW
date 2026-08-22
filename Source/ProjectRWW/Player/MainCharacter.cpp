@@ -6,7 +6,8 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
-#include "Combat/MainHealthComponent.h"
+#include "Combat/MainHPComponent.h"
+#include "Combat/MainManaComponent.h"
 #include "Combat/MainWeaponComponent.h"
 #include "Core/MainGameMode.h"
 #include "PlayerBaseStat/PlayerStatManager.h"
@@ -17,7 +18,8 @@ AMainCharacter::AMainCharacter()
 	bReplicates = true;
 	GetCharacterMovement()->SetIsReplicated(true);
 
-	HealthComponent = CreateDefaultSubobject<UMainHealthComponent>(TEXT("HealthComponent"));
+	HPComponent = CreateDefaultSubobject<UMainHPComponent>(TEXT("HPComponent"));
+	ManaComponent = CreateDefaultSubobject<UMainManaComponent>(TEXT("ManaComponent"));
 	WeaponComponent = CreateDefaultSubobject<UMainWeaponComponent>(TEXT("WeaponComponent"));
 }
 
@@ -26,6 +28,14 @@ void AMainCharacter::OnFire(const FInputActionValue& Value)
 	if (WeaponComponent)
 	{
 		WeaponComponent->StartFire();
+	}
+}
+
+void AMainCharacter::OnReload(const FInputActionValue& Value)
+{
+	if (WeaponComponent)
+	{
+		WeaponComponent->RequestReload();
 	}
 }
 
@@ -52,7 +62,7 @@ void AMainCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	// PlayerBaseStat.json에서 이동 스탯을 채운다. 로드 실패 시 0으로 남아 눈에 띄게
-	// 망가지는 쪽을 택했다(조용한 폴백 없음) — MainHealthComponent와 동일한 정책.
+	// 망가지는 쪽을 택했다(조용한 폴백 없음) — MainHPComponent와 동일한 정책.
 	if (UGameInstance* GameInstance = GetGameInstance())
 	{
 		if (UPlayerStatManager* StatManager = GameInstance->GetSubsystem<UPlayerStatManager>())
@@ -67,11 +77,11 @@ void AMainCharacter::BeginPlay()
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 	GetCharacterMovement()->JumpZVelocity = JumpPower;
 
-	// 서버에서만 등록 — HealthComponent 자체의 델리게이트 등록과 같은 이유(서버 권위 유지).
+	// 서버에서만 등록 — HPComponent 자체의 델리게이트 등록과 같은 이유(서버 권위 유지).
 	// 클라이언트에도 등록하면 사망 정산(HandlePlayerDeath)이 클라이언트에서도 시도되어 위험하다.
-	if (HasAuthority() && HealthComponent)
+	if (HasAuthority() && HPComponent)
 	{
-		HealthComponent->OnDeath.AddDynamic(this, &AMainCharacter::OnDeath);
+		HPComponent->OnDeath.AddDynamic(this, &AMainCharacter::OnDeath);
 	}
 
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -126,6 +136,10 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		if (FireAction)
 		{
 			EnhancedInput->BindAction(FireAction, ETriggerEvent::Started, this, &AMainCharacter::OnFire);
+		}
+		if (ReloadAction)
+		{
+			EnhancedInput->BindAction(ReloadAction, ETriggerEvent::Started, this, &AMainCharacter::OnReload);
 		}
 	}
 }
