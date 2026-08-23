@@ -35,9 +35,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Mana")
 	bool ConsumeMana(float Amount);
 
+	// MainEffectTickComponent의 OnEffectTick에 등록되는 콜백. MainCharacter가 연결한다.
+	UFUNCTION()
+	void OnEffectTick();
+
 protected:
 	virtual void BeginPlay() override;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	// CurrentMana가 클라이언트에 복제되어 도착하면 자동 호출된다.
 	UFUNCTION()
@@ -47,7 +50,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Replicated, Category = "Mana")
 	float MaxMana = 1000.0f;
 
-	// PlayerBaseStat.json의 "ManaRegen"과 이름을 맞춘 초당 회복량.
+	// PlayerBaseStat.json의 "ManaRegen"과 이름을 맞춘 1회 회복량.
 	UPROPERTY(EditDefaultsOnly, Category = "Mana")
 	float ManaRegen = 10.0f;
 

@@ -7,7 +7,7 @@
 
 UMainManaComponent::UMainManaComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(true);
 }
 
@@ -24,7 +24,7 @@ void UMainManaComponent::BeginPlay()
 			if (UPlayerStatManager* StatManager = GameInstance->GetSubsystem<UPlayerStatManager>())
 			{
 				const FPlayerBaseStat& Stat = StatManager->GetBaseStat();
-				MaxMana = static_cast<float>(Stat.MaxMana);
+				MaxMana = Stat.MaxMana;
 				ManaRegen = Stat.ManaRegen;
 			}
 		}
@@ -33,15 +33,14 @@ void UMainManaComponent::BeginPlay()
 	}
 }
 
-void UMainManaComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UMainManaComponent::OnEffectTick()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// 회복 계산은 서버에서만 — 클라이언트가 계산하면 그 값을 신뢰할 수 없다.
-	if (GetOwner() && GetOwner()->HasAuthority() && CurrentMana < MaxMana)
+	if (CurrentMana >= MaxMana)
 	{
-		CurrentMana = FMath::Min(CurrentMana + ManaRegen * DeltaTime, MaxMana);
+		return;
 	}
+
+	CurrentMana = FMath::Min(CurrentMana + ManaRegen, MaxMana);
 }
 
 bool UMainManaComponent::ConsumeMana(float Amount)

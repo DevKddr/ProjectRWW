@@ -70,12 +70,12 @@ class FieldSpec:
 
 
 PLAYER_STAT_SCHEMA: list[FieldSpec] = [
-    FieldSpec(name="MaxHP", type=int, required=True, min_value=1),
+    FieldSpec(name="MaxHP", type=float, required=True, min_value=1.0),
     FieldSpec(name="HPRegen", type=float, required=True, min_value=0.0),
     FieldSpec(name="HPRegenDelay", type=float, required=True, min_value=0.0),
     FieldSpec(name="WalkSpeed", type=float, required=True, min_value=0.0),
     FieldSpec(name="RunSpeed", type=float, required=True, min_value=0.0),
-    FieldSpec(name="MaxMana", type=int, required=True, min_value=0),
+    FieldSpec(name="MaxMana", type=float, required=True, min_value=0.0),
     FieldSpec(name="ManaRegen", type=float, required=True, min_value=0.0),
     FieldSpec(name="JumpPower", type=float, required=True, min_value=0.0),
     FieldSpec(name="Comment", type=str, required=False, export=False),
@@ -83,12 +83,12 @@ PLAYER_STAT_SCHEMA: list[FieldSpec] = [
 
 # xlsx 템플릿용 표시 정보 (한글 설명, 예시값). PLAYER_STAT_SCHEMA와 순서/이름이 1:1로 맞아야 함.
 TEMPLATE_COLUMNS = [
-    {"key": "MaxHP",        "header_kr": "최대 체력",                "type": "int",    "example": 100},
+    {"key": "MaxHP",        "header_kr": "최대 체력",                "type": "float",  "example": 100.0},
     {"key": "HPRegen",      "header_kr": "초당 체력 회복량",          "type": "float",  "example": 2.0},
     {"key": "HPRegenDelay", "header_kr": "피격 후 체력회복 지연시간(초)", "type": "float", "example": 5.0},
     {"key": "WalkSpeed",    "header_kr": "걷기 이동속도",             "type": "float",  "example": 300.0},
     {"key": "RunSpeed",     "header_kr": "달리기 이동속도",           "type": "float",  "example": 600.0},
-    {"key": "MaxMana",      "header_kr": "최대 마나",                 "type": "int",    "example": 1000},
+    {"key": "MaxMana",      "header_kr": "최대 마나",                 "type": "float",  "example": 1000.0},
     {"key": "ManaRegen",    "header_kr": "초당 마나 회복량",          "type": "float",  "example": 10.0},
     {"key": "JumpPower",    "header_kr": "점프력",                    "type": "float",  "example": 420.0},
     {"key": "Comment",      "header_kr": "기획 메모(변환시 제외)",   "type": "string", "example": "기본 스탯"},

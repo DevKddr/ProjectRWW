@@ -19,7 +19,7 @@ struct FPlayerBaseStat
 public:
 	// 최대 체력
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PlayerStat")
-	int32 MaxHP = 0;
+	float MaxHP = 0.f;
 
 	// 초당 체력 회복량
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PlayerStat")
@@ -39,7 +39,7 @@ public:
 
 	// 최대 마나
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PlayerStat")
-	int32 MaxMana = 0;
+	float MaxMana = 0.f;
 
 	// 초당 마나 회복량
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PlayerStat")

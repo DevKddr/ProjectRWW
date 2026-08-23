@@ -31,6 +31,12 @@ void AMainPlayerController::BeginPlay()
 
 void AMainPlayerController::Client_OnPlayerDied_Implementation(const FMainPlayerRecord& Record, int32 FinalKillStreak)
 {
+	// 사망 화면과 겹쳐서 죽기 직전 값이 그대로 멈춰 보이는 걸 방지 — 사망 시엔 HUD 자체가 필요 없다.
+	if (HUDWidgetInstance)
+	{
+		HUDWidgetInstance->RemoveFromParent();
+	}
+
 	if (DeathWidgetClass)
 	{
 		DeathWidgetInstance = CreateWidget<UMainDeathWidget>(this, DeathWidgetClass);

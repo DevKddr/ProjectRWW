@@ -30,6 +30,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "HP")
 	FMainOnDeath OnDeath;
 
+	// MainEffectTickComponent의 OnEffectTick에 등록되는 콜백. MainCharacter가 연결한다.
+	UFUNCTION()
+	void OnEffectTick();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -45,9 +49,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Replicated, Category = "HP")
 	float MaxHP = 100.0f;
 
+	// PlayerBaseStat.json의 "HPRegen"과 이름을 맞춘 1회 회복량.
+	UPROPERTY(EditDefaultsOnly, Category = "HP")
+	float HPRegen = 0.0f;
+
+	// PlayerBaseStat.json의 "HPRegenDelay"와 이름을 맞춘, 피격 후 회복이 재개되기까지의 지연시간(초).
+	UPROPERTY(EditDefaultsOnly, Category = "HP")
+	float HPRegenDelay = 0.0f;
+
 	// MaxHP보다 뒤에 선언되어 있어서, 그 초기화된 값을 그대로 가져다 쓸 수 있다.
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP, VisibleAnywhere, Category = "HP")
 	float CurrentHP = MaxHP;
+
+	// 마지막으로 데미지를 받은 서버 월드 시각. 회복 재개 여부 판단에만 쓰는 서버 로컬 값이라 복제하지 않는다.
+	double LastDamageTimeSeconds = 0.0;
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

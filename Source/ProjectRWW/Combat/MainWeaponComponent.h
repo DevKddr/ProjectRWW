@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Weapons/WeaponData.h"
+#include "TimerManager.h"
 #include "MainWeaponComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -17,6 +18,9 @@ public:
 
 	// 캐릭터(소유자)가 발사 입력을 받으면 이 함수를 호출한다.
 	void StartFire();
+
+	// 발사 입력을 뗐을 때 호출한다. FullAuto의 반복 발사를 멈추는 용도.
+	void StopFire();
 
 	// 재장전 입력을 받으면 호출한다.
 	void RequestReload();
@@ -33,8 +37,31 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	int32 GetMagazineSize() const { return MagazineSize; }
 
+	// 조준(ADS) 입력을 받으면 호출한다.
+	void StartADS();
+
+	// 조준 해제 입력을 받으면 호출한다.
+	void StopADS();
+
+	// 지금 조준 중인지. 블루프린트에서 조준 시 카메라 정렬 연출을 트리거하는 데 쓴다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	bool IsAiming() const { return bIsAiming; }
+
+	// 조준 완료까지 걸리는 시간(초). 이름은 Speed지만 weapons.json 값은 시간(초) 단위로 쓰인다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetADSSpeed() const { return ADSSpeed; }
+
 protected:
 	virtual void BeginPlay() override;
+
+	// 조준 정보를 캡처해서 서버에 발사 요청(RPC)을 보낸다. FullAuto 반복 타이머의 콜백으로도 쓰인다.
+	void RequestFire();
+
+	// 실제로 총알 한 발을 처리한다(레이트레이스, 데미지, 이펙트 통보). 모드와 무관하게 공통으로 쓰인다.
+	void FireShot(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection);
+
+	// 버스트 모드에서 첫 발 이후 나머지 탄을 쏘는 타이머 콜백.
+	void FireBurstShot();
 
 	// 클라이언트 -> 서버 요청: "이 방향으로 쐈다". 실제 판정은 서버가 한다.
 	UFUNCTION(Server, Reliable, WithValidation)
@@ -48,11 +75,20 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_Reload();
 
+	// 클라이언트 -> 서버 요청: 조준 상태 변경. Sprint와 같은 패턴.
+	UFUNCTION(Server, Reliable)
+	void Server_SetAiming(bool bNewAiming);
+
 	UFUNCTION()
 	void OnRep_CurrentAmmo();
 
+	// WeaponIndex가 복제되어 도착하면 클라이언트가 스스로 EquipWeapon()을 다시 실행해
+	// 로컬 상태(스탯, FullAuto/Burst 타이머 정리)를 서버와 맞춘다.
+	UFUNCTION()
+	void OnRep_WeaponIndex();
+
 	// weapons.json의 "index"와 매칭되는 키.
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	UPROPERTY(ReplicatedUsing = OnRep_WeaponIndex, EditDefaultsOnly, Category = "Weapon")
 	FName WeaponIndex;
 
 	// --- FWeaponItem 최상위 필드 ---
@@ -177,6 +213,19 @@ protected:
 
 	double LastFireTimeSeconds = 0.0;
 	double EquippedTimeSeconds = 0.0;
+
+	// FullAuto 반복 발사용 타이머 핸들.
+	FTimerHandle AutoFireTimerHandle;
+
+	// 버스트 나머지 탄 발사용 타이머 핸들.
+	FTimerHandle BurstTimerHandle;
+
+	// 버스트 진행 중 남은 탄 수.
+	int32 PendingBurstShotsRemaining = 0;
+
+	// 조준 중인지. 서버는 산포(Spread) 계산에, 클라이언트는 블루프린트의 조준 연출에 사용한다.
+	// 양쪽이 각자 독립적으로 값을 들고 있어서 복제가 필요 없다(Sprint의 MaxWalkSpeed와 같은 패턴).
+	bool bIsAiming = false;
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

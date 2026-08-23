@@ -40,7 +40,7 @@ bool UPlayerStatManager::LoadFromJson()
 
 	// 성공 로그: 실제로 파싱된 값을 그대로 찍어서, 엑셀에서 넣은 값과 육안으로 대조할 수 있게 한다.
 	UE_LOG(LogPlayerStat, Log,
-		TEXT("PlayerBaseStat.json 파싱 성공 (%s) - MaxHP=%d, HPRegen=%.1f, HPRegenDelay=%.1f, WalkSpeed=%.1f, RunSpeed=%.1f, MaxMana=%d, ManaRegen=%.1f, JumpPower=%.1f"),
+		TEXT("PlayerBaseStat.json 파싱 성공 (%s) - MaxHP=%.1f, HPRegen=%.1f, HPRegenDelay=%.1f, WalkSpeed=%.1f, RunSpeed=%.1f, MaxMana=%.1f, ManaRegen=%.1f, JumpPower=%.1f"),
 		*FullPath, BaseStat.MaxHP, BaseStat.HPRegen, BaseStat.HPRegenDelay, BaseStat.WalkSpeed, BaseStat.RunSpeed,
 		BaseStat.MaxMana, BaseStat.ManaRegen, BaseStat.JumpPower);
 

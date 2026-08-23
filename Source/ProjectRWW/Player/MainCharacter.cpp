@@ -9,6 +9,7 @@
 #include "Combat/MainHPComponent.h"
 #include "Combat/MainManaComponent.h"
 #include "Combat/MainWeaponComponent.h"
+#include "Combat/MainEffectTickComponent.h"
 #include "Core/MainGameMode.h"
 #include "PlayerBaseStat/PlayerStatManager.h"
 
@@ -21,6 +22,7 @@ AMainCharacter::AMainCharacter()
 	HPComponent = CreateDefaultSubobject<UMainHPComponent>(TEXT("HPComponent"));
 	ManaComponent = CreateDefaultSubobject<UMainManaComponent>(TEXT("ManaComponent"));
 	WeaponComponent = CreateDefaultSubobject<UMainWeaponComponent>(TEXT("WeaponComponent"));
+	EffectTickComponent = CreateDefaultSubobject<UMainEffectTickComponent>(TEXT("EffectTickComponent"));
 }
 
 void AMainCharacter::OnFire(const FInputActionValue& Value)
@@ -31,11 +33,35 @@ void AMainCharacter::OnFire(const FInputActionValue& Value)
 	}
 }
 
+void AMainCharacter::OnStopFire(const FInputActionValue& Value)
+{
+	if (WeaponComponent)
+	{
+		WeaponComponent->StopFire();
+	}
+}
+
 void AMainCharacter::OnReload(const FInputActionValue& Value)
 {
 	if (WeaponComponent)
 	{
 		WeaponComponent->RequestReload();
+	}
+}
+
+void AMainCharacter::OnADSStart(const FInputActionValue& Value)
+{
+	if (WeaponComponent)
+	{
+		WeaponComponent->StartADS();
+	}
+}
+
+void AMainCharacter::OnADSStop(const FInputActionValue& Value)
+{
+	if (WeaponComponent)
+	{
+		WeaponComponent->StopADS();
 	}
 }
 
@@ -82,6 +108,19 @@ void AMainCharacter::BeginPlay()
 	if (HasAuthority() && HPComponent)
 	{
 		HPComponent->OnDeath.AddDynamic(this, &AMainCharacter::OnDeath);
+	}
+
+	// 회복 등 주기적 이펙트 처리 — EffectTickComponent가 신호를 보내면 HP/Mana가 각자 반응한다.
+	if (HasAuthority() && EffectTickComponent)
+	{
+		if (HPComponent)
+		{
+			EffectTickComponent->OnEffectTick.AddDynamic(HPComponent, &UMainHPComponent::OnEffectTick);
+		}
+		if (ManaComponent)
+		{
+			EffectTickComponent->OnEffectTick.AddDynamic(ManaComponent, &UMainManaComponent::OnEffectTick);
+		}
 	}
 
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -136,10 +175,16 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		if (FireAction)
 		{
 			EnhancedInput->BindAction(FireAction, ETriggerEvent::Started, this, &AMainCharacter::OnFire);
+			EnhancedInput->BindAction(FireAction, ETriggerEvent::Completed, this, &AMainCharacter::OnStopFire);
 		}
 		if (ReloadAction)
 		{
 			EnhancedInput->BindAction(ReloadAction, ETriggerEvent::Started, this, &AMainCharacter::OnReload);
+		}
+		if (ADSAction)
+		{
+			EnhancedInput->BindAction(ADSAction, ETriggerEvent::Started, this, &AMainCharacter::OnADSStart);
+			EnhancedInput->BindAction(ADSAction, ETriggerEvent::Completed, this, &AMainCharacter::OnADSStop);
 		}
 	}
 }

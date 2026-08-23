@@ -25,7 +25,10 @@ void UMainHPComponent::BeginPlay()
 		{
 			if (UPlayerStatManager* StatManager = GameInstance->GetSubsystem<UPlayerStatManager>())
 			{
-				MaxHP = StatManager->GetBaseStat().MaxHP;
+				const FPlayerBaseStat& Stat = StatManager->GetBaseStat();
+				MaxHP = Stat.MaxHP;
+				HPRegen = Stat.HPRegen;
+				HPRegenDelay = Stat.HPRegenDelay;
 			}
 		}
 
@@ -43,6 +46,21 @@ void UMainHPComponent::BeginPlay()
 	}
 }
 
+void UMainHPComponent::OnEffectTick()
+{
+	if (IsDead() || CurrentHP >= MaxHP)
+	{
+		return;
+	}
+
+	if (GetWorld()->GetTimeSeconds() - LastDamageTimeSeconds < HPRegenDelay)
+	{
+		return;
+	}
+
+	CurrentHP = FMath::Min(CurrentHP + HPRegen, MaxHP);
+}
+
 void UMainHPComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
 	if (Damage <= 0.0f || IsDead())
@@ -51,6 +69,7 @@ void UMainHPComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, const
 	}
 
 	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.0f, MaxHP);
+	LastDamageTimeSeconds = GetWorld()->GetTimeSeconds();
 
 	// 가해자/피해자 이름은 PlayerState의 PlayerName(=Title 화면에서 입력한 PlayerID)을 쓴다.
 	// 가해자는 InstigatedBy(컨트롤러)에서 바로 접근 가능하지만, 피해자는 DamagedActor(폰)만

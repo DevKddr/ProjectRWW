@@ -24,6 +24,9 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Mana")
 	TObjectPtr<class UMainManaComponent> ManaComponent;
 
+	UPROPERTY(VisibleAnywhere, Category = "Effect")
+	TObjectPtr<class UMainEffectTickComponent> EffectTickComponent;
+
 	// PlayerBaseStat.json의 "WalkSpeed"/"RunSpeed"/"JumpPower"와 이름을 맞춘 이동 스탯값.
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float WalkSpeed = 300.0f;
@@ -34,7 +37,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float JumpPower = 420.0f;
 
-	UPROPERTY(VisibleAnywhere, Category = "Weapon")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<class UMainWeaponComponent> WeaponComponent;
 
 protected:
@@ -58,7 +61,10 @@ protected:
 	void ServerSetSprinting(bool bNewSprinting);
 
 	void OnFire(const FInputActionValue& Value);
+	void OnStopFire(const FInputActionValue& Value);
 	void OnReload(const FInputActionValue& Value);
+	void OnADSStart(const FInputActionValue& Value);
+	void OnADSStop(const FInputActionValue& Value);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
@@ -80,4 +86,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> ReloadAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> ADSAction;
 };
