@@ -51,8 +51,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetADSSpeed() const { return ADSSpeed; }
 
+	// 지금 재장전 중인지. HUD에서 재장전 UI 표시 여부에 쓴다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	bool IsReloading() const { return bIsReloading; }
+
+	// 재장전 진행률(0.0~1.0). HUD 프로그레스 바에 그대로 연결해서 쓸 수 있다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetReloadProgress() const;
+
 protected:
 	virtual void BeginPlay() override;
+
+	// ReloadTime초 뒤에 실제로 탄창을 채우는 타이머 콜백.
+	void CompleteReload();
 
 	// 조준 정보를 캡처해서 서버에 발사 요청(RPC)을 보낸다. FullAuto 반복 타이머의 콜백으로도 쓰인다.
 	void RequestFire();
@@ -226,6 +237,17 @@ protected:
 	// 조준 중인지. 서버는 산포(Spread) 계산에, 클라이언트는 블루프린트의 조준 연출에 사용한다.
 	// 양쪽이 각자 독립적으로 값을 들고 있어서 복제가 필요 없다(Sprint의 MaxWalkSpeed와 같은 패턴).
 	bool bIsAiming = false;
+
+	// 지금 재장전 중인지. 클라이언트 UI 표시용으로 써야 하므로 복제한다.
+	UPROPERTY(Replicated)
+	bool bIsReloading = false;
+
+	// 재장전을 시작한 서버 월드 시각. 진행률 계산용으로 복제한다.
+	UPROPERTY(Replicated)
+	float ReloadStartTimeSeconds = 0.0f;
+
+	// ReloadTime초 뒤 CompleteReload를 호출하는 타이머 핸들.
+	FTimerHandle ReloadTimerHandle;
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

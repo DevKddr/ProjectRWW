@@ -35,17 +35,19 @@ void UMainWeaponComponent::EquipWeapon(FName NewWeaponIndex, int32 SavedAmmo)
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(BurstTimerHandle);
+		World->GetTimerManager().ClearTimer(ReloadTimerHandle);
 	}
 	PendingBurstShotsRemaining = 0;
+	bIsReloading = false;
 
 	WeaponIndex = NewWeaponIndex;
 
 	if (UGameInstance* GameInstance = GetWorld()->GetGameInstance())
 	{
-		if (UWeaponDataManager* WeaponMgr = GameInstance->GetSubsystem<UWeaponDataManager>())
+		if (UWeaponDataManager* WeaponDataManager = GameInstance->GetSubsystem<UWeaponDataManager>())
 		{
 			FWeaponItem WeaponData;
-			if (WeaponMgr->GetWeaponData(WeaponIndex, WeaponData))
+			if (WeaponDataManager->GetWeaponData(WeaponIndex, WeaponData))
 			{
 				WeaponType = WeaponData.WeaponType;
 				Rarity = WeaponData.Rarity;
@@ -265,13 +267,19 @@ bool UMainWeaponComponent::ServerFire_Validate(const FVector_NetQuantize& TraceS
 
 void UMainWeaponComponent::Server_Reload_Implementation()
 {
-	if (!CanReload || CurrentAmmo >= MagazineSize)
+	if (!CanReload || CurrentAmmo >= MagazineSize || bIsReloading)
 	{
 		return;
 	}
 
-	const int32 MissingAmmo = FMath::Max(MagazineSize - CurrentAmmo, 0);
-	const float RequiredMana = WeaponReqMana - static_cast<float>(MissingAmmo) * ManaPerAmmo;
+	UGameInstance* GameInstance = GetWorld()->GetGameInstance();
+	UWeaponDataManager* WeaponDataManager = GameInstance ? GameInstance->GetSubsystem<UWeaponDataManager>() : nullptr;
+
+	float RequiredMana = 0.0f;
+	if (!WeaponDataManager || !WeaponDataManager->GetRequiredReloadMana(WeaponIndex, CurrentAmmo, RequiredMana))
+	{
+		return;
+	}
 
 	UMainManaComponent* ManaComp = GetOwner() ? GetOwner()->FindComponentByClass<UMainManaComponent>() : nullptr;
 	if (!ManaComp || !ManaComp->ConsumeMana(RequiredMana))
@@ -279,7 +287,36 @@ void UMainWeaponComponent::Server_Reload_Implementation()
 		return;
 	}
 
+	bIsReloading = true;
+	ReloadStartTimeSeconds = GetWorld()->GetTimeSeconds();
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::CompleteReload, ReloadTime, false);
+	}
+}
+
+void UMainWeaponComponent::CompleteReload()
+{
+	bIsReloading = false;
 	CurrentAmmo = MagazineSize;
+}
+
+float UMainWeaponComponent::GetReloadProgress() const
+{
+	if (!bIsReloading || ReloadTime <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return 0.0f;
+	}
+
+	const float ElapsedTime = World->GetTimeSeconds() - ReloadStartTimeSeconds;
+	return FMath::Clamp(ElapsedTime / ReloadTime, 0.0f, 1.0f);
 }
 
 void UMainWeaponComponent::MulticastPlayFireEffects_Implementation(const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& TraceEnd, bool bHit)
@@ -298,5 +335,7 @@ void UMainWeaponComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 
 	DOREPLIFETIME_CONDITION(UMainWeaponComponent, CurrentAmmo, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UMainWeaponComponent, MagazineSize, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UMainWeaponComponent, bIsReloading, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UMainWeaponComponent, ReloadStartTimeSeconds, COND_OwnerOnly);
 	DOREPLIFETIME(UMainWeaponComponent, WeaponIndex);
 }

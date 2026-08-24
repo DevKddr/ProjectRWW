@@ -32,4 +32,10 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD")
 	int32 MagazineSize = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	bool bIsReloading = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	float ReloadProgress = 0.0f;
 };

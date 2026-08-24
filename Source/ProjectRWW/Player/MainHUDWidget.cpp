@@ -32,5 +32,7 @@ void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	{
 		CurrentAmmo = WeaponComp->GetCurrentAmmo();
 		MagazineSize = WeaponComp->GetMagazineSize();
+		bIsReloading = WeaponComp->IsReloading();
+		ReloadProgress = WeaponComp->GetReloadProgress();
 	}
 }

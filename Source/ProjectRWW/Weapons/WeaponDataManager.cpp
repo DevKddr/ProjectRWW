@@ -159,7 +159,7 @@ bool UWeaponDataManager::GetRequiredReloadMana(FName WeaponIndex, int32 CurAmmo,
 
 	const int32 MaxAmmo = Weapon->Stats.MagazineSize;
 	const int32 MissingAmmo = FMath::Max(MaxAmmo - CurAmmo, 0);
-	OutRequiredMana = Weapon->Stats.WeaponReqMana - static_cast<float>(MissingAmmo) * Weapon->Stats.ManaPerAmmo;
+	OutRequiredMana = Weapon->Stats.WeaponReqMana + static_cast<float>(MissingAmmo) * Weapon->Stats.ManaPerAmmo;
 	return true;
 }
 
