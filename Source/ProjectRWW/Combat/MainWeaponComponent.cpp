@@ -169,6 +169,21 @@ void UMainWeaponComponent::Server_SetAiming_Implementation(bool bNewAiming)
 
 void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
 {
+	if (CurrentAmmo <= 0)
+	{
+		return;
+	}
+
+	// 재장전 중에 방아쇠를 당기면 재장전을 취소하고 바로 발사를 시도한다. 이미 소비한 마나는 환불하지 않는다.
+	if (bIsReloading)
+	{
+		bIsReloading = false;
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(ReloadTimerHandle);
+		}
+	}
+
 	const double Now = FPlatformTime::Seconds();
 	const float FireIntervalSeconds = FireRate_RPS > 0.0f ? (1.0f / FireRate_RPS) : 0.0f;
 
@@ -182,12 +197,8 @@ void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& 
 		return;
 	}
 
-	if (CurrentAmmo <= 0)
-	{
-		return;
-	}
-
 	LastFireTimeSeconds = Now;
+	--CurrentAmmo;
 	FireShot(TraceStart, TraceDirection);
 
 	// Burst는 첫 발 이후 나머지 (BurstCount - 1)발을 BurstShotInterval 간격으로 이어서 쏜다.
@@ -217,6 +228,7 @@ void UMainWeaponComponent::FireBurstShot()
 	}
 
 	--PendingBurstShotsRemaining;
+	--CurrentAmmo;
 
 	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
 	if (OwnerPawn && OwnerPawn->GetController())
@@ -235,8 +247,6 @@ void UMainWeaponComponent::FireBurstShot()
 
 void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
 {
-	--CurrentAmmo;
-
 	const FVector TraceEnd = TraceStart + TraceDirection * MaxRange;
 
 	FHitResult HitResult;
@@ -302,6 +312,17 @@ void UMainWeaponComponent::CompleteReload()
 	CurrentAmmo = MagazineSize;
 }
 
+void UMainWeaponComponent::OnRep_IsReloading()
+{
+	if (bIsReloading)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			ReloadStartTimeSeconds = World->GetTimeSeconds();
+		}
+	}
+}
+
 float UMainWeaponComponent::GetReloadProgress() const
 {
 	if (!bIsReloading || ReloadTime <= 0.0f)
@@ -336,6 +357,5 @@ void UMainWeaponComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME_CONDITION(UMainWeaponComponent, CurrentAmmo, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UMainWeaponComponent, MagazineSize, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UMainWeaponComponent, bIsReloading, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UMainWeaponComponent, ReloadStartTimeSeconds, COND_OwnerOnly);
 	DOREPLIFETIME(UMainWeaponComponent, WeaponIndex);
 }

@@ -65,6 +65,11 @@ protected:
 	// ReloadTime초 뒤에 실제로 탄창을 채우는 타이머 콜백.
 	void CompleteReload();
 
+	// bIsReloading이 복제되어 도착하면 호출된다. 서버 시각을 그대로 믿지 않고,
+	// 클라이언트가 소식을 받은 그 순간을 자기 시계로 다시 찍어서 기준으로 삼는다.
+	UFUNCTION()
+	void OnRep_IsReloading();
+
 	// 조준 정보를 캡처해서 서버에 발사 요청(RPC)을 보낸다. FullAuto 반복 타이머의 콜백으로도 쓰인다.
 	void RequestFire();
 
@@ -239,11 +244,11 @@ protected:
 	bool bIsAiming = false;
 
 	// 지금 재장전 중인지. 클라이언트 UI 표시용으로 써야 하므로 복제한다.
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_IsReloading)
 	bool bIsReloading = false;
 
-	// 재장전을 시작한 서버 월드 시각. 진행률 계산용으로 복제한다.
-	UPROPERTY(Replicated)
+	// 재장전을 시작한 시각. 서버/클라이언트 시계가 정확히 동기화되어 있지 않아서
+	// 복제하지 않고, 각자 자기 시계로 이 값을 따로 찍는다(LastFireTimeSeconds와 같은 정책).
 	float ReloadStartTimeSeconds = 0.0f;
 
 	// ReloadTime초 뒤 CompleteReload를 호출하는 타이머 핸들.
