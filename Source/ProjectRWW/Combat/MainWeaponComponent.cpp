@@ -137,6 +137,14 @@ void UMainWeaponComponent::RequestFire()
 		return;
 	}
 
+	// 리슨 서버 호스트는 이 오브젝트가 곧 서버 권위 오브젝트이기도 해서 FireShot()에서
+	// 이미 UpdateSpread()를 호출한다. 여기서 또 부르면 이중 계산되므로, 권한이 없을 때만
+	// (원격 클라이언트일 때만) 크로스헤어 예측용으로 미리 계산한다.
+	if (!OwnerPawn->HasAuthority())
+	{
+		UpdateSpread();
+	}
+
 	FVector ViewLocation;
 	FRotator ViewRotation;
 	OwnerPawn->GetController()->GetPlayerViewPoint(ViewLocation, ViewRotation);
@@ -144,9 +152,87 @@ void UMainWeaponComponent::RequestFire()
 	ServerFire(ViewLocation, ViewRotation.Vector());
 }
 
+float UMainWeaponComponent::UpdateSpread()
+{
+	const UWorld* World = GetWorld();
+	const double Now = World ? World->GetTimeSeconds() : 0.0;
+
+	const float BaseSpread = bIsAiming ? SpreadADS : SpreadHipfire;
+	const float MaxBloom = bIsAiming ? MaxSpreadBloomADS : MaxSpreadBloomHipfire;
+
+	const double TimeSinceLastShot = Now - LastSpreadUpdateTimeSeconds;
+	if (TimeSinceLastShot > SpreadRecoveryDelay)
+	{
+		const float RecoveryAmount = static_cast<float>(TimeSinceLastShot - SpreadRecoveryDelay) * SpreadRecoveryRate;
+		CurrentSpreadDegrees = FMath::Max(CurrentSpreadDegrees - RecoveryAmount, 0.0f);
+	}
+	LastSpreadUpdateTimeSeconds = Now;
+
+	const float TotalSpreadDegrees = FMath::Clamp(BaseSpread + CurrentSpreadDegrees, 0.0f, BaseSpread + MaxBloom);
+
+	CurrentSpreadDegrees = FMath::Min(CurrentSpreadDegrees + SpreadIncreasePerShot, MaxBloom);
+
+	return TotalSpreadDegrees;
+}
+
+float UMainWeaponComponent::GetCurrentSpreadDegrees() const
+{
+	const float BaseSpread = bIsAiming ? SpreadADS : SpreadHipfire;
+	const float MaxBloom = bIsAiming ? MaxSpreadBloomADS : MaxSpreadBloomHipfire;
+
+	// UpdateSpread()가 실제 탄 궤적에 쓰는 것과 동일한 회복 계산. BaseSpread를 더해야
+	// GetMaxSpreadDegrees()와 같은 기준(0 ~ BaseSpread+MaxBloom)이 되어 UI에서
+	// Current/Max 비율이 실제 산포와 일치한다.
+	float RecoveredBloom = CurrentSpreadDegrees;
+	if (const UWorld* World = GetWorld())
+	{
+		const double TimeSinceLastShot = World->GetTimeSeconds() - LastSpreadUpdateTimeSeconds;
+		if (TimeSinceLastShot > SpreadRecoveryDelay)
+		{
+			const float RecoveryAmount = static_cast<float>(TimeSinceLastShot - SpreadRecoveryDelay) * SpreadRecoveryRate;
+			RecoveredBloom = FMath::Max(CurrentSpreadDegrees - RecoveryAmount, 0.0f);
+		}
+	}
+
+	return FMath::Clamp(BaseSpread + RecoveredBloom, 0.0f, BaseSpread + MaxBloom);
+}
+
+float UMainWeaponComponent::GetMaxSpreadDegrees() const
+{
+	const float BaseSpread = bIsAiming ? SpreadADS : SpreadHipfire;
+	const float MaxBloom = bIsAiming ? MaxSpreadBloomADS : MaxSpreadBloomHipfire;
+	return BaseSpread + MaxBloom;
+}
+
 void UMainWeaponComponent::RequestReload()
 {
 	Server_Reload();
+}
+
+void UMainWeaponComponent::RequestSwitchWeapon()
+{
+	Server_SwitchWeapon();
+}
+
+void UMainWeaponComponent::Server_SwitchWeapon_Implementation()
+{
+	UGameInstance* GameInstance = GetWorld()->GetGameInstance();
+	UWeaponDataManager* WeaponDataManager = GameInstance ? GameInstance->GetSubsystem<UWeaponDataManager>() : nullptr;
+	if (!WeaponDataManager)
+	{
+		return;
+	}
+
+	const TArray<FWeaponItem> AllWeapons = WeaponDataManager->GetAllWeapons();
+	if (AllWeapons.Num() == 0)
+	{
+		return;
+	}
+
+	const int32 CurrentIndex = AllWeapons.IndexOfByPredicate([this](const FWeaponItem& Item) { return Item.Index == WeaponIndex; });
+	const int32 NextIndex = (CurrentIndex == INDEX_NONE) ? 0 : (CurrentIndex + 1) % AllWeapons.Num();
+
+	EquipWeapon(AllWeapons[NextIndex].Index, -1);
 }
 
 void UMainWeaponComponent::StartADS()
@@ -247,7 +333,10 @@ void UMainWeaponComponent::FireBurstShot()
 
 void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
 {
-	const FVector TraceEnd = TraceStart + TraceDirection * MaxRange;
+	const float SpreadDegrees = UpdateSpread();
+	const FVector SpreadDirection = FMath::VRandCone(TraceDirection, FMath::DegreesToRadians(SpreadDegrees));
+
+	const FVector TraceEnd = TraceStart + SpreadDirection * MaxRange;
 
 	FHitResult HitResult;
 	FCollisionQueryParams QueryParams;

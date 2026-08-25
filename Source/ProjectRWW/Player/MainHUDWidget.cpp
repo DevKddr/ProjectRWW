@@ -34,5 +34,9 @@ void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		MagazineSize = WeaponComp->GetMagazineSize();
 		bIsReloading = WeaponComp->IsReloading();
 		ReloadProgress = WeaponComp->GetReloadProgress();
+		WeaponIndex = WeaponComp->GetWeaponIndex();
+		CurrentSpreadDegrees = WeaponComp->GetCurrentSpreadDegrees();
+		MaxSpreadDegrees = WeaponComp->GetMaxSpreadDegrees();
+		bIsAiming = WeaponComp->IsAiming();
 	}
 }

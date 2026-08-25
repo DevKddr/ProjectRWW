@@ -38,4 +38,16 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD")
 	float ReloadProgress = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	FName WeaponIndex;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	float CurrentSpreadDegrees = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	float MaxSpreadDegrees = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	bool bIsAiming = false;
 };

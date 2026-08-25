@@ -25,6 +25,9 @@ public:
 	// 재장전 입력을 받으면 호출한다.
 	void RequestReload();
 
+	// 무기 교체(순환) 입력을 받으면 호출한다.
+	void RequestSwitchWeapon();
+
 	// weapons.json에서 전체 스탯을 채우고 탄약을 세팅한다. SavedAmmo가 음수면 탄창을 가득
 	// 채운 채로 시작한다(최초 장착용). 인벤토리 등 외부에서 무기를 바꿔 낄 때도 이 함수를
 	// 그대로 재사용한다. 서버에서만 호출되어야 한다.
@@ -36,6 +39,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	int32 GetMagazineSize() const { return MagazineSize; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	FName GetWeaponIndex() const { return WeaponIndex; }
 
 	// 조준(ADS) 입력을 받으면 호출한다.
 	void StartADS();
@@ -59,7 +65,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetReloadProgress() const;
 
+	// 지금 이 순간 기준으로 예상되는 산포각(도 단위). 실제 상태(CurrentSpreadDegrees)는
+	// 발사할 때만 갱신되므로, 이 함수는 그 사이 시간에 대한 회복분을 매번 다시 계산해서
+	// 보여준다(크로스헤어가 쏘지 않는 동안에도 서서히 좁아지는 것처럼 보이게 하기 위함).
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetCurrentSpreadDegrees() const;
+
+	// 지금 조준 여부 기준으로 낼 수 있는 최대 산포각(기준 산포 + 최대 블룸).
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetMaxSpreadDegrees() const;
+
 protected:
+	// 이번 발의 산포각을 계산하고, 다음 발을 위해 블룸을 누적한다. 서버(FireShot)와
+	// 원격 클라이언트(RequestFire) 각자 자기 상태로 이 함수를 호출한다.
+	float UpdateSpread();
+
 	virtual void BeginPlay() override;
 
 	// ReloadTime초 뒤에 실제로 탄창을 채우는 타이머 콜백.
@@ -90,6 +110,10 @@ protected:
 	// 클라이언트 -> 서버 요청: 재장전.
 	UFUNCTION(Server, Reliable)
 	void Server_Reload();
+
+	// 클라이언트 -> 서버 요청: 다음 무기로 교체(weapons.json 배열 순서로 순환).
+	UFUNCTION(Server, Reliable)
+	void Server_SwitchWeapon();
 
 	// 클라이언트 -> 서버 요청: 조준 상태 변경. Sprint와 같은 패턴.
 	UFUNCTION(Server, Reliable)
@@ -238,6 +262,10 @@ protected:
 
 	// 버스트 진행 중 남은 탄 수.
 	int32 PendingBurstShotsRemaining = 0;
+
+	// --- 산포(Spread) 런타임 상태 --- (서버/클라이언트 각자 로컬로 관리, 복제 안 함)
+	float CurrentSpreadDegrees = 0.0f;
+	double LastSpreadUpdateTimeSeconds = 0.0;
 
 	// 조준 중인지. 서버는 산포(Spread) 계산에, 클라이언트는 블루프린트의 조준 연출에 사용한다.
 	// 양쪽이 각자 독립적으로 값을 들고 있어서 복제가 필요 없다(Sprint의 MaxWalkSpeed와 같은 패턴).
