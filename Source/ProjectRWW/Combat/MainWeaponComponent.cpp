@@ -333,30 +333,46 @@ void UMainWeaponComponent::FireBurstShot()
 
 void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
 {
+	// 1단계: 무기 전체의 정확도(반동/블룸)로 "이번 발의 중심 방향"을 정한다. 한 발(트리거 한 번)당
+	// 딱 한 번만 계산해야 한다 — 펠릿마다 다시 계산하면 블룸이 펠릿 수만큼 잘못 누적된다.
 	const float SpreadDegrees = UpdateSpread();
-	const FVector SpreadDirection = FMath::VRandCone(TraceDirection, FMath::DegreesToRadians(SpreadDegrees));
+	const FVector AimDirection = FMath::VRandCone(TraceDirection, FMath::DegreesToRadians(SpreadDegrees));
 
-	const FVector TraceEnd = TraceStart + SpreadDirection * MaxRange;
+	AController* InstigatorController = Cast<APawn>(GetOwner())->GetController();
+	bool bAnyHit = false;
 
-	FHitResult HitResult;
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(GetOwner());
-
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Pawn, QueryParams);
-
-	if (bHit && HitResult.GetActor())
+	// 2단계: 그 중심 방향을 기준으로 펠릿마다 PelletSpreadAngle만큼 추가로 흩뿌려서 쏜다.
+	// 일반 무기는 PelletCount=1, PelletSpreadAngle=0이라 루프가 한 번만 돌고 AimDirection
+	// 그대로 나가므로, 기존 단발 무기 동작과 완전히 동일하게 자연스럽게 처리된다.
+	for (int32 PelletIndex = 0; PelletIndex < PelletCount; ++PelletIndex)
 	{
-		const float HitDistance = FVector::Dist(TraceStart, HitResult.ImpactPoint);
-		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s hit %s at distance %.1f"), *GetNameSafe(GetOwner()), *GetNameSafe(HitResult.GetActor()), HitDistance);
+		const FVector PelletDirection = FMath::VRandCone(AimDirection, FMath::DegreesToRadians(PelletSpreadAngle));
+		const FVector TraceEnd = TraceStart + PelletDirection * MaxRange;
 
-		UGameplayStatics::ApplyDamage(HitResult.GetActor(), Damage, Cast<APawn>(GetOwner())->GetController(), GetOwner(), UDamageType::StaticClass());
+		FHitResult HitResult;
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(GetOwner());
+
+		const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Pawn, QueryParams) && HitResult.GetActor();
+		if (bHit)
+		{
+			const float HitDistance = FVector::Dist(TraceStart, HitResult.ImpactPoint);
+			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s hit %s at distance %.1f (pellet %d/%d)"),
+				*GetNameSafe(GetOwner()), *GetNameSafe(HitResult.GetActor()), HitDistance, PelletIndex + 1, PelletCount);
+
+			UGameplayStatics::ApplyDamage(HitResult.GetActor(), Damage, InstigatorController, GetOwner(), UDamageType::StaticClass());
+			bAnyHit = true;
+		}
+
+		// 펠릿마다 각자의 궤적을 그려야 샷건 특유의 흩어지는 모습이 보인다 — 마지막 한 번만
+		// 보내면 나머지 펠릿의 시각 효과가 전부 사라져 보인다.
+		MulticastPlayFireEffects(TraceStart, bHit ? HitResult.ImpactPoint : TraceEnd, bHit);
 	}
-	else
+
+	if (!bAnyHit)
 	{
 		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s fired and missed"), *GetNameSafe(GetOwner()));
 	}
-
-	MulticastPlayFireEffects(TraceStart, bHit ? HitResult.ImpactPoint : TraceEnd, bHit);
 }
 
 bool UMainWeaponComponent::ServerFire_Validate(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
@@ -431,7 +447,7 @@ float UMainWeaponComponent::GetReloadProgress() const
 
 void UMainWeaponComponent::MulticastPlayFireEffects_Implementation(const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& TraceEnd, bool bHit)
 {
-	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, bHit ? FColor::Green : FColor::Red, false, 1.0f, 0, 1.5f);
+	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, bHit ? FColor::Green : FColor::Red, false, 20.0f, 0, 0.5f);
 }
 
 void UMainWeaponComponent::OnRep_CurrentAmmo()
