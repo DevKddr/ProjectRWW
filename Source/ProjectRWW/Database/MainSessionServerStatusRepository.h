@@ -8,18 +8,18 @@
 
 // 세션 서버 하나의 현재 상태(주소, 인원, 정원)를 담는 그릇.
 // GetAllServerStatuses()가 DB에 등록된 모든 서버를 이 형태로 돌려준다.
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FMainSessionServerStatus
 {
 	GENERATED_BODY()
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	FString Address;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	int32 PlayerCount = 0;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	int32 MaxPlayers = 0;
 };
 

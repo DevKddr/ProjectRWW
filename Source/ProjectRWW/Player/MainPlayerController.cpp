@@ -14,28 +14,44 @@
 #include "InputActionValue.h"
 #include "Blueprint/UserWidget.h"
 
-void AMainPlayerController::BeginPlay()
+void AMainPlayerController::ClientRestart_Implementation(APawn* NewPawn)
 {
-	Super::BeginPlay();
+	Super::ClientRestart_Implementation(NewPawn);
 
 	// HUD는 소유 클라이언트에서만 띄운다 (서버/다른 클라이언트에서 실행되면 안 됨).
+	// 최초 스폰이든 사망 후 리스폰이든 이 함수가 항상 다시 불리므로, HUD 생성/재표시를
+	// 여기 한 곳에만 두면 BeginPlay에 따로 만들어둘 필요가 없다.
 	if (IsLocalController() && HUDWidgetClass)
 	{
-		HUDWidgetInstance = CreateWidget<UMainHUDWidget>(this, HUDWidgetClass);
-		if (HUDWidgetInstance)
+		if (!HUDWidgetInstance)
+		{
+			HUDWidgetInstance = CreateWidget<UMainHUDWidget>(this, HUDWidgetClass);
+		}
+
+		if (HUDWidgetInstance && !HUDWidgetInstance->IsInViewport())
 		{
 			HUDWidgetInstance->AddToViewport();
 		}
 	}
 }
 
-void AMainPlayerController::Client_OnPlayerDied_Implementation(const FMainPlayerRecord& Record, int32 FinalKillStreak)
+void AMainPlayerController::CloseAllGameplayUI()
 {
-	// 사망 화면과 겹쳐서 죽기 직전 값이 그대로 멈춰 보이는 걸 방지 — 사망 시엔 HUD 자체가 필요 없다.
 	if (HUDWidgetInstance)
 	{
 		HUDWidgetInstance->RemoveFromParent();
 	}
+
+	if (MapWidgetInstance && MapWidgetInstance->IsInViewport())
+	{
+		MapWidgetInstance->RemoveFromParent();
+	}
+}
+
+void AMainPlayerController::Client_OnPlayerDied_Implementation(const FMainPlayerRecord& Record, int32 FinalKillStreak)
+{
+	// 사망 시엔 사망 UI만 남기고 다른 목적으로 열려있던 UI는 전부 닫는다.
+	CloseAllGameplayUI();
 
 	if (DeathWidgetClass)
 	{

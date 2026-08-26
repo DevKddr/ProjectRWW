@@ -41,8 +41,15 @@ public:
 	void RWW_ClearMapMarkers();
 
 protected:
-	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
+
+	// 서버가 이 컨트롤러에 새 Pawn을 Possess시킬 때마다(최초 스폰 + 리스폰 모두) 호출된다.
+	// HUD 생성/재표시를 여기 한 곳에서만 관리한다.
+	virtual void ClientRestart_Implementation(APawn* NewPawn) override;
+
+	// 사망 등, 게임플레이 중 열려있던 UI를 전부 정리해야 하는 상황에서 호출한다.
+	// 새 UI(인벤토리 등)가 생기면 여기에 한 줄만 추가하면 된다.
+	void CloseAllGameplayUI();
 
 	void OnToggleMap(const struct FInputActionValue& Value);
 

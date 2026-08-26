@@ -151,7 +151,17 @@ void AMainGameMode::Logout(AController* Exiting)
 	Super::Logout(Exiting);
 
 	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] Player left: %s"), *GetNameSafe(Exiting));
-	UpdatePlayerCount();
+
+	// Logout() 시점엔 Exiting이 아직 GameState->PlayerArray에서 안 빠진 상태라(PlayerState
+	// 파괴 이후에나 빠짐), 공용 UpdatePlayerCount()를 그대로 쓰면 실제보다 1명 많게 집계된다.
+	// 여기서만 예외적으로 하나 빼서 계산한다.
+	if (StatusRepository && GameState)
+	{
+		const int32 PlayerCount = FMath::Max(GameState->PlayerArray.Num() - 1, 0);
+		const bool bSuccess = StatusRepository->UpdatePlayerCount(MySessionServerAddress, PlayerCount, CurrentMaxPlayers);
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 인원수 갱신(퇴장) %s - 주소 %s, 인원 %d/%d"),
+			bSuccess ? TEXT("성공") : TEXT("실패"), *MySessionServerAddress, PlayerCount, CurrentMaxPlayers);
+	}
 }
 
 void AMainGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
