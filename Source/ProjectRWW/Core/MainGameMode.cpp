@@ -8,6 +8,8 @@
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Items/MainInventoryComponent.h"
+#include "Items/InventorySlotSerialization.h"
+#include "Core/MainNetworkSettings.h"
 
 AMainGameMode::AMainGameMode()
 {
@@ -96,11 +98,16 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 		MainPC->PlayerRecord = PlayerDataRepository->LoadPlayerData(PlayerID);
 		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 세션 접속: %s - KillCount %d, DeathCount %d"), *PlayerID, MainPC->PlayerRecord.KillCount, MainPC->PlayerRecord.DeathCount);
 
-		// 인벤토리는 아직 DB 직렬화가 없어서 일단 36칸 빈 상태로만 초기화한다.
 		// OnPossess()는 이 로드보다 먼저 실행돼서 그때는 배열이 0칸이었을 것 - 여기서
-		// 초기화한 뒤 한 번 더 장착을 시도한다(리스폰 때는 이미 초기화돼 있어 무해함).
+		// 저장된 데이터를 실제로 채운 뒤 한 번 더 장착을 시도한다(리스폰 때는 이미
+		// 채워져 있어 무해함).
 		if (MainPC->InventoryComponent)
 		{
+			// 저장된 데이터를 배열로 되돌린다. 최초 접속(Inventory="[]")이면 빈 배열이 나온다.
+			DeserializeInventorySlots(MainPC->PlayerRecord.Inventory, MainPC->InventoryComponent->InventorySlots);
+
+			// 방어적 처리: 저장된 배열 길이가 36과 다르면(최초 접속의 빈 배열 포함) 36칸으로
+			// 맞춘다 - 부족한 칸은 기본값(빈 슬롯)으로 채워지고, 넘치는 칸은 잘린다.
 			MainPC->InventoryComponent->InventorySlots.SetNum(UMainInventoryComponent::InventorySlotCount);
 			MainPC->InventoryComponent->EquipItem(0);
 		}
@@ -110,7 +117,7 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Killer)
 {
 	AMainPlayerController* VictimController = Cast<AMainPlayerController>(Victim);
-	if (!VictimController || VictimController->bIsDead)
+	if (!VictimController || VictimController->bIsDead || VictimController->bHasExtracted)
 	{
 		return;
 	}
@@ -122,6 +129,10 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 	{
 		VictimController->InventoryComponent->InventorySlots.Init(FInventorySlot(), UMainInventoryComponent::InventorySlotCount);
 	}
+
+	// 존 안에서 죽었을 수도 있으니, 남아있는 탈출 타이머가 나중에 발동해도
+	// (리스폰으로 bIsDead가 다시 false가 되더라도) 무해하도록 꺼둔다.
+	VictimController->bIsExtracting = false;
 
 	VictimController->bIsDead = true;
 
@@ -156,13 +167,58 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 	VictimController->KillStreak = 0;
 }
 
+void AMainGameMode::HandleExtraction(APlayerController* Player)
+{
+	AMainPlayerController* MainPC = Cast<AMainPlayerController>(Player);
+	if (!MainPC || MainPC->bIsDead || MainPC->bHasExtracted)
+	{
+		return;
+	}
+
+	MainPC->bHasExtracted = true;
+	MainPC->bIsExtracting = false;
+
+	// 사망과 달리 인벤토리를 그대로 유지한 채 직렬화해서 저장한다.
+	if (MainPC->InventoryComponent)
+	{
+		MainPC->PlayerRecord.Inventory = SerializeInventorySlots(MainPC->InventoryComponent->InventorySlots);
+	}
+
+	if (PlayerDataRepository)
+	{
+		const bool bSaveSuccess = PlayerDataRepository->SavePlayerData(MainPC->PlayerRecord);
+		if (!bSaveSuccess)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[ProjectRWW] 탈출 정산 저장 실패: %s"), *MainPC->PlayerRecord.PlayerID);
+		}
+	}
+
+	// 지금은 UI 없이 바로 로비로 이동. 나중에 Client_OnPlayerExtracted RPC를
+	// 추가하면 이 지점에서 같이 호출하면 된다.
+	const FString LobbyAddress = GetDefault<UMainNetworkSettings>()->LobbyAddress;
+	const FString TravelURL = FString::Printf(TEXT("%s?PlayerID=%s"), *LobbyAddress, *MainPC->PlayerRecord.PlayerID);
+	MainPC->ClientTravel(TravelURL, ETravelType::TRAVEL_Absolute);
+
+	// ClientTravel은 즉시 접속을 끊지 않으므로, 실제 이동이 지연되는 동안 폰이 서버에
+	// 남아 데미지를 받으면 bHasExtracted 가드 때문에 사망 처리가 영구히 막혀버린다.
+	// 폰을 여기서 바로 파괴해 그 가능성 자체를 없앤다(HandlePlayerDeath와 동일 패턴).
+	if (APawn* Pawn = MainPC->GetPawn())
+	{
+		MainPC->UnPossess();
+		Pawn->Destroy();
+	}
+}
+
 void AMainGameMode::Logout(AController* Exiting)
 {
 	// 살아있는 채로 접속이 끊기면(비정상 종료 포함) 사망과 동일하게 정산 처리한다.
 	// bIsDead가 이미 true면 HandlePlayerDeath 내부에서 조기 리턴되어 중복 저장 안 됨.
 	if (AMainPlayerController* ExitingController = Cast<AMainPlayerController>(Exiting))
 	{
-		HandlePlayerDeath(ExitingController, nullptr);
+		if (!ExitingController->bIsDead && !ExitingController->bHasExtracted)
+		{
+			HandlePlayerDeath(ExitingController, nullptr);
+		}
 	}
 
 	Super::Logout(Exiting);

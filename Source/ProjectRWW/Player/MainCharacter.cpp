@@ -65,14 +65,6 @@ void AMainCharacter::OnADSStop(const FInputActionValue& Value)
 	}
 }
 
-void AMainCharacter::OnSwitchWeapon(const FInputActionValue& Value)
-{
-	if (WeaponComponent)
-	{
-		WeaponComponent->RequestSwitchWeapon();
-	}
-}
-
 void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 {
 	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 반응.
@@ -193,10 +185,6 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		{
 			EnhancedInput->BindAction(ADSAction, ETriggerEvent::Started, this, &AMainCharacter::OnADSStart);
 			EnhancedInput->BindAction(ADSAction, ETriggerEvent::Completed, this, &AMainCharacter::OnADSStop);
-		}
-		if (SwitchWeaponAction)
-		{
-			EnhancedInput->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this, &AMainCharacter::OnSwitchWeapon);
 		}
 	}
 }

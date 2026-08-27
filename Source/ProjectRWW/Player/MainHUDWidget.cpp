@@ -5,6 +5,7 @@
 #include "Combat/MainHPComponent.h"
 #include "Combat/MainManaComponent.h"
 #include "Combat/MainWeaponComponent.h"
+#include "Player/MainPlayerController.h"
 
 void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
@@ -38,5 +39,12 @@ void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		CurrentSpreadDegrees = WeaponComp->GetCurrentSpreadDegrees();
 		MaxSpreadDegrees = WeaponComp->GetMaxSpreadDegrees();
 		bIsAiming = WeaponComp->IsAiming();
+	}
+
+	if (const AMainPlayerController* PC = Cast<AMainPlayerController>(GetOwningPlayer()))
+	{
+		bIsExtracting = PC->bIsExtracting;
+		ExtractionDuration = PC->ExtractionDuration;
+		ExtractionStartTimeSeconds = PC->ExtractionStartTimeSeconds;
 	}
 }

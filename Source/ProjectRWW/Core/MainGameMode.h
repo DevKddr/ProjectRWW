@@ -16,6 +16,10 @@ public:
 	// 요청한 경우(PlayerController) 양쪽에서 호출된다.
 	void HandlePlayerDeath(APlayerController* Victim, AController* Killer);
 
+	// 탈출 성공 정산의 진입점. AMainExtractionZone의 타이머 완료 콜백에서 호출된다.
+	// 사망과 달리 인벤토리를 보존한 채 저장한다.
+	void HandleExtraction(APlayerController* Player);
+
 protected:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal = TEXT("")) override;

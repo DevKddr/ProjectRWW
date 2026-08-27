@@ -65,7 +65,6 @@ protected:
 	void OnReload(const FInputActionValue& Value);
 	void OnADSStart(const FInputActionValue& Value);
 	void OnADSStop(const FInputActionValue& Value);
-	void OnSwitchWeapon(const FInputActionValue& Value);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
@@ -90,7 +89,4 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> ADSAction;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
-	TObjectPtr<UInputAction> SwitchWeaponAction;
 };

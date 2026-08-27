@@ -50,4 +50,13 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD")
 	bool bIsAiming = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	bool bIsExtracting = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	float ExtractionDuration = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	float ExtractionStartTimeSeconds = 0.0f;
 };

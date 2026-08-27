@@ -48,7 +48,7 @@ FMainPlayerRecord UMainPlayerDataRepository::LoadPlayerData(const FString& Playe
 			InStatement.GetColumnValueByName(TEXT("KillCount"), Record.KillCount);
 			InStatement.GetColumnValueByName(TEXT("DeathCount"), Record.DeathCount);
 			InStatement.GetColumnValueByName(TEXT("Currency"), Record.Currency);
-			InStatement.GetColumnValueByName(TEXT("Items"), Record.ItemsJson);
+			InStatement.GetColumnValueByName(TEXT("Items"), Record.Inventory);
 			return ESQLitePreparedStatementExecuteRowResult::Stop;
 		}) > 0;
 	}
@@ -99,7 +99,7 @@ bool UMainPlayerDataRepository::SavePlayerData(const FMainPlayerRecord& Record)
 			Statement.SetBindingValueByIndex(3, Record.KillCount);
 			Statement.SetBindingValueByIndex(4, Record.DeathCount);
 			Statement.SetBindingValueByIndex(5, Record.Currency);
-			Statement.SetBindingValueByIndex(6, Record.ItemsJson);
+			Statement.SetBindingValueByIndex(6, Record.Inventory);
 			bSuccess = Statement.Execute();
 		}
 	}

@@ -25,9 +25,6 @@ public:
 	// 재장전 입력을 받으면 호출한다.
 	void RequestReload();
 
-	// 무기 교체(순환) 입력을 받으면 호출한다.
-	void RequestSwitchWeapon();
-
 	// weapons.json에서 전체 스탯을 채우고 탄약을 세팅한다. SavedAmmo가 음수면 탄창을 가득
 	// 채운 채로 시작한다(최초 장착용). 인벤토리 등 외부에서 무기를 바꿔 낄 때도 이 함수를
 	// 그대로 재사용한다. 서버에서만 호출되어야 한다.
@@ -130,10 +127,6 @@ protected:
 	// 클라이언트 -> 서버 요청: 재장전.
 	UFUNCTION(Server, Reliable)
 	void Server_Reload();
-
-	// 클라이언트 -> 서버 요청: 다음 무기로 교체(weapons.json 배열 순서로 순환).
-	UFUNCTION(Server, Reliable)
-	void Server_SwitchWeapon();
 
 	// 클라이언트 -> 서버 요청: 조준 상태 변경. Sprint와 같은 패턴.
 	UFUNCTION(Server, Reliable)

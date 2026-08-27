@@ -16,6 +16,7 @@
 #include "Items/MainInventoryComponent.h"
 #include "Items/MainInventoryWidget.h"
 #include "Items/MainHotbarWidget.h"
+#include "Net/UnrealNetwork.h"
 
 AMainPlayerController::AMainPlayerController()
 {
@@ -293,5 +294,21 @@ void AMainPlayerController::OnHotbarKeyPressed(int32 SlotIndex)
 	{
 		InventoryComponent->Server_EquipItem(SlotIndex);
 	}
+}
+
+void AMainPlayerController::OnRep_IsExtracting()
+{
+	if (bIsExtracting)
+	{
+		ExtractionStartTimeSeconds = GetWorld()->GetTimeSeconds();
+	}
+}
+
+void AMainPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION(AMainPlayerController, bIsExtracting, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AMainPlayerController, ExtractionDuration, COND_OwnerOnly);
 }
 

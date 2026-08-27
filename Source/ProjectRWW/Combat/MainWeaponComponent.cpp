@@ -268,32 +268,6 @@ void UMainWeaponComponent::RequestReload()
 	Server_Reload();
 }
 
-void UMainWeaponComponent::RequestSwitchWeapon()
-{
-	Server_SwitchWeapon();
-}
-
-void UMainWeaponComponent::Server_SwitchWeapon_Implementation()
-{
-	UGameInstance* GameInstance = GetWorld()->GetGameInstance();
-	UWeaponDataManager* WeaponDataManager = GameInstance ? GameInstance->GetSubsystem<UWeaponDataManager>() : nullptr;
-	if (!WeaponDataManager)
-	{
-		return;
-	}
-
-	const TArray<FWeaponItem> AllWeapons = WeaponDataManager->GetAllWeapons();
-	if (AllWeapons.Num() == 0)
-	{
-		return;
-	}
-
-	const int32 CurrentIndex = AllWeapons.IndexOfByPredicate([this](const FWeaponItem& Item) { return Item.Index == WeaponIndex; });
-	const int32 NextIndex = (CurrentIndex == INDEX_NONE) ? 0 : (CurrentIndex + 1) % AllWeapons.Num();
-
-	EquipWeapon(AllWeapons[NextIndex].Index, -1);
-}
-
 void UMainWeaponComponent::StartADS()
 {
 	if (!HasWeaponEquipped())
