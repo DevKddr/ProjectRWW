@@ -34,6 +34,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void EquipWeapon(FName NewWeaponIndex, int32 SavedAmmo);
 
+	// 손에서 무기를 완전히 내린다(빈손 상태). 인벤토리에서 아이템을 다른 슬롯으로
+	// 옮기거나 새 무기로 교체하기 직전에 호출된다.
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void UnequipWeapon();
+
+	// 빈손이면 발사/재장전/조준 요청을 무시하기 위한 가드용.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	bool HasWeaponEquipped() const { return WeaponIndex != NAME_None; }
+
+	// FirstPersonMesh가 블루프린트(BP_MainCharacter) 쪽에서 만들어진 컴포넌트라 C++이
+	// 직접 만들거나 이름으로 찾을 수 없어서, 이 참조를 블루프린트가 채워주게 한다.
+	// BP_MainCharacter의 컨스트럭션 스크립트에서 "Set Weapon Mesh Component"로
+	// FirstPersonMesh를 지정해줘야 한다 - 안 하면 EquipWeapon()이 메쉬를 못 바꾼다.
+	UPROPERTY(BlueprintReadWrite, Category = "Weapon")
+	TObjectPtr<class USkeletalMeshComponent> WeaponMeshComponent;
+
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	int32 GetCurrentAmmo() const { return CurrentAmmo; }
 
@@ -79,6 +95,10 @@ protected:
 	// 이번 발의 산포각을 계산하고, 다음 발을 위해 블룸을 누적한다. 서버(FireShot)와
 	// 원격 클라이언트(RequestFire) 각자 자기 상태로 이 함수를 호출한다.
 	float UpdateSpread();
+
+	// Stats의 각 필드를 로컬 멤버 변수에 그대로 반영한다. EquipWeapon()에서 실제 무기
+	// 데이터로, UnequipWeapon()에서는 빈 FWeaponStats()로 호출해서 초기화 용도로도 쓴다.
+	void ApplyWeaponStats(const FWeaponStats& Stats);
 
 	virtual void BeginPlay() override;
 
@@ -132,17 +152,11 @@ protected:
 	FName WeaponIndex;
 
 	// --- FWeaponItem 최상위 필드 ---
+	// Rarity/Name/Description은 인벤토리 서브프로젝트의 ItemDataManager로 표시 책임이
+	// 옮겨가서(같은 Index로 조회) 여기선 더 이상 들고 있지 않는다. 아무도 읽어가는 곳이
+	// 없었던 걸 확인하고 제거함.
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	FName WeaponType;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	FName Rarity;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	FLocalizedPair Name;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	FLocalizedPair Description;
 
 	// --- FWeaponStats 필드 (선언 순서 그대로) ---
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")

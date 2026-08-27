@@ -1,0 +1,82 @@
+[
+  {
+    "index": "P_1",
+    "category": "Weapon",
+    "name": "사이드암 Mk1",
+    "description": "빠른 발도와 안정적인 명중률을 갖춘 기본 보조무기.",
+    "rarityId": "Common",
+    "meshPath": "/Game/Shooter-Essentials/G16Rigged.G16Rigged",
+    "meshScale": 0.05,
+    "iconPath": "/Game/UI/Icons/T_Icon_P_1.T_Icon_P_1"
+  },
+  {
+    "index": "AR_1",
+    "category": "Weapon",
+    "name": "돌격소총 1",
+    "description": "범용성이 뛰어난 기본 돌격소총.",
+    "rarityId": "Common",
+    "meshPath": "/Game/Shooter-Essentials/AKRigged.AKRigged",
+    "meshScale": 0.05,
+    "iconPath": "/Game/UI/Icons/T_Icon_AR_1.T_Icon_AR_1"
+  },
+  {
+    "index": "AR_2",
+    "category": "Weapon",
+    "name": "돌격소총 2",
+    "description": "상급 돌격소총.",
+    "rarityId": "Rare",
+    "meshPath": "/Game/Shooter-Essentials/ScarRigged.ScarRigged",
+    "meshScale": 0.05,
+    "iconPath": "/Game/UI/Icons/T_Icon_AR_2.T_Icon_AR_2"
+  },
+  {
+    "index": "SR_1",
+    "category": "Weapon",
+    "name": "저격소총",
+    "description": "장거리 교전에 특화된 저격소총.",
+    "rarityId": "Epic",
+    "meshPath": "/Game/Shooter-Essentials/SpringfieldRigged.SpringfieldRigged",
+    "meshScale": 0.05,
+    "iconPath": "/Game/UI/Icons/T_Icon_SR_1.T_Icon_SR_1"
+  },
+  {
+    "index": "SMG_1",
+    "category": "Weapon",
+    "name": "기관단총",
+    "description": "근거리 연사에 강한 기관단총.",
+    "rarityId": "Common",
+    "meshPath": "/Game/Shooter-Essentials/TommyRigged.TommyRigged",
+    "meshScale": 0.05,
+    "iconPath": "/Game/UI/Icons/T_Icon_SMG_1.T_Icon_SMG_1"
+  },
+  {
+    "index": "SG_1",
+    "category": "Weapon",
+    "name": "샷건",
+    "description": "근거리에서 강력한 산탄을 발사하는 샷건.",
+    "rarityId": "Rare",
+    "meshPath": "/Game/Shooter-Essentials/ShotgunRigged.ShotgunRigged",
+    "meshScale": 0.05,
+    "iconPath": "/Game/UI/Icons/T_Icon_SG_1.T_Icon_SG_1"
+  },
+  {
+    "index": "I_1",
+    "category": "Misc",
+    "name": "더미 아이템 1",
+    "description": "인벤토리 테스트용 더미 아이템.",
+    "rarityId": "Common",
+    "meshPath": "",
+    "meshScale": 1.0,
+    "iconPath": "/Game/UI/Icons/T_Icon_I_1.T_Icon_I_1"
+  },
+  {
+    "index": "I_2",
+    "category": "Misc",
+    "name": "더미 아이템 2",
+    "description": "인벤토리 테스트용 더미 아이템.",
+    "rarityId": "Common",
+    "meshPath": "",
+    "meshScale": 1.0,
+    "iconPath": "/Game/UI/Icons/T_Icon_I_2.T_Icon_I_2"
+  }
+]

@@ -13,6 +13,25 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Blueprint/UserWidget.h"
+#include "Items/MainInventoryComponent.h"
+#include "Items/MainInventoryWidget.h"
+#include "Items/MainHotbarWidget.h"
+
+AMainPlayerController::AMainPlayerController()
+{
+	InventoryComponent = CreateDefaultSubobject<UMainInventoryComponent>(TEXT("InventoryComponent"));
+}
+
+void AMainPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	// 핫바 1번(슬롯 0)을 자동으로 든다. 비어있으면 EquipItem 내부에서 조용히 무시됨.
+	if (InventoryComponent)
+	{
+		InventoryComponent->EquipItem(0);
+	}
+}
 
 void AMainPlayerController::ClientRestart_Implementation(APawn* NewPawn)
 {
@@ -33,6 +52,20 @@ void AMainPlayerController::ClientRestart_Implementation(APawn* NewPawn)
 			HUDWidgetInstance->AddToViewport();
 		}
 	}
+
+	// 핫바는 HUD와 생명주기를 같이한다 - 사망/리스폰 때 같이 없어졌다 다시 생김.
+	if (IsLocalController() && HotbarWidgetClass)
+	{
+		if (!HotbarWidgetInstance)
+		{
+			HotbarWidgetInstance = CreateWidget<UMainHotbarWidget>(this, HotbarWidgetClass);
+		}
+
+		if (HotbarWidgetInstance && !HotbarWidgetInstance->IsInViewport())
+		{
+			HotbarWidgetInstance->AddToViewport();
+		}
+	}
 }
 
 void AMainPlayerController::CloseAllGameplayUI()
@@ -40,6 +73,16 @@ void AMainPlayerController::CloseAllGameplayUI()
 	if (HUDWidgetInstance)
 	{
 		HUDWidgetInstance->RemoveFromParent();
+	}
+
+	if (HotbarWidgetInstance)
+	{
+		HotbarWidgetInstance->RemoveFromParent();
+	}
+
+	if (InventoryWidgetInstance && InventoryWidgetInstance->IsInViewport())
+	{
+		InventoryWidgetInstance->RemoveFromParent();
 	}
 
 	if (MapWidgetInstance && MapWidgetInstance->IsInViewport())
@@ -142,6 +185,16 @@ void AMainPlayerController::RWW_ClearMapMarkers()
 	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] Cleared %d map marker(s)"), FoundMarkers.Num());
 }
 
+void AMainPlayerController::RWW_AddItem(const FString& ItemIndex)
+{
+	if (InventoryComponent)
+	{
+		// AddItem()을 직접 부르지 않고 RPC를 거친다 - 클라이언트에서 이 명령어를
+		// 입력해도 항상 서버의 진짜 데이터에 반영되게 하기 위함.
+		InventoryComponent->Server_AddItem(FName(*ItemIndex));
+	}
+}
+
 void AMainPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
@@ -159,6 +212,19 @@ void AMainPlayerController::SetupInputComponent()
 		if (ToggleMapAction)
 		{
 			EnhancedInput->BindAction(ToggleMapAction, ETriggerEvent::Started, this, &AMainPlayerController::OnToggleMap);
+		}
+
+		if (ToggleInventoryAction)
+		{
+			EnhancedInput->BindAction(ToggleInventoryAction, ETriggerEvent::Started, this, &AMainPlayerController::OnToggleInventory);
+		}
+
+		for (int32 i = 0; i < HotbarSlotActions.Num(); ++i)
+		{
+			if (HotbarSlotActions[i])
+			{
+				EnhancedInput->BindAction(HotbarSlotActions[i], ETriggerEvent::Started, this, &AMainPlayerController::OnHotbarKeyPressed, i);
+			}
 		}
 	}
 }
@@ -187,3 +253,45 @@ void AMainPlayerController::OnToggleMap(const FInputActionValue& Value)
 	SetInputMode(FInputModeGameAndUI());
 	SetShowMouseCursor(true);
 }
+
+void AMainPlayerController::OnToggleInventory(const FInputActionValue& Value)
+{
+	if (!InventoryWidgetClass)
+	{
+		return;
+	}
+
+	if (InventoryWidgetInstance && InventoryWidgetInstance->IsInViewport())
+	{
+		InventoryWidgetInstance->RemoveFromParent();
+		if (HotbarWidgetInstance)
+		{
+			HotbarWidgetInstance->AddToViewport();  // 인벤토리 닫으면 핫바 다시 보임
+		}
+		SetInputMode(FInputModeGameOnly());
+		SetShowMouseCursor(false);
+		return;
+	}
+
+	if (!InventoryWidgetInstance)
+	{
+		InventoryWidgetInstance = CreateWidget<UMainInventoryWidget>(this, InventoryWidgetClass);
+	}
+
+	InventoryWidgetInstance->AddToViewport();
+	if (HotbarWidgetInstance)
+	{
+		HotbarWidgetInstance->RemoveFromParent();  // 인벤토리 열면 핫바 숨김 (같은 슬롯이 겹쳐 보이지 않게)
+	}
+	SetInputMode(FInputModeGameAndUI());
+	SetShowMouseCursor(true);
+}
+
+void AMainPlayerController::OnHotbarKeyPressed(int32 SlotIndex)
+{
+	if (InventoryComponent)
+	{
+		InventoryComponent->Server_EquipItem(SlotIndex);
+	}
+}
+

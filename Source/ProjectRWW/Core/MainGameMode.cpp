@@ -7,6 +7,7 @@
 #include "Database/MainPlayerDataRepository.h"
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
+#include "Items/MainInventoryComponent.h"
 
 AMainGameMode::AMainGameMode()
 {
@@ -94,6 +95,15 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 		const FString PlayerID = NewPlayer->PlayerState ? NewPlayer->PlayerState->GetPlayerName() : FString();
 		MainPC->PlayerRecord = PlayerDataRepository->LoadPlayerData(PlayerID);
 		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 세션 접속: %s - KillCount %d, DeathCount %d"), *PlayerID, MainPC->PlayerRecord.KillCount, MainPC->PlayerRecord.DeathCount);
+
+		// 인벤토리는 아직 DB 직렬화가 없어서 일단 36칸 빈 상태로만 초기화한다.
+		// OnPossess()는 이 로드보다 먼저 실행돼서 그때는 배열이 0칸이었을 것 - 여기서
+		// 초기화한 뒤 한 번 더 장착을 시도한다(리스폰 때는 이미 초기화돼 있어 무해함).
+		if (MainPC->InventoryComponent)
+		{
+			MainPC->InventoryComponent->InventorySlots.SetNum(UMainInventoryComponent::InventorySlotCount);
+			MainPC->InventoryComponent->EquipItem(0);
+		}
 	}
 }
 
@@ -106,6 +116,13 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 	}
 
 	VictimController->PlayerRecord.DeathCount += 1;
+
+	// 사망 시 인벤토리 전부 손실(익스트랙션 실패 페널티). 월드 드랍은 별도 과제.
+	if (VictimController->InventoryComponent)
+	{
+		VictimController->InventoryComponent->InventorySlots.Init(FInventorySlot(), UMainInventoryComponent::InventorySlotCount);
+	}
+
 	VictimController->bIsDead = true;
 
 	// 가해자가 있고 자기 자신이 아닐 때만 킬 카운트 반영 (자살/자진 이탈 등은 제외)

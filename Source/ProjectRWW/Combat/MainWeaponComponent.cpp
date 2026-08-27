@@ -8,8 +8,11 @@
 #include "DrawDebugHelpers.h"
 #include "Net/UnrealNetwork.h"
 #include "Weapons/WeaponDataManager.h"
+#include "Items/ItemDataManager.h"
 #include "Combat/MainManaComponent.h"
 #include "TimerManager.h"
+#include "Engine/SkeletalMesh.h"
+#include "Components/SkeletalMeshComponent.h"
 
 UMainWeaponComponent::UMainWeaponComponent()
 {
@@ -21,9 +24,9 @@ void UMainWeaponComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// weapons.json은 서버/클라이언트 모두에 동일하게 존재하는 공유 파일이라, 각자 독립적으로
-	// 읽어도 같은 값을 얻는다 — WalkSpeed/RunSpeed/JumpPower와 같은 정책.
-	EquipWeapon(WeaponIndex, -1);
+	// 예전엔 여기서 디버그용으로 EquipWeapon(WeaponIndex, -1)을 무조건 호출했지만,
+	// 이제 장착은 인벤토리(AMainPlayerController::OnPossess -> EquipItem)가 책임진다.
+	// 스폰 직후엔 빈손이 맞는 상태다.
 }
 
 void UMainWeaponComponent::EquipWeapon(FName NewWeaponIndex, int32 SavedAmmo)
@@ -50,60 +53,111 @@ void UMainWeaponComponent::EquipWeapon(FName NewWeaponIndex, int32 SavedAmmo)
 			if (WeaponDataManager->GetWeaponData(WeaponIndex, WeaponData))
 			{
 				WeaponType = WeaponData.WeaponType;
-				Rarity = WeaponData.Rarity;
-				Name = WeaponData.Name;
-				Description = WeaponData.Description;
-
-				const FWeaponStats& Stats = WeaponData.Stats;
-				Damage = Stats.Damage;
-				PelletCount = Stats.PelletCount;
-				HeadshotMultiplier = Stats.HeadshotMultiplier;
-				FireRate_RPS = Stats.FireRate_RPS;
-				FireMode = Stats.FireMode;
-				BurstCount = Stats.BurstCount;
-				BurstShotInterval = Stats.BurstShotInterval;
-				MagazineSize = Stats.MagazineSize;
-				ReloadTime = Stats.ReloadTime;
-				CanReload = Stats.CanReload;
-				WeaponReqMana = Stats.WeaponReqMana;
-				ManaPerAmmo = Stats.ManaPerAmmo;
-				MaxRange = Stats.MaxRange;
-				DamageFalloffStart = Stats.DamageFalloffStart;
-				DamageFalloffEnd = Stats.DamageFalloffEnd;
-				DamageFalloffMin = Stats.DamageFalloffMin;
-				IsHitscan = Stats.IsHitscan;
-				ProjectileSpeed = Stats.ProjectileSpeed;
-				CanADS = Stats.CanADS;
-				ScopeZoomLevel = Stats.ScopeZoomLevel;
-				SpreadHipfire = Stats.SpreadHipfire;
-				SpreadADS = Stats.SpreadADS;
-				SpreadIncreasePerShot = Stats.SpreadIncreasePerShot;
-				MaxSpreadBloomHipfire = Stats.MaxSpreadBloomHipfire;
-				MaxSpreadBloomADS = Stats.MaxSpreadBloomADS;
-				SpreadRecoveryDelay = Stats.SpreadRecoveryDelay;
-				SpreadRecoveryRate = Stats.SpreadRecoveryRate;
-				RecoilVertical = Stats.RecoilVertical;
-				RecoilHorizontal = Stats.RecoilHorizontal;
-				ADSSpeed = Stats.ADSSpeed;
-				ADSMoveSpeedMultiplier = Stats.ADSMoveSpeedMultiplier;
-				MoveSpeedMultiplier = Stats.MoveSpeedMultiplier;
-				EquipTime = Stats.EquipTime;
-				PelletSpreadAngle = Stats.PelletSpreadAngle;
+				ApplyWeaponStats(WeaponData.Stats);
+			}
+			else
+			{
+				WeaponType = NAME_None;
+				ApplyWeaponStats(FWeaponStats());
 			}
 		}
 	}
 
-	CurrentAmmo = (SavedAmmo < 0) ? MagazineSize : FMath::Clamp(SavedAmmo, 0, MagazineSize);
+	// -2는 OnRep_WeaponIndex()가 클라이언트 재동기화용으로 넘기는 특수값이다 - 이때는
+	// CurrentAmmo를 건드리지 않는다. CurrentAmmo는 자기 자신의 리플리케이션으로
+	// 이미 정확한 값이 도착해 있어서, 여기서 다시 세팅하면 그 값을 덮어써버린다.
+	if (SavedAmmo != -2)
+	{
+		CurrentAmmo = (SavedAmmo < 0) ? MagazineSize : FMath::Clamp(SavedAmmo, 0, MagazineSize);
+	}
 	EquippedTimeSeconds = FPlatformTime::Seconds();
+
+	// 메쉬 교체는 ItemDataManager(items.json) 담당 - WeaponDataManager는 스탯만 안다.
+	// OnRep_WeaponIndex를 통해 이 함수가 모든 클라이언트에서도 재실행되므로,
+	// 여기서 세팅하면 다른 플레이어 화면에도 자연스럽게 반영된다.
+	// WeaponMeshComponent는 블루프린트(BP_MainCharacter)가 컨스트럭션 스크립트에서
+	// 채워줘야 하는 값이라, 아직 안 채워졌으면(초기화 순서 문제 등) 조용히 건너뛴다.
+	if (WeaponMeshComponent)
+	{
+		if (UGameInstance* GameInstance = GetWorld()->GetGameInstance())
+		{
+			if (UItemDataManager* ItemDataManager = GameInstance->GetSubsystem<UItemDataManager>())
+			{
+				FItemData ItemData;
+				USkeletalMesh* LoadedMesh = nullptr;
+				float Scale = 1.0f;
+				if (ItemDataManager->GetItemData(WeaponIndex, ItemData))
+				{
+					LoadedMesh = Cast<USkeletalMesh>(ItemData.MeshPath.TryLoad());
+					Scale = ItemData.MeshScale;
+				}
+				WeaponMeshComponent->SetSkeletalMesh(LoadedMesh);
+				WeaponMeshComponent->SetRelativeScale3D(FVector(Scale));
+			}
+		}
+	}
+}
+
+void UMainWeaponComponent::ApplyWeaponStats(const FWeaponStats& Stats)
+{
+	Damage = Stats.Damage;
+	PelletCount = Stats.PelletCount;
+	HeadshotMultiplier = Stats.HeadshotMultiplier;
+	FireRate_RPS = Stats.FireRate_RPS;
+	FireMode = Stats.FireMode;
+	BurstCount = Stats.BurstCount;
+	BurstShotInterval = Stats.BurstShotInterval;
+	MagazineSize = Stats.MagazineSize;
+	ReloadTime = Stats.ReloadTime;
+	CanReload = Stats.CanReload;
+	WeaponReqMana = Stats.WeaponReqMana;
+	ManaPerAmmo = Stats.ManaPerAmmo;
+	MaxRange = Stats.MaxRange;
+	DamageFalloffStart = Stats.DamageFalloffStart;
+	DamageFalloffEnd = Stats.DamageFalloffEnd;
+	DamageFalloffMin = Stats.DamageFalloffMin;
+	IsHitscan = Stats.IsHitscan;
+	ProjectileSpeed = Stats.ProjectileSpeed;
+	CanADS = Stats.CanADS;
+	ScopeZoomLevel = Stats.ScopeZoomLevel;
+	SpreadHipfire = Stats.SpreadHipfire;
+	SpreadADS = Stats.SpreadADS;
+	SpreadIncreasePerShot = Stats.SpreadIncreasePerShot;
+	MaxSpreadBloomHipfire = Stats.MaxSpreadBloomHipfire;
+	MaxSpreadBloomADS = Stats.MaxSpreadBloomADS;
+	SpreadRecoveryDelay = Stats.SpreadRecoveryDelay;
+	SpreadRecoveryRate = Stats.SpreadRecoveryRate;
+	RecoilVertical = Stats.RecoilVertical;
+	RecoilHorizontal = Stats.RecoilHorizontal;
+	ADSSpeed = Stats.ADSSpeed;
+	ADSMoveSpeedMultiplier = Stats.ADSMoveSpeedMultiplier;
+	MoveSpeedMultiplier = Stats.MoveSpeedMultiplier;
+	EquipTime = Stats.EquipTime;
+	PelletSpreadAngle = Stats.PelletSpreadAngle;
+}
+
+void UMainWeaponComponent::UnequipWeapon()
+{
+	// 타이머 정리 + WeaponType/스탯/메쉬 리셋을 EquipWeapon()의 조회 실패(else) 분기에
+	// 그대로 위임한다 - 여기서 중복으로 다시 안 써도 됨. -2라 CurrentAmmo만 안 건드리므로
+	// 그건 아래에서 직접 처리한다.
+	EquipWeapon(NAME_None, -2);
+	CurrentAmmo = 0;
+	CurrentSpreadDegrees = 0.0f;
 }
 
 void UMainWeaponComponent::OnRep_WeaponIndex()
 {
-	EquipWeapon(WeaponIndex, -1);
+	EquipWeapon(WeaponIndex, -2);
 }
 
 void UMainWeaponComponent::StartFire()
 {
+	if (!HasWeaponEquipped())
+	{
+		return;
+	}
+
 	RequestFire();
 
 	// FullAuto는 버튼을 뗄 때까지 FireRate_RPS 간격으로 계속 쏴야 하므로 반복 타이머를 건다.
@@ -206,6 +260,11 @@ float UMainWeaponComponent::GetMaxSpreadDegrees() const
 
 void UMainWeaponComponent::RequestReload()
 {
+	if (!HasWeaponEquipped())
+	{
+		return;
+	}
+
 	Server_Reload();
 }
 
@@ -237,6 +296,11 @@ void UMainWeaponComponent::Server_SwitchWeapon_Implementation()
 
 void UMainWeaponComponent::StartADS()
 {
+	if (!HasWeaponEquipped())
+	{
+		return;
+	}
+
 	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 조준 연출을 시작할 수 있게 한다.
 	bIsAiming = true;
 	Server_SetAiming(true);
