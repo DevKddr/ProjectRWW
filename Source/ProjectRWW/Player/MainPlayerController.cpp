@@ -61,6 +61,7 @@ void AMainPlayerController::ClientRestart_Implementation(APawn* NewPawn)
 		if (!HotbarWidgetInstance)
 		{
 			HotbarWidgetInstance = CreateWidget<UMainHotbarWidget>(this, HotbarWidgetClass);
+			HotbarWidgetInstance->SetContainerComponent(InventoryComponent);
 		}
 
 		if (HotbarWidgetInstance && !HotbarWidgetInstance->IsInViewport())
@@ -287,6 +288,7 @@ void AMainPlayerController::OnToggleInventory(const FInputActionValue& Value)
 	if (!InventoryWidgetInstance)
 	{
 		InventoryWidgetInstance = CreateWidget<UMainInventoryWidget>(this, InventoryWidgetClass);
+		InventoryWidgetInstance->SetContainerComponent(InventoryComponent);
 	}
 
 	InventoryWidgetInstance->AddToViewport();

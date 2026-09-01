@@ -15,6 +15,13 @@ class PROJECTRWW_API UMainInventorySlotContainerWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
+public:
+	// 이 위젯이 어느 컨테이너(라이드 인벤토리, 로비 인벤토리, 창고 등)를 보여줄지
+	// 생성 직후 밖에서 지정해준다. AddToViewport() 전에 호출해야 한다 - Construct가
+	// 그 시점에 실행되면서 이 값을 바로 사용하기 때문이다. 이렇게 하면 이 위젯은
+	// 자신을 만든 컨트롤러가 어떤 클래스인지 전혀 몰라도 된다.
+	void SetContainerComponent(class UMainSlotContainerComponent* InComponent);
+
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
@@ -25,7 +32,12 @@ protected:
 	UPROPERTY()
 	TArray<TObjectPtr<class UMainInventorySlotWidget>> SlotWidgets;
 
-	class UMainInventoryComponent* GetInventoryComponent() const;
+	UPROPERTY()
+	TObjectPtr<class UMainSlotContainerComponent> ContainerComponent;
+
+	// NativeConstruct가 이미 한 번 실행됐는지. SetContainerComponent가 Construct 이후에
+	// 호출되는 경우(로비처럼 부모가 자식보다 늦게 컴포넌트를 넘겨줄 때)를 구분하는 데 쓴다.
+	bool bIsConstructed = false;
 
 	void RefreshAllSlots();
 

@@ -1,0 +1,7 @@
+[
+	{ "tier": 0, "rows": 3, "cols": 3 },
+	{ "tier": 1, "rows": 3, "cols": 6 },
+	{ "tier": 2, "rows": 3, "cols": 9 },
+	{ "tier": 3, "rows": 4, "cols": 9 },
+	{ "tier": 4, "rows": 5, "cols": 9 }
+]

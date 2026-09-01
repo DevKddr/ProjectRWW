@@ -8,8 +8,7 @@
 
 void UMainInventoryWidget::BuildSlotWidgets()
 {
-	UMainInventoryComponent* InventoryComponent = GetInventoryComponent();
-	if (!SlotGrid || !SlotWidgetClass || SlotsPerRow <= 0 || !InventoryComponent)
+	if (!SlotGrid || !SlotWidgetClass || SlotsPerRow <= 0 || !ContainerComponent)
 	{
 		return;
 	}
@@ -25,7 +24,7 @@ void UMainInventoryWidget::BuildSlotWidgets()
 			continue;
 		}
 
-		SlotWidget->OwningComponent = InventoryComponent;
+		SlotWidget->OwningComponent = ContainerComponent.Get();
 
 		// 0~8번(핫바)이 맨 아래 줄에 오도록 행 번호를 뒤집는다.
 		const int32 Row = (TotalRows - 1) - (i / SlotsPerRow);

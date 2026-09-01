@@ -30,4 +30,12 @@ struct FMainPlayerRecord
 	// 아이템 스키마는 인벤토리 서브프로젝트에서 확정 전까지 JSON 문자열로만 다룬다.
 	UPROPERTY(BlueprintReadOnly)
 	FString Inventory = TEXT("[]");
+
+	// 로비 창고 슬롯 배열을 직렬화한 문자열. Inventory와 동일한 포맷(위치 기반, ItemIndex만).
+	UPROPERTY(BlueprintReadOnly)
+	FString Storage = TEXT("[]");
+
+	// 지금 창고 등급. storage_tiers.json에서 이 값으로 가로/세로 칸 수를 조회한다.
+	UPROPERTY(BlueprintReadOnly)
+	int32 StorageTier = 0;
 };

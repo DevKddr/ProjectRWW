@@ -6,6 +6,9 @@
 #include "Database/MainPlayerDataRepository.h"
 #include "GameFramework/PlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "Items/MainInventoryComponent.h"
+#include "Items/MainStorageComponent.h"
+#include "Items/InventorySlotSerialization.h"
 
 namespace
 {
@@ -26,6 +29,29 @@ namespace
 			}
 		}
 		return true;
+	}
+}
+
+AMainLobbyPlayerController::AMainLobbyPlayerController()
+{
+	InventoryComponent = CreateDefaultSubobject<UMainInventoryComponent>(TEXT("InventoryComponent"));
+	StorageComponent = CreateDefaultSubobject<UMainStorageComponent>(TEXT("StorageComponent"));
+}
+
+void AMainLobbyPlayerController::SetPlayerRecord(const FMainPlayerRecord& Record)
+{
+	PlayerRecord = Record;
+
+	if (InventoryComponent)
+	{
+		DeserializeInventorySlots(PlayerRecord.Inventory, InventoryComponent->Slots);
+		InventoryComponent->Slots.SetNum(UMainInventoryComponent::InventorySlotCount);
+	}
+
+	if (StorageComponent)
+	{
+		DeserializeInventorySlots(PlayerRecord.Storage, StorageComponent->Slots);
+		StorageComponent->ApplyTier(PlayerRecord.StorageTier);
 	}
 }
 
@@ -51,12 +77,24 @@ void AMainLobbyPlayerController::RWW_SearchSession()
 	Server_SearchSession();
 }
 
+void AMainLobbyPlayerController::RWW_AddItem(const FString& ItemIndex)
+{
+	if (InventoryComponent)
+	{
+		// AddItem()을 직접 부르지 않고 RPC를 거친다 - 클라이언트에서 이 명령어를
+		// 입력해도 항상 서버의 진짜 데이터에 반영되게 하기 위함.
+		InventoryComponent->Server_AddItem(FName(*ItemIndex));
+	}
+}
+
 void AMainLobbyPlayerController::Server_SearchSession_Implementation()
 {
 	AMainLobbyGameMode* LobbyGameMode = GetWorld()->GetAuthGameMode<AMainLobbyGameMode>();
 	const FString Address = LobbyGameMode ? LobbyGameMode->AssignSessionServer() : FString();
 	if (!Address.IsEmpty())
 	{
+		SavePlayerRecord();
+
 		// PlayerState->GetPlayerName()이 아니라 PlayerRecord.PlayerID를 직접 쓴다.
 		// Server_SetPlayerName으로 닉네임이 바뀌어도 이 값은 영향받지 않아야 하기 때문.
 		const FString TravelURL = FString::Printf(TEXT("%s?PlayerID=%s"), *Address, *PlayerRecord.PlayerID);
@@ -74,17 +112,7 @@ void AMainLobbyPlayerController::Server_SetPlayerName_Implementation(const FStri
 	// PlayerState의 표시 이름은 절대 안 건드린다 — 그건 PlayerID를 담는 통로로 고정해두고,
 	// 닉네임은 PlayerRecord.PlayerName 쪽에서만 관리한다.
 	PlayerRecord.PlayerName = NewName;
-
-	if (AMainLobbyGameMode* LobbyGameMode = GetWorld()->GetAuthGameMode<AMainLobbyGameMode>())
-	{
-		if (UMainPlayerDataRepository* Repository = LobbyGameMode->GetPlayerDataRepository())
-		{
-			if (!Repository->SavePlayerData(PlayerRecord))
-			{
-				UE_LOG(LogTemp, Error, TEXT("[ProjectRWW] PlayerName 저장 실패: %s"), *PlayerRecord.PlayerID);
-			}
-		}
-	}
+	SavePlayerRecord();
 }
 
 void AMainLobbyPlayerController::Server_RequestSessionList_Implementation()
@@ -114,4 +142,39 @@ void AMainLobbyPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 void AMainLobbyPlayerController::OnRep_PlayerRecord()
 {
 	OnPlayerRecordUpdated.Broadcast();
+}
+
+void AMainLobbyPlayerController::SavePlayerRecord()
+{
+	if (InventoryComponent)
+	{
+		PlayerRecord.Inventory = SerializeInventorySlots(InventoryComponent->Slots);
+	}
+
+	if (StorageComponent)
+	{
+		PlayerRecord.Storage = SerializeInventorySlots(StorageComponent->Slots);
+		PlayerRecord.StorageTier = StorageComponent->StorageTier;
+	}
+
+	if (AMainLobbyGameMode* LobbyGameMode = GetWorld()->GetAuthGameMode<AMainLobbyGameMode>())
+	{
+		if (UMainPlayerDataRepository* Repository = LobbyGameMode->GetPlayerDataRepository())
+		{
+			if (!Repository->SavePlayerData(PlayerRecord))
+			{
+				UE_LOG(LogTemp, Error, TEXT("[ProjectRWW] 로비 데이터 저장 실패: %s"), *PlayerRecord.PlayerID);
+			}
+		}
+	}
+}
+
+void AMainLobbyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (HasAuthority())
+	{
+		SavePlayerRecord();
+	}
+
+	Super::EndPlay(EndPlayReason);
 }

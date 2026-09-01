@@ -31,7 +31,9 @@ FMainPlayerRecord UMainPlayerDataRepository::LoadPlayerData(const FString& Playe
 		"KillCount INTEGER NOT NULL DEFAULT 0,"
 		"DeathCount INTEGER NOT NULL DEFAULT 0,"
 		"Currency INTEGER NOT NULL DEFAULT 0,"
-		"Items TEXT NOT NULL DEFAULT '[]')"));
+		"Items TEXT NOT NULL DEFAULT '[]',"
+		"Storage TEXT NOT NULL DEFAULT '[]',"
+		"StorageTier INTEGER NOT NULL DEFAULT 0)"));
 
 	bool bFound = false;
 	{
@@ -39,7 +41,7 @@ FMainPlayerRecord UMainPlayerDataRepository::LoadPlayerData(const FString& Playe
 		// 먼저 정리(finalize)되도록 한다 — 안 그러면 살아있는 Statement 때문에 Close()가
 		// 실제로는 못 닫고, 나중에 Database 소멸자가 크래시를 낸다.
 		FSQLitePreparedStatement Statement = Database.PrepareStatement(
-			TEXT("SELECT PlayerName, KillCount, DeathCount, Currency, Items FROM PlayerData WHERE PlayerID = ?1"));
+			TEXT("SELECT PlayerName, KillCount, DeathCount, Currency, Items, Storage, StorageTier FROM PlayerData WHERE PlayerID = ?1"));
 		Statement.SetBindingValueByIndex(1, PlayerID);
 
 		bFound = Statement.Execute([&Record](const FSQLitePreparedStatement& InStatement)
@@ -49,6 +51,8 @@ FMainPlayerRecord UMainPlayerDataRepository::LoadPlayerData(const FString& Playe
 			InStatement.GetColumnValueByName(TEXT("DeathCount"), Record.DeathCount);
 			InStatement.GetColumnValueByName(TEXT("Currency"), Record.Currency);
 			InStatement.GetColumnValueByName(TEXT("Items"), Record.Inventory);
+			InStatement.GetColumnValueByName(TEXT("Storage"), Record.Storage);
+			InStatement.GetColumnValueByName(TEXT("StorageTier"), Record.StorageTier);
 			return ESQLitePreparedStatementExecuteRowResult::Stop;
 		}) > 0;
 	}
@@ -84,13 +88,15 @@ bool UMainPlayerDataRepository::SavePlayerData(const FMainPlayerRecord& Record)
 		"KillCount INTEGER NOT NULL DEFAULT 0,"
 		"DeathCount INTEGER NOT NULL DEFAULT 0,"
 		"Currency INTEGER NOT NULL DEFAULT 0,"
-		"Items TEXT NOT NULL DEFAULT '[]')"));
+		"Items TEXT NOT NULL DEFAULT '[]',"
+		"Storage TEXT NOT NULL DEFAULT '[]',"
+		"StorageTier INTEGER NOT NULL DEFAULT 0)"));
 
 	bool bSuccess = false;
 	{
 		FSQLitePreparedStatement Statement = Database.PrepareStatement(
-			TEXT("INSERT INTO PlayerData (PlayerID, PlayerName, KillCount, DeathCount, Currency, Items) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ")
-			TEXT("ON CONFLICT(PlayerID) DO UPDATE SET PlayerName=excluded.PlayerName, KillCount=excluded.KillCount, DeathCount=excluded.DeathCount, Currency=excluded.Currency, Items=excluded.Items"));
+			TEXT("INSERT INTO PlayerData (PlayerID, PlayerName, KillCount, DeathCount, Currency, Items, Storage, StorageTier) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8) ")
+			TEXT("ON CONFLICT(PlayerID) DO UPDATE SET PlayerName=excluded.PlayerName, KillCount=excluded.KillCount, DeathCount=excluded.DeathCount, Currency=excluded.Currency, Items=excluded.Items, Storage=excluded.Storage, StorageTier=excluded.StorageTier"));
 
 		if (Statement.IsValid())
 		{
@@ -100,6 +106,8 @@ bool UMainPlayerDataRepository::SavePlayerData(const FMainPlayerRecord& Record)
 			Statement.SetBindingValueByIndex(4, Record.DeathCount);
 			Statement.SetBindingValueByIndex(5, Record.Currency);
 			Statement.SetBindingValueByIndex(6, Record.Inventory);
+			Statement.SetBindingValueByIndex(7, Record.Storage);
+			Statement.SetBindingValueByIndex(8, Record.StorageTier);
 			bSuccess = Statement.Execute();
 		}
 	}

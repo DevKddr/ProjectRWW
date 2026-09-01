@@ -33,11 +33,19 @@ void UMainInventorySlotWidget::SetSlotData(int32 InSlotIndex, const FInventorySl
 
 FReply UMainInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && !CachedSlotData.IsEmpty())
+	if (InMouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return FReply::Unhandled();
+	}
+
+	if (!CachedSlotData.IsEmpty())
 	{
 		return FReply::Handled().DetectDrag(TakeWidget(), EKeys::LeftMouseButton);
 	}
-	return FReply::Unhandled();
+
+	// 빈 슬롯이어도 클릭 자체는 UI가 소비해야 한다 - 안 그러면 이 마우스 입력이 뒤쪽
+	// 게임 화면까지 새어나가서 카메라가 돌아가는 문제가 생긴다.
+	return FReply::Handled();
 }
 
 void UMainInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)

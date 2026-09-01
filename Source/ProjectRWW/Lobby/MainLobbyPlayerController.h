@@ -17,10 +17,20 @@ class PROJECTRWW_API AMainLobbyPlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
-	void SetPlayerRecord(const FMainPlayerRecord& Record) { PlayerRecord = Record; }
+	AMainLobbyPlayerController();
+
+	void SetPlayerRecord(const FMainPlayerRecord& Record);
 
 	UFUNCTION(BlueprintPure, Category = "Lobby")
 	const FMainPlayerRecord& GetPlayerRecord() const { return PlayerRecord; }
+
+	// 라이드용 36칸 인벤토리를 데이터 컨테이너로만 재사용한다. 로비엔 폰이 없어
+	// MainInventoryComponent의 장착 로직은 자연히 아무 동작도 하지 않는다.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lobby")
+	TObjectPtr<class UMainInventoryComponent> InventoryComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lobby")
+	TObjectPtr<class UMainStorageComponent> StorageComponent;
 
 	// PlayerRecord가 리플리케이트되어 도착할 때마다 브로드캐스트한다(최초 로드, 닉네임 변경 등).
 	// 로비 위젯은 여기 바인딩해서 값이 바뀔 때마다 자동으로 화면을 갱신하면 된다.
@@ -29,6 +39,9 @@ public:
 
 	UFUNCTION(Exec)
 	void RWW_SearchSession();
+
+	UFUNCTION(Exec)
+	void RWW_AddItem(const FString& ItemIndex);
 
 	UFUNCTION(Server, Reliable)
 	void Server_SearchSession();
@@ -56,6 +69,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION()
@@ -65,6 +79,10 @@ protected:
 	TSubclassOf<class UMainLobbyWidget> LobbyWidgetClass;
 
 private:
+	// 로비를 떠날 때(라이드 진입/접속 종료) 인벤토리+창고를 직렬화해서 DB에 저장한다.
+	// 매번 이동할 때마다 저장하지 않는다 - 이벤트 기반 저장 정책.
+	void SavePlayerRecord();
+
 	// 본인 데이터라 다른 클라이언트한테는 안 보내도 된다(COND_OwnerOnly).
 	UPROPERTY(ReplicatedUsing = OnRep_PlayerRecord)
 	FMainPlayerRecord PlayerRecord;
