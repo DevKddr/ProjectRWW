@@ -13,6 +13,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Items/MainInventoryComponent.h"
 #include "Items/MainInventoryWidget.h"
 #include "Items/MainHotbarWidget.h"
@@ -71,6 +72,10 @@ void AMainPlayerController::ClientRestart_Implementation(APawn* NewPawn)
 
 void AMainPlayerController::CloseAllGameplayUI()
 {
+	// 드래그 중에 어떤 UI든 강제로 닫힐 수 있는 지점(사망, 나중엔 창고 닫기 등)이라
+	// 맨 앞에서 한 번에 처리한다. 드래그 중이 아니면 아무 일도 안 하니 항상 호출해도 안전하다.
+	UWidgetBlueprintLibrary::CancelDragDrop();
+
 	if (HUDWidgetInstance)
 	{
 		HUDWidgetInstance->RemoveFromParent();
@@ -264,6 +269,11 @@ void AMainPlayerController::OnToggleInventory(const FInputActionValue& Value)
 
 	if (InventoryWidgetInstance && InventoryWidgetInstance->IsInViewport())
 	{
+		// 드래그 중에 인벤토리를 닫으면 입력 모드가 게임 전용으로 바뀌면서 Slate가
+		// 마우스 업 이벤트를 못 받아 드래그 오퍼레이션이 끝나지 못하고 유령 아이콘이
+		// 화면에 계속 남는다. 닫기 전에 진행 중인 드래그를 강제로 취소한다.
+		UWidgetBlueprintLibrary::CancelDragDrop();
+
 		InventoryWidgetInstance->RemoveFromParent();
 		if (HotbarWidgetInstance)
 		{

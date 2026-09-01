@@ -20,7 +20,7 @@ void UMainInventorySlotContainerWidget::NativeConstruct()
 
 	if (UMainInventoryComponent* InventoryComponent = GetInventoryComponent())
 	{
-		InventoryComponent->OnInventoryChanged.AddDynamic(this, &UMainInventorySlotContainerWidget::HandleInventoryChanged);
+		InventoryComponent->OnSlotsChanged.AddDynamic(this, &UMainInventorySlotContainerWidget::HandleInventoryChanged);
 	}
 
 	// 슬롯 위젯 생성은 최초 한 번만 - AddToViewport()를 부를 때마다 NativeConstruct가
@@ -37,7 +37,7 @@ void UMainInventorySlotContainerWidget::NativeDestruct()
 {
 	if (UMainInventoryComponent* InventoryComponent = GetInventoryComponent())
 	{
-		InventoryComponent->OnInventoryChanged.RemoveDynamic(this, &UMainInventorySlotContainerWidget::HandleInventoryChanged);
+		InventoryComponent->OnSlotsChanged.RemoveDynamic(this, &UMainInventorySlotContainerWidget::HandleInventoryChanged);
 	}
 
 	Super::NativeDestruct();
@@ -53,9 +53,9 @@ void UMainInventorySlotContainerWidget::RefreshAllSlots()
 
 	for (int32 i = 0; i < SlotWidgets.Num(); ++i)
 	{
-		if (InventoryComponent->InventorySlots.IsValidIndex(i))
+		if (InventoryComponent->Slots.IsValidIndex(i))
 		{
-			SlotWidgets[i]->SetSlotData(i, InventoryComponent->InventorySlots[i]);
+			SlotWidgets[i]->SetSlotData(i, InventoryComponent->Slots[i]);
 		}
 	}
 }

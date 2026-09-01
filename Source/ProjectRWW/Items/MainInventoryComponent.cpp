@@ -1,29 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MainInventoryComponent.h"
-#include "Net/UnrealNetwork.h"
 #include "GameFramework/PlayerController.h"
 #include "Player/MainCharacter.h"
 #include "Combat/MainWeaponComponent.h"
 #include "ItemDataManager.h"
-
-UMainInventoryComponent::UMainInventoryComponent()
-{
-	PrimaryComponentTick.bCanEverTick = false;
-	SetIsReplicatedByDefault(true);
-}
-
-void UMainInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME_CONDITION(UMainInventoryComponent, InventorySlots, COND_OwnerOnly);
-}
-
-void UMainInventoryComponent::OnRep_InventorySlots()
-{
-	OnInventoryChanged.Broadcast();
-}
 
 UMainWeaponComponent* UMainInventoryComponent::GetWeaponComponent() const
 {
@@ -37,73 +18,55 @@ UMainWeaponComponent* UMainInventoryComponent::GetWeaponComponent() const
 	return nullptr;
 }
 
-bool UMainInventoryComponent::AddItem(FName ItemIndex)
+int32 UMainInventoryComponent::AddItem(FName ItemIndex)
 {
-	for (int32 i = 0; i < InventorySlots.Num(); ++i)
+	const int32 FilledSlot = Super::AddItem(ItemIndex);
+
+	// 지금 선택된 슬롯(핫바)에 새 아이템이 막 들어왔으면, 즉시 장착까지 반영한다 -
+	// 안 그러면 빈손으로 선택돼있던 슬롯에 아이템이 들어와도 다시 핫키를 눌러야만
+	// 실제로 장착된다.
+	if (FilledSlot != INDEX_NONE && FilledSlot == EquippedSlotIndex)
 	{
-		if (InventorySlots[i].IsEmpty())
-		{
-			InventorySlots[i].ItemIndex = ItemIndex;
-			InventorySlots[i].CurrentAmmo = -1;
-
-			// 리슨 서버 호스트는 자기 자신에게는 리플리케이션(OnRep)이 안 오므로,
-			// 여기서 직접 알려줘야 본인 화면도 즉시 갱신된다. 진짜 원격 클라이언트는
-			// 이 함수를 직접 실행하지 않으니(서버에서만 실행됨) 중복되지 않는다.
-			OnInventoryChanged.Broadcast();
-
-			// 지금 선택된 슬롯(핫바)에 새 아이템이 막 들어왔으면, MoveItem()과 같은
-			// 규칙으로 즉시 장착까지 반영한다 - 안 그러면 빈손으로 선택돼있던 슬롯에
-			// 아이템이 들어와도 다시 핫키를 눌러야만 실제로 장착된다.
-			if (EquippedSlotIndex == i)
-			{
-				EquipItem(i);
-			}
-			return true;
-		}
+		EquipItem(EquippedSlotIndex);
 	}
-	return false;
+	return FilledSlot;
 }
 
-bool UMainInventoryComponent::MoveItem(int32 FromSlot, int32 ToSlot)
+FInventorySlot UMainInventoryComponent::TakeSlot(int32 SlotIndex)
 {
-	if (!InventorySlots.IsValidIndex(FromSlot) || !InventorySlots.IsValidIndex(ToSlot) || FromSlot == ToSlot)
+	if (SlotIndex == EquippedSlotIndex)
 	{
-		return false;
-	}
-
-	if (EquippedSlotIndex == FromSlot || EquippedSlotIndex == ToSlot)
-	{
-		// 장착 중이던 "슬롯 번호 자체"를 기억해둔다 - 스왑 후 그 자리에 새로 들어온
-		// 아이템을 다시 장착해서, 핫바의 그 칸이 계속 활성 상태를 유지하게 한다.
-		const int32 SlotToReequip = EquippedSlotIndex;
-
+		// 먼저 손에서 내려서 탄약을 슬롯에 정확히 기록한 다음 꺼낸다.
 		UnequipItem();
-		Swap(InventorySlots[FromSlot], InventorySlots[ToSlot]);
-		EquipItem(SlotToReequip);
-		OnInventoryChanged.Broadcast();  // 리슨 서버 호스트 본인 화면 갱신용 (AddItem과 동일한 이유)
-		return true;
 	}
+	return Super::TakeSlot(SlotIndex);
+}
 
-	Swap(InventorySlots[FromSlot], InventorySlots[ToSlot]);
-	OnInventoryChanged.Broadcast();
-	return true;
+bool UMainInventoryComponent::PlaceSlot(int32 SlotIndex, const FInventorySlot& SlotData)
+{
+	const bool bSuccess = Super::PlaceSlot(SlotIndex, SlotData);
+	if (bSuccess && SlotIndex == EquippedSlotIndex)
+	{
+		// 채워 넣은 자리가 지금 선택된 슬롯이면 바로 장착한다.
+		EquipItem(SlotIndex);
+	}
+	return bSuccess;
 }
 
 void UMainInventoryComponent::EquipItem(int32 SlotIndex)
 {
-	if (!InventorySlots.IsValidIndex(SlotIndex))
+	if (!Slots.IsValidIndex(SlotIndex))
 	{
 		return;
 	}
 
 	// 먼저 손에 든 걸 내리고, 이 슬롯을 "지금 선택된 슬롯"으로 기록한다. 슬롯이
 	// 비어있어도(빈손 상태로) 선택 자체는 유효하다 - 마인크래프트 핫바처럼 빈 칸을
-	// 선택하면 실제로 빈손이 된다. 이렇게 하면 사망 등으로 인벤토리가 통째로
-	// 비워져도 다음 EquipItem() 호출 때 EquippedSlotIndex가 항상 최신 상태를 따라간다.
+	// 선택하면 실제로 빈손이 된다.
 	UnequipItem();
 	EquippedSlotIndex = SlotIndex;
 
-	if (InventorySlots[SlotIndex].IsEmpty())
+	if (Slots[SlotIndex].IsEmpty())
 	{
 		return;
 	}
@@ -118,21 +81,21 @@ void UMainInventoryComponent::EquipItem(int32 SlotIndex)
 	}
 
 	FItemData ItemData;
-	if (!ItemDataManager->GetItemData(InventorySlots[SlotIndex].ItemIndex, ItemData))
+	if (!ItemDataManager->GetItemData(Slots[SlotIndex].ItemIndex, ItemData))
 	{
 		return;
 	}
 
 	if (ItemData.Category == TEXT("Weapon"))
 	{
-		WeaponComponent->EquipWeapon(ItemData.Index, InventorySlots[SlotIndex].CurrentAmmo);
+		WeaponComponent->EquipWeapon(ItemData.Index, Slots[SlotIndex].CurrentAmmo);
 	}
 	// else: 다른 카테고리는 아직 "장착" 로직 없음 (빈손 취급, EquippedSlotIndex는 이미 설정됨)
 }
 
 void UMainInventoryComponent::UnequipItem()
 {
-	if (!InventorySlots.IsValidIndex(EquippedSlotIndex))
+	if (!Slots.IsValidIndex(EquippedSlotIndex))
 	{
 		return;  // 애초에 장착 중인 게 없음
 	}
@@ -144,25 +107,17 @@ void UMainInventoryComponent::UnequipItem()
 		// 그 슬롯에 막 들어온 새 아이템의 "-1(=미장착, 다음엔 가득 채움)" 값을 오염시킨다.
 		if (WeaponComponent->HasWeaponEquipped())
 		{
-			InventorySlots[EquippedSlotIndex].CurrentAmmo = WeaponComponent->GetCurrentAmmo();
+			Slots[EquippedSlotIndex].CurrentAmmo = WeaponComponent->GetCurrentAmmo();
 		}
 		WeaponComponent->UnequipWeapon();
 	}
 
-	EquippedSlotIndex = -1;
+	// EquippedSlotIndex는 여기서 리셋하지 않는다 - TakeSlot()이 "지금 선택된 슬롯을
+	// 꺼낸 뒤에도 어디가 선택돼있었는지"를 계속 알아야 PlaceSlot()이 재장착할 자리를
+	// 정확히 판단할 수 있다. EquipItem()이 새 슬롯을 선택할 때 어차피 새 값으로 덮어쓴다.
 }
 
 void UMainInventoryComponent::Server_EquipItem_Implementation(int32 SlotIndex)
 {
 	EquipItem(SlotIndex);
-}
-
-void UMainInventoryComponent::Server_MoveItem_Implementation(int32 FromSlot, int32 ToSlot)
-{
-	MoveItem(FromSlot, ToSlot);
-}
-
-void UMainInventoryComponent::Server_AddItem_Implementation(FName ItemIndex)
-{
-	AddItem(ItemIndex);
 }

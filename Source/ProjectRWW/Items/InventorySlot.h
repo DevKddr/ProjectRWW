@@ -5,7 +5,8 @@
 #include "CoreMinimal.h"
 #include "InventorySlot.generated.h"
 
-// 인벤토리 한 칸의 상태. AMainPlayerController::InventorySlots 배열의 원소로 쓰인다.
+// 슬롯 컨테이너 한 칸의 상태. UMainSlotContainerComponent::Slots 배열의 원소로 쓰인다
+// (인벤토리, 창고 등 모든 컨테이너가 공유).
 USTRUCT(BlueprintType)
 struct FInventorySlot
 {

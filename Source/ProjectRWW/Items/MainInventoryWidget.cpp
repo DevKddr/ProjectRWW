@@ -8,7 +8,8 @@
 
 void UMainInventoryWidget::BuildSlotWidgets()
 {
-	if (!SlotGrid || !SlotWidgetClass || SlotsPerRow <= 0)
+	UMainInventoryComponent* InventoryComponent = GetInventoryComponent();
+	if (!SlotGrid || !SlotWidgetClass || SlotsPerRow <= 0 || !InventoryComponent)
 	{
 		return;
 	}
@@ -24,7 +25,7 @@ void UMainInventoryWidget::BuildSlotWidgets()
 			continue;
 		}
 
-		SlotWidget->OnSlotClicked.AddDynamic(this, &UMainInventoryWidget::OnAnySlotClicked);
+		SlotWidget->OwningComponent = InventoryComponent;
 
 		// 0~8번(핫바)이 맨 아래 줄에 오도록 행 번호를 뒤집는다.
 		const int32 Row = (TotalRows - 1) - (i / SlotsPerRow);
@@ -33,20 +34,4 @@ void UMainInventoryWidget::BuildSlotWidgets()
 
 		SlotWidgets.Add(SlotWidget);
 	}
-}
-
-void UMainInventoryWidget::OnAnySlotClicked(int32 ClickedSlotIndex)
-{
-	if (PendingSourceSlot == -1)
-	{
-		PendingSourceSlot = ClickedSlotIndex;
-		return;
-	}
-
-	if (UMainInventoryComponent* InventoryComponent = GetInventoryComponent())
-	{
-		InventoryComponent->Server_MoveItem(PendingSourceSlot, ClickedSlotIndex);
-	}
-
-	PendingSourceSlot = -1;
 }

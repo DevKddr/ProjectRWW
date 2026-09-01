@@ -104,11 +104,11 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 		if (MainPC->InventoryComponent)
 		{
 			// 저장된 데이터를 배열로 되돌린다. 최초 접속(Inventory="[]")이면 빈 배열이 나온다.
-			DeserializeInventorySlots(MainPC->PlayerRecord.Inventory, MainPC->InventoryComponent->InventorySlots);
+			DeserializeInventorySlots(MainPC->PlayerRecord.Inventory, MainPC->InventoryComponent->Slots);
 
 			// 방어적 처리: 저장된 배열 길이가 36과 다르면(최초 접속의 빈 배열 포함) 36칸으로
 			// 맞춘다 - 부족한 칸은 기본값(빈 슬롯)으로 채워지고, 넘치는 칸은 잘린다.
-			MainPC->InventoryComponent->InventorySlots.SetNum(UMainInventoryComponent::InventorySlotCount);
+			MainPC->InventoryComponent->Slots.SetNum(UMainInventoryComponent::InventorySlotCount);
 			MainPC->InventoryComponent->EquipItem(0);
 		}
 	}
@@ -127,7 +127,8 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 	// 사망 시 인벤토리 전부 손실(익스트랙션 실패 페널티). 월드 드랍은 별도 과제.
 	if (VictimController->InventoryComponent)
 	{
-		VictimController->InventoryComponent->InventorySlots.Init(FInventorySlot(), UMainInventoryComponent::InventorySlotCount);
+		VictimController->InventoryComponent->Slots.Init(FInventorySlot(), UMainInventoryComponent::InventorySlotCount);
+		VictimController->PlayerRecord.Inventory = SerializeInventorySlots(VictimController->InventoryComponent->Slots);
 	}
 
 	// 존 안에서 죽었을 수도 있으니, 남아있는 탈출 타이머가 나중에 발동해도
@@ -181,7 +182,7 @@ void AMainGameMode::HandleExtraction(APlayerController* Player)
 	// 사망과 달리 인벤토리를 그대로 유지한 채 직렬화해서 저장한다.
 	if (MainPC->InventoryComponent)
 	{
-		MainPC->PlayerRecord.Inventory = SerializeInventorySlots(MainPC->InventoryComponent->InventorySlots);
+		MainPC->PlayerRecord.Inventory = SerializeInventorySlots(MainPC->InventoryComponent->Slots);
 	}
 
 	if (PlayerDataRepository)

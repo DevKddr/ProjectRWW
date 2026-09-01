@@ -2,11 +2,13 @@
 
 #include "MainHotbarWidget.h"
 #include "MainInventorySlotWidget.h"
+#include "MainInventoryComponent.h"
 #include "Components/HorizontalBox.h"
 
 void UMainHotbarWidget::BuildSlotWidgets()
 {
-	if (!SlotBar || !SlotWidgetClass || HotbarSlotCount <= 0)
+	UMainInventoryComponent* InventoryComponent = GetInventoryComponent();
+	if (!SlotBar || !SlotWidgetClass || HotbarSlotCount <= 0 || !InventoryComponent)
 	{
 		return;
 	}
@@ -18,6 +20,8 @@ void UMainHotbarWidget::BuildSlotWidgets()
 		{
 			continue;
 		}
+
+		SlotWidget->OwningComponent = InventoryComponent;
 
 		SlotBar->AddChildToHorizontalBox(SlotWidget);
 		SlotWidgets.Add(SlotWidget);
