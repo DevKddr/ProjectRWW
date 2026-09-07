@@ -18,9 +18,9 @@ protected:
 
 	// 디자이너에서 이름이 정확히 "InventoryWidget"인 자식 위젯과 연결된다.
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<class UMainInventoryWidget> InventoryWidget;
+	TObjectPtr<class UMainSlotGridWidget> InventoryWidget;
 
 	// 디자이너에서 이름이 정확히 "StorageWidget"인 자식 위젯과 연결된다.
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<class UMainStorageWidget> StorageWidget;
+	TObjectPtr<class UMainSlotGridWidget> StorageWidget;
 };

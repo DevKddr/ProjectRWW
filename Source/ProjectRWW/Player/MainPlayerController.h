@@ -124,10 +124,10 @@ protected:
 	TSubclassOf<class UMainHUDWidget> HUDWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
-	TSubclassOf<class UMainInventoryWidget> InventoryWidgetClass;
+	TSubclassOf<class UMainInventoryScreenWidget> InventoryWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
-	TSubclassOf<class UMainHotbarWidget> HotbarWidgetClass;
+	TSubclassOf<class UMainSlotGridWidget> HotbarWidgetClass;
 
 private:
 	UPROPERTY()
@@ -140,8 +140,8 @@ private:
 	TObjectPtr<class UMainHUDWidget> HUDWidgetInstance;
 
 	UPROPERTY()
-	TObjectPtr<class UMainInventoryWidget> InventoryWidgetInstance;
+	TObjectPtr<class UMainInventoryScreenWidget> InventoryWidgetInstance;
 
 	UPROPERTY()
-	TObjectPtr<class UMainHotbarWidget> HotbarWidgetInstance;
+	TObjectPtr<class UMainSlotGridWidget> HotbarWidgetInstance;
 };

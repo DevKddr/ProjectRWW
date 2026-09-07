@@ -15,8 +15,8 @@
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Items/MainInventoryComponent.h"
-#include "Items/MainInventoryWidget.h"
-#include "Items/MainHotbarWidget.h"
+#include "Items/MainInventoryScreenWidget.h"
+#include "Items/MainSlotGridWidget.h"
 #include "Net/UnrealNetwork.h"
 
 AMainPlayerController::AMainPlayerController()
@@ -60,7 +60,7 @@ void AMainPlayerController::ClientRestart_Implementation(APawn* NewPawn)
 	{
 		if (!HotbarWidgetInstance)
 		{
-			HotbarWidgetInstance = CreateWidget<UMainHotbarWidget>(this, HotbarWidgetClass);
+			HotbarWidgetInstance = CreateWidget<UMainSlotGridWidget>(this, HotbarWidgetClass);
 			HotbarWidgetInstance->SetContainerComponent(InventoryComponent);
 		}
 
@@ -287,7 +287,7 @@ void AMainPlayerController::OnToggleInventory(const FInputActionValue& Value)
 
 	if (!InventoryWidgetInstance)
 	{
-		InventoryWidgetInstance = CreateWidget<UMainInventoryWidget>(this, InventoryWidgetClass);
+		InventoryWidgetInstance = CreateWidget<UMainInventoryScreenWidget>(this, InventoryWidgetClass);
 		InventoryWidgetInstance->SetContainerComponent(InventoryComponent);
 	}
 

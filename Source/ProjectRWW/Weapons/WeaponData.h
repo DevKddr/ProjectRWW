@@ -117,13 +117,6 @@ struct FWeaponStats
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float SpreadRecoveryRate = 0.f;
 
-	// 예약 필드 (현재 미사용).
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Reserved")
-	float RecoilVertical = 0.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Reserved")
-	float RecoilHorizontal = 0.f;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float ADSSpeed = 0.f;
 
@@ -132,9 +125,6 @@ struct FWeaponStats
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float MoveSpeedMultiplier = 1.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	float EquipTime = 0.f;
 
 	// ShotGun 전용 (그 외 무기는 0)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ShotGun")

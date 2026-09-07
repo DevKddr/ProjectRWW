@@ -21,6 +21,16 @@ void UMainSlotContainerComponent::OnRep_Slots()
 	OnSlotsChanged.Broadcast();
 }
 
+int32 UMainSlotContainerComponent::GetColumnCount_Implementation() const
+{
+	return Columns;
+}
+
+void UMainSlotContainerComponent::SetGridSize(int32 NewColumns)
+{
+	Columns = NewColumns;
+}
+
 int32 UMainSlotContainerComponent::AddItem(FName ItemIndex)
 {
 	for (int32 i = 0; i < Slots.Num(); ++i)

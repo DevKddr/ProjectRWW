@@ -12,6 +12,7 @@
 #include "Combat/MainEffectTickComponent.h"
 #include "Core/MainGameMode.h"
 #include "PlayerBaseStat/PlayerStatManager.h"
+#include "Net/UnrealNetwork.h"
 
 AMainCharacter::AMainCharacter()
 {
@@ -37,7 +38,15 @@ void AMainCharacter::OnStopFire(const FInputActionValue& Value)
 {
 	if (WeaponComponent)
 	{
-		WeaponComponent->StopFire();
+		// bCancelBurst=false: 트리거를 놓았다는 사실(OnFireReleased 등) 자체는 발사모드와
+		// 무관하게 항상 Kinemation에 알려야 하지만, 진행 중인 버스트의 남은 발
+		// 애니메이션(ClientBurstTimerHandle)은 여기서 끊지 않는다 - Burst는 트리거를
+		// 일찍 떼도 이미 시작된 발이 끝까지 나가야 하는데(총기 자체가 그렇게 동작함),
+		// 서버(FireBurstShot의 BurstTimerHandle)는 이 함수와 무관하게 계속 돌아 실제
+		// 발사가 그대로 이어지는 반면 본인 화면만 여기서 끊기면 "남에게는 버스트가
+		// 끝까지 보이는데 본인 화면만 끊긴다"는 불일치가 생긴다.
+		WeaponComponent->StopFire(false);
+		WeaponComponent->Server_StopFire();
 	}
 }
 
@@ -70,17 +79,68 @@ void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 반응.
 	GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
 	ServerSetSprinting(true);
+
+	if (bIsMoving)
+	{
+		ReceiveMovementChange(2.0f);
+	}
 }
 
 void AMainCharacter::OnSprintStop(const FInputActionValue& Value)
 {
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 	ServerSetSprinting(false);
+
+	if (bIsMoving)
+	{
+		ReceiveMovementChange(1.0f);
+	}
+}
+
+void AMainCharacter::OnMoveStopped(const FInputActionValue& Value)
+{
+	bIsMoving = false;
+	ReceiveMovementChange(0.0f);
 }
 
 void AMainCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)
 {
+	bSprintRequested = bNewSprinting;
 	GetCharacterMovement()->MaxWalkSpeed = bNewSprinting ? RunSpeed : WalkSpeed;
+}
+
+void AMainCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	const bool bMoving = GetVelocity().SizeSquared() > KINDA_SMALL_NUMBER;
+	const EMovementStatus NewStatus = !bMoving ? EMovementStatus::Idle
+		: (bSprintRequested ? EMovementStatus::Sprint : EMovementStatus::Walk);
+
+	if (NewStatus != MovementStatus)
+	{
+		MovementStatus = NewStatus;
+	}
+}
+
+void AMainCharacter::OnRep_MovementChange()
+{
+	if (!HasLocalNetOwner())
+	{
+		ReceiveMovementChange(static_cast<float>(MovementStatus));
+	}
+}
+
+void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AMainCharacter, MovementStatus);
 }
 
 void AMainCharacter::BeginPlay()
@@ -157,6 +217,7 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		if (MoveAction)
 		{
 			EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMainCharacter::OnMove);
+			EnhancedInput->BindAction(MoveAction, ETriggerEvent::Completed, this, &AMainCharacter::OnMoveStopped);
 		}
 		if (LookAction)
 		{
@@ -206,6 +267,14 @@ void AMainCharacter::OnMove(const FInputActionValue& Value)
 		AddMovementInput(ForwardDirection, MoveVector.Y);
 		AddMovementInput(RightDirection, MoveVector.X);
 
+		// 멈춰있다가 방금 움직이기 시작한 순간에만 이벤트를 호출한다.
+		if (!bIsMoving)
+		{
+			bIsMoving = true;
+			const bool bIsSprinting = GetCharacterMovement()->MaxWalkSpeed >= RunSpeed;
+			ReceiveMovementChange(bIsSprinting ? 2.0f : 1.0f);
+		}
+
 		// 디버그용: 각 축 속도 확인
 		//const FVector Velocity = GetVelocity();
 		//UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s velocity: X=%.1f Y=%.1f Z=%.1f (Speed=%.1f)"), *GetNameSafe(this), Velocity.X, Velocity.Y, Velocity.Z, Velocity.Size());
@@ -222,4 +291,16 @@ void AMainCharacter::OnLook(const FInputActionValue& Value)
 		AddControllerYawInput(LookVector.X);
 		AddControllerPitchInput(LookVector.Y);
 	}
+}
+
+AActor* AMainCharacter::GetMainItem() const
+{
+	// ActiveHandActor는 무기/아이템 공용 슬롯이라, 지금 무기가 장착 중이 아닐 때만
+	// "아이템 용도"로 취급해서 반환한다 - GetMainWeapon()(WeaponComponent::
+	// GetActiveWeaponActor())과 정확히 대칭되는 필터링이다.
+	if (!WeaponComponent || WeaponComponent->HasWeaponEquipped())
+	{
+		return nullptr;
+	}
+	return WeaponComponent->ActiveHandActor;
 }

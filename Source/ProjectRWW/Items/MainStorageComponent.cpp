@@ -23,11 +23,11 @@ void UMainStorageComponent::ApplyTier(int32 NewTier)
 	StorageTier = NewTier;
 
 	FStorageTierData TierData;
-	const int32 SlotCount = GetTierData(NewTier, TierData) ? TierData.Rows * TierData.Cols : Slots.Num();
-	Slots.SetNum(SlotCount);
+	const int32 NewSlotCount = GetTierData(NewTier, TierData) ? TierData.SlotCount : Slots.Num();
+	Slots.SetNum(NewSlotCount);
 }
 
-int32 UMainStorageComponent::GetColumnCount() const
+int32 UMainStorageComponent::GetColumnCount_Implementation() const
 {
 	FStorageTierData TierData;
 	if (GetTierData(StorageTier, TierData) && TierData.Cols > 0)

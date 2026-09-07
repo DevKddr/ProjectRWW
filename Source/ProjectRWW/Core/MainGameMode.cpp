@@ -3,6 +3,7 @@
 #include "Player/MainPlayerController.h"
 #include "Player/MainPlayerState.h"
 #include "Player/MainCharacter.h"
+#include "Combat/MainWeaponComponent.h"
 #include "Database/MainSessionServerStatusRepository.h"
 #include "Database/MainPlayerDataRepository.h"
 #include "GameFramework/PlayerState.h"
@@ -160,6 +161,23 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 	// 컨트롤러를 만나게 되고, 기존 시체 액터도 맵에 영원히 남는다.
 	if (APawn* VictimPawn = VictimController->GetPawn())
 	{
+		// 무기 Actor는 폰의 자식이 아니라 따로 스폰돼서 부착만 된 별개 Actor라,
+		// 폰을 Destroy()해도 자동으로 같이 사라지지 않는다 - 먼저 손에서 내려서
+		// UnequipWeapon()이 직접 Destroy()하게 한다.
+		if (AMainCharacter* VictimCharacter = Cast<AMainCharacter>(VictimPawn))
+		{
+			if (VictimCharacter->WeaponComponent)
+			{
+				VictimCharacter->WeaponComponent->UnequipWeapon();
+
+				// 위 UnequipWeapon()이 바꾼 WeaponIndex/EquippedSlotIndex는 바로 아래에서
+				// 폰을 파괴해버리면 리플리케이션이 클라이언트에 전송될 시간도 없이 사라질
+				// 수 있다. 그래서 각 클라이언트의 로컬 무기 Actor 정리를 리플리케이션에
+				// 맡기지 않고 Multicast로 직접, 확실하게 지시한다.
+				VictimCharacter->WeaponComponent->Multicast_DestroyWeaponActor();
+			}
+		}
+
 		VictimController->UnPossess();
 		VictimPawn->Destroy();
 	}
@@ -205,6 +223,17 @@ void AMainGameMode::HandleExtraction(APlayerController* Player)
 	// 폰을 여기서 바로 파괴해 그 가능성 자체를 없앤다(HandlePlayerDeath와 동일 패턴).
 	if (APawn* Pawn = MainPC->GetPawn())
 	{
+		// 무기 Actor는 폰의 자식이 아니라 따로 스폰돼서 부착만 된 별개 Actor라,
+		// 폰을 Destroy()해도 자동으로 같이 사라지지 않는다 - 먼저 손에서 내려서
+		// UnequipWeapon()이 직접 Destroy()하게 한다.
+		if (AMainCharacter* Character = Cast<AMainCharacter>(Pawn))
+		{
+			if (Character->WeaponComponent)
+			{
+				Character->WeaponComponent->UnequipWeapon();
+			}
+		}
+
 		MainPC->UnPossess();
 		Pawn->Destroy();
 	}

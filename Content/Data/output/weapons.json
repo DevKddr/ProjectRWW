@@ -42,12 +42,9 @@
       "MaxSpreadBloomADS": 3,
       "SpreadRecoveryDelay": 0.2,
       "SpreadRecoveryRate": 4,
-      "RecoilVertical": 0,
-      "RecoilHorizontal": 0,
       "ADSSpeed": 0.2,
       "ADSMoveSpeedMultiplier": 0.95,
-      "MoveSpeedMultiplier": 1,
-      "EquipTime": 0.4
+      "MoveSpeedMultiplier": 1
     }
   },
   {
@@ -68,7 +65,7 @@
       "Damage": 28,
       "PelletCount": 1,
       "HeadshotMultiplier": 2,
-      "FireRate_RPS": 10,
+      "FireRate_RPS": 15,
       "FireMode": "FullAuto",
       "BurstCount": 0,
       "BurstShotInterval": 0,
@@ -93,12 +90,9 @@
       "MaxSpreadBloomADS": 4,
       "SpreadRecoveryDelay": 0.15,
       "SpreadRecoveryRate": 5,
-      "RecoilVertical": 0,
-      "RecoilHorizontal": 0,
       "ADSSpeed": 0.25,
       "ADSMoveSpeedMultiplier": 0.85,
-      "MoveSpeedMultiplier": 0.92,
-      "EquipTime": 0.6
+      "MoveSpeedMultiplier": 0.92
     }
   },
   {
@@ -119,7 +113,7 @@
       "Damage": 32,
       "PelletCount": 1,
       "HeadshotMultiplier": 2,
-      "FireRate_RPS": 13.3,
+      "FireRate_RPS": 10,
       "FireMode": "Burst",
       "BurstCount": 3,
       "BurstShotInterval": 0.05,
@@ -144,12 +138,9 @@
       "MaxSpreadBloomADS": 3.5,
       "SpreadRecoveryDelay": 0.15,
       "SpreadRecoveryRate": 5.5,
-      "RecoilVertical": 0,
-      "RecoilHorizontal": 0,
       "ADSSpeed": 0.22,
       "ADSMoveSpeedMultiplier": 0.85,
-      "MoveSpeedMultiplier": 0.9,
-      "EquipTime": 0.55
+      "MoveSpeedMultiplier": 0.9
     }
   },
   {
@@ -195,12 +186,9 @@
       "MaxSpreadBloomADS": 2,
       "SpreadRecoveryDelay": 0.5,
       "SpreadRecoveryRate": 3,
-      "RecoilVertical": 0,
-      "RecoilHorizontal": 0,
       "ADSSpeed": 0.45,
       "ADSMoveSpeedMultiplier": 0.5,
-      "MoveSpeedMultiplier": 0.85,
-      "EquipTime": 0.8
+      "MoveSpeedMultiplier": 0.85
     }
   },
   {
@@ -246,12 +234,9 @@
       "MaxSpreadBloomADS": 4,
       "SpreadRecoveryDelay": 0.1,
       "SpreadRecoveryRate": 6,
-      "RecoilVertical": 0,
-      "RecoilHorizontal": 0,
       "ADSSpeed": 0.18,
       "ADSMoveSpeedMultiplier": 1,
-      "MoveSpeedMultiplier": 1.05,
-      "EquipTime": 0.35
+      "MoveSpeedMultiplier": 1.05
     }
   },
   {
@@ -297,12 +282,9 @@
       "MaxSpreadBloomADS": 6,
       "SpreadRecoveryDelay": 0.3,
       "SpreadRecoveryRate": 4,
-      "RecoilVertical": 0,
-      "RecoilHorizontal": 0,
       "ADSSpeed": 0.3,
       "ADSMoveSpeedMultiplier": 0.9,
       "MoveSpeedMultiplier": 0.95,
-      "EquipTime": 0.5,
       "PelletSpreadAngle": 12
     }
   }

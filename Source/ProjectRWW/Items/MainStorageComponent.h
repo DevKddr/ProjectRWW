@@ -26,12 +26,13 @@ public:
 	// Slots 크기를 맞춘다. 로드 직후(역직렬화 다음) 호출한다.
 	void ApplyTier(int32 NewTier);
 
-	// 지금 등급의 가로 칸 수. StorageTier로부터 매번 다시 조회하는 파생값이라 별도로
-	// 저장/리플리케이트하지 않는다. UI가 그리드 배치(줄바꿈 위치)를 계산할 때 쓴다.
-	UFUNCTION(BlueprintPure, Category = "Storage")
-	int32 GetColumnCount() const;
-
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+protected:
+	// 지금 등급의 가로 칸 수. StorageTier로부터 매번 다시 조회하는 파생값이라 별도로
+	// 저장/리플리케이트하지 않는다. 부모의 Columns 필드 대신 등급 데이터를 참조하도록
+	// 오버라이드한다.
+	virtual int32 GetColumnCount_Implementation() const override;
 
 private:
 	// GameInstance -> UStorageTierDataManager 서브시스템 -> GetTierData 순으로 조회하는

@@ -18,8 +18,14 @@ public:
 	// 인벤토리는 항상 이 크기로 고정된다(4행x9열, 앞 9칸이 핫바).
 	static constexpr int32 InventorySlotCount = 36;
 
-	// 지금 손에 장착 중인 아이템이 Slots의 몇 번 슬롯에서 왔는지.
-	// -1이면 빈손. 서버 전용 값이라 리플리케이트 안 한다.
+	// 지금 손에 장착 중인 아이템이 Slots의 몇 번 슬롯에서 왔는지. -1이면 빈손.
+	// 장착 시각효과(Draw 몽타주 등)의 리플리케이션은 이제 MainWeaponComponent가
+	// 전담한다(WeaponIndex/EquippedSlotIndex/ActiveItemIndex) - 여기서는 오너
+	// 클라이언트의 핫바 UI가 "지금 몇 번 슬롯이 선택돼 있는지" 표시할 수 있도록
+	// 리플리케이트만 하고, 재실행 로직(OnRep)은 두지 않는다. 이전에 OnRep에서
+	// EquipItem()을 다시 불렀던 건 MainWeaponComponent 쪽 리플리케이션과 중복
+	// 실행되어 아이템 Actor가 두 번 스폰/파괴되는 문제가 있었다.
+	UPROPERTY(Replicated)
 	int32 EquippedSlotIndex = -1;
 
 	virtual int32 AddItem(FName ItemIndex) override;
@@ -38,8 +44,14 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_EquipItem(int32 SlotIndex);
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 private:
 	// 소유자(PlayerController)가 지금 빙의한 폰의 MainWeaponComponent를 찾아 반환한다.
 	// 폰이 없거나 타입이 다르면 nullptr. 사망 등으로 폰이 계속 교체되니 캐싱하지 않는다.
 	class UMainWeaponComponent* GetWeaponComponent() const;
+
+	// 소유자(PlayerController)가 지금 빙의한 폰을 AMainCharacter로 반환한다. 위
+	// GetWeaponComponent()와 같은 이유로 캐싱하지 않는다.
+	class AMainCharacter* GetMainCharacter() const;
 };

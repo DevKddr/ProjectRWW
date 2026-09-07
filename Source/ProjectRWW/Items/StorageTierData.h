@@ -15,8 +15,9 @@ struct FStorageTierData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Storage")
 	int32 Tier = 0;
 
+	// 전체 칸 수. 세로 줄 수는 저장하지 않고 위젯이 SlotCount / Cols로 계산한다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Storage")
-	int32 Rows = 0;
+	int32 SlotCount = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Storage")
 	int32 Cols = 0;
