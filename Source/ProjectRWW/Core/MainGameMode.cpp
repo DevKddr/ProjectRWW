@@ -231,6 +231,12 @@ void AMainGameMode::HandleExtraction(APlayerController* Player)
 			if (Character->WeaponComponent)
 			{
 				Character->WeaponComponent->UnequipWeapon();
+
+				// HandlePlayerDeath()와 같은 이유 - 바로 아래에서 폰을 파괴하면
+				// UnequipWeapon()이 바꾼 프로퍼티가 리플리케이션될 시간이 없을 수
+				// 있어서, 각 클라이언트의 로컬 무기 Actor 정리를 확실하게 Multicast로
+				// 직접 지시한다.
+				Character->WeaponComponent->Multicast_DestroyWeaponActor();
 			}
 		}
 

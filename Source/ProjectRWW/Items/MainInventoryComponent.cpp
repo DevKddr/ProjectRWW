@@ -124,14 +124,17 @@ void UMainInventoryComponent::UnequipItem()
 		{
 			Slots[EquippedSlotIndex].CurrentAmmo = WeaponComponent->GetCurrentAmmo();
 		}
+		// UnequipWeapon() 하나로 충분하다 - ActiveHandActor가 무기/아이템 공용
+		// 슬롯이 된 뒤로는, WeaponIndex가 None이 되면서 GetItemData(None)이 실패해
+		// 지금 슬롯에 있는 게 무기든 비무기 아이템이든 상관없이 이미 지워진다.
+		// 예전엔 ActiveWeaponActor/ActiveItemActor가 분리돼 있어서 아이템 쪽을
+		// EquipItemVisual(NAME_None)으로 따로 지워줘야 했지만, 지금 그 호출을 남겨두면
+		// ActiveItemIndex가 실제로 값이 바뀌어서(예: "UNARMED" -> NAME_None) 원격
+		// 클라이언트에 OnRep_ActiveItemIndex가 별도로 하나 더 발동한다 - 이게
+		// OnRep_ReplicationSequence(무기 쪽)와 서로 다른 순서로 도착할 수 있어서,
+		// "무기가 먼저 스폰된 뒤 아이템 쪽이 뒤늦게 도착해 방금 스폰된 무기를
+		// 지워버리는" 레이스의 원인이었다.
 		WeaponComponent->UnequipWeapon();
-
-		// 비무기 아이템도 여기서 같이 내린다 - 무기로 바꾸는 경우 EquipItem()의
-		// Weapon 분기는 아이템 쪽을 건드리지 않아서, 여기서 안 지우면 이전에 들고
-		// 있던 비무기 아이템(예: I_1의 큐브)이 새 무기와 함께 계속 손에 남아있게 된다.
-		// EquipItemVisual(NAME_None)은 GetItemData(NAME_None)이 실패하는 걸 이용해
-		// "현재 아이템을 그냥 지운다"는 뜻으로 쓴다 - EquipWeapon(NAME_None, ...)과 같은 패턴.
-		WeaponComponent->EquipItemVisual(NAME_None);
 	}
 
 	// EquippedSlotIndex는 여기서 리셋하지 않는다 - TakeSlot()이 "지금 선택된 슬롯을

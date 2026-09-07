@@ -8,6 +8,8 @@
 #include "TimerManager.h"
 #include "MainWeaponComponent.generated.h"
 
+class AMainCharacter;
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class PROJECTRWW_API UMainWeaponComponent : public UActorComponent
 {
@@ -205,19 +207,16 @@ protected:
 	UFUNCTION()
 	void OnRep_IsAiming();
 
-	// ReplicationSequence가 복제되어 도착하면 클라이언트가 스스로 EquipWeapon()을 다시
-	// 실행해 로컬 상태(스탯, 무기 Actor, FullAuto/Burst 타이머 정리)를 서버와 맞춘다.
-	// EquippedSlotIndex 자체를 트리거로 쓰지 않는 이유는 ReplicationSequence 선언부 주석 참고.
+	// ReplicationSequence가 복제되어 도착하면 클라이언트가 스스로 EquipWeapon() 또는
+	// EquipItemVisual()을 재실행해 로컬 상태를 서버와 맞춘다. 무기/아이템 둘 다 이
+	// 하나의 트리거를 공유한다 - 각자 따로 트리거(OnRep_ActiveItemIndex 등)를 두면,
+	// 무기 전환과 아이템 전환이 같은 프레임에 겹칠 때(예: 아이템<->무기 전환은 항상
+	// WeaponIndex와 ActiveItemIndex가 같이 바뀐다) 원격 클라이언트에서 두 OnRep이
+	// 서로 다른 순서로 도착해 방금 스폰된 액터를 반대쪽이 지워버리는 레이스가 있었다.
+	// 하나로 합치면 HasWeaponEquipped()로 "지금 최종적으로 뭐가 맞는지"만 판단해서
+	// 그쪽 함수 하나만 실행하므로 그런 레이스 자체가 불가능해진다.
 	UFUNCTION()
 	void OnRep_ReplicationSequence();
-
-	// ActiveItemIndex가 복제되어 도착하면 클라이언트가 스스로 EquipItemVisual()을
-	// 다시 실행한다. EquippedSlotIndex/OnRep_EquippedSlotIndex()와 같은 이유(같은 값
-	// 재적용 시에도 놓치지 않기 위함)로 별도 트리거 없이 이 값 자체를 트리거로 쓴다 -
-	// 아이템은 무기와 달리 "슬롯 번호"가 아니라 "Index 자체가 바뀌었는지"만 보면 충분하다
-	// (같은 아이템을 다른 슬롯에서 재장착하는 케이스가 없으므로).
-	UFUNCTION()
-	void OnRep_ActiveItemIndex();
 
 	// weapons.json의 "index"와 매칭되는 키. 리플리케이트는 되지만, 값 변경 알림은
 	// ReplicationSequence가 대신 담당한다(같은 무기 재장착 시에도 놓치지 않기 위해).
@@ -240,8 +239,9 @@ protected:
 	int32 ReplicationSequence = 0;
 
 	// 지금 손에 든 비무기 아이템의 Index. NAME_None이면 무기가 장착된 상태(또는 아직
-	// 아무것도 장착 안 된 초기 상태).
-	UPROPERTY(ReplicatedUsing = OnRep_ActiveItemIndex)
+	// 아무것도 장착 안 된 초기 상태). 트리거 역할은 위 ReplicationSequence가 공용으로
+	// 담당한다.
+	UPROPERTY(Replicated)
 	FName ActiveItemIndex;
 
 	// --- FWeaponItem 최상위 필드 ---

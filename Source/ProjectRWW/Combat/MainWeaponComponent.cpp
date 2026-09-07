@@ -207,11 +207,27 @@ void UMainWeaponComponent::UnequipWeapon()
 
 void UMainWeaponComponent::OnRep_ReplicationSequence()
 {
-	EquipWeapon(WeaponIndex, -2, EquippedSlotIndex);
+	// 무기와 아이템은 항상 배타적이라, 지금 뭐가 진짜 활성 상태인지(WeaponIndex)만
+	// 보고 그쪽 함수 하나만 재실행하면 된다 - 두 트리거가 따로 있을 때는 어느 게
+	// 먼저 도착하느냐에 따라 방금 스폰된 걸 반대쪽이 지워버리는 레이스가 있었는데,
+	// 트리거를 하나로 합치면 그 레이스 자체가 없어진다(재실행이 항상 한 번만,
+	// 항상 최종 상태 기준으로 일어나므로).
+	if (HasWeaponEquipped())
+	{
+		EquipWeapon(WeaponIndex, -2, EquippedSlotIndex);
+	}
+	else
+	{
+		EquipItemVisual(ActiveItemIndex);
+	}
 }
 
 void UMainWeaponComponent::EquipItemVisual(FName ItemIndex)
 {
+	// 원격 클라이언트에게 "장착이 다시 일어났다"는 걸 반드시 알리기 위한 트리거 -
+	// EquipWeapon()과 공유하는 ReplicationSequence 선언부 주석 참고.
+	++ReplicationSequence;
+
 	ActiveItemIndex = ItemIndex;
 
 	// 무기 Actor 스폰 로직(EquipWeapon())과 완전히 같은 패턴 - 새 걸 먼저 붙이고
@@ -248,11 +264,6 @@ void UMainWeaponComponent::EquipItemVisual(FName ItemIndex)
 	}
 }
 
-void UMainWeaponComponent::OnRep_ActiveItemIndex()
-{
-	EquipItemVisual(ActiveItemIndex);
-}
-
 void UMainWeaponComponent::Multicast_DestroyWeaponActor_Implementation()
 {
 	if (ActiveHandActor)
@@ -273,14 +284,11 @@ void UMainWeaponComponent::StartFire()
 
 	// FullAuto는 버튼을 뗄 때까지 FireRate_RPS 간격으로 계속 쏴야 하므로 반복 타이머를 건다.
 	// 첫 발은 위에서 이미 쐈으니, 타이머의 첫 실행은 한 박자 뒤로 미룬다(중복 발사 방지).
-	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] StartFire called. FireMode=%s, FireRate_RPS=%.2f"), *FireMode.ToString(), FireRate_RPS);
-
 	if (FireMode == TEXT("FullAuto"))
 	{
 		if (UWorld* World = GetWorld())
 		{
 			const float FireIntervalSeconds = FireRate_RPS > 0.0f ? (1.0f / FireRate_RPS) : 0.0f;
-			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] FullAuto timer armed, interval=%.3f"), FireIntervalSeconds);
 			World->GetTimerManager().SetTimer(AutoFireTimerHandle, this, &UMainWeaponComponent::RequestFire, FireIntervalSeconds, true, FireIntervalSeconds);
 		}
 	}
@@ -343,8 +351,11 @@ void UMainWeaponComponent::RequestFire()
 
 		// 서버가 허용하는 실제 발사 간격보다 빠른 클릭은 애니메이션도 재생하지 않는다 -
 		// 안 그러면 Semi에서 연타할 때 애니메이션만 매번 나오고 실제 발사(탄 소모/피격)는
-		// 서버 쪽 간격 제한에 걸려 뒤처지는 불일치가 생긴다.
-		if (Now >= NextAllowedPredictedFireTimeSeconds)
+		// 서버 쪽 간격 제한에 걸려 뒤처지는 불일치가 생긴다. 다만 이건 순전히 로컬
+		// 예측(애니메이션)용 값이라 서버 판정과는 무관하므로, 프레임 지터로 인한
+		// 오탐 스킵을 줄이려고 여기도 서버와 같은 비율만큼 살짝 일찍 허용한다.
+		constexpr float ClientFireRateToleranceRatio = 0.1f;
+		if (Now >= NextAllowedPredictedFireTimeSeconds - FireIntervalSeconds * ClientFireRateToleranceRatio)
 		{
 			// 다음 허용 시각을 "지금"이 아니라 "이전 허용 시각 + 간격"으로 고정한다 -
 			// 프레임 지터로 이번 체크가 살짝 늦게 들어와도 오차가 누적되지 않고, 한 번
@@ -389,6 +400,15 @@ void UMainWeaponComponent::RequestFire()
 				}
 			}
 		}
+
+		// 탄약이 있을 때만 서버에 발사 요청을 보낸다 - 어차피 서버(ServerFire_Implementation)가
+		// CurrentAmmo<=0이면 거부하지만, 그건 RPC가 이미 나간 뒤라 대역폭 낭비다. FullAuto로
+		// 빈 탄창에서 방아쇠를 계속 누르고 있으면 이 낭비가 매 간격마다 반복된다.
+		FVector ViewLocation;
+		FRotator ViewRotation;
+		OwnerPawn->GetController()->GetPlayerViewPoint(ViewLocation, ViewRotation);
+
+		ServerFire(ViewLocation, ViewRotation.Vector());
 	}
 	else if (!bAmmoEmptyNotified)
 	{
@@ -403,12 +423,6 @@ void UMainWeaponComponent::RequestFire()
 			OwningCharacter->ReceiveWeaponFireStopped();
 		}
 	}
-
-	FVector ViewLocation;
-	FRotator ViewRotation;
-	OwnerPawn->GetController()->GetPlayerViewPoint(ViewLocation, ViewRotation);
-
-	ServerFire(ViewLocation, ViewRotation.Vector());
 }
 
 float UMainWeaponComponent::UpdateSpread()
@@ -585,7 +599,13 @@ void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& 
 	const double Now = FPlatformTime::Seconds();
 	const float FireIntervalSeconds = FireRate_RPS > 0.0f ? (1.0f / FireRate_RPS) : 0.0f;
 
-	if (Now < NextAllowedFireTimeSeconds)
+	// 네트워크 지연/지터로 클라이언트의 발사 요청이 서버에 도착하는 시각이 몇 ms
+	// 늦어질(또는 일찍 도착할) 수 있다. 검사할 때만 간격의 10%만큼 살짝 일찍
+	// 허용해서 지터로 인한 오탐 거부를 줄인다 - 다음 허용 시각(NextAllowedFireTimeSeconds)은
+	// 항상 정확한 FireIntervalSeconds로 갱신되므로, 이 여유가 연사 속도 자체를
+	// 앞당기지는 않는다.
+	constexpr float ServerFireRateToleranceRatio = 0.1f;
+	if (Now < NextAllowedFireTimeSeconds - FireIntervalSeconds * ServerFireRateToleranceRatio)
 	{
 		return;
 	}
@@ -751,6 +771,12 @@ void UMainWeaponComponent::Server_Reload_Implementation()
 
 	if (UWorld* World = GetWorld())
 	{
+		// 진행 중이던 버스트의 남은 발을 여기서 확실히 끊는다 - 안 그러면
+		// bIsReloading이 true가 된 뒤에도 FireBurstShot()이 이 값을 확인하지
+		// 않아서 서버가 남은 발을 계속 실제로 쏴버린다(대미지/탄약 소모 포함).
+		World->GetTimerManager().ClearTimer(BurstTimerHandle);
+		PendingBurstShotsRemaining = 0;
+
 		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::CompleteReload, ReloadTime, false);
 	}
 }

@@ -76,7 +76,7 @@
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_I_1.T_Icon_I_1",
     "actorClassPath": "/Game/Items/Dummy/BP_I_1.BP_I_1_C",
-    "equipTime": 1
+    "equipTime": 5
   },
   {
     "index": "I_2",
