@@ -43,7 +43,7 @@ void UMainWeaponComponent::EquipVisual(UClass* ActorClass, TObjectPtr<AActor>& O
 		{
 			if (USceneComponent* AttachTarget = WeaponMeshComponent->GetAttachParent())
 			{
-				NewActor->AttachToComponent(AttachTarget, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("VB ik_hand_gun"));
+				NewActor->AttachToComponent(AttachTarget, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("VB ik_hand_gun_pivot"));
 			}
 
 			if (OutActiveActor)
