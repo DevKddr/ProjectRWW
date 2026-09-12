@@ -6,13 +6,16 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
-#include "Combat/MainHPComponent.h"
-#include "Combat/MainManaComponent.h"
 #include "Combat/MainWeaponComponent.h"
-#include "Combat/MainEffectTickComponent.h"
 #include "Core/MainGameMode.h"
-#include "PlayerBaseStat/PlayerStatManager.h"
 #include "Net/UnrealNetwork.h"
+#include "Player/MainPlayerState.h"
+#include "GAS/MainAttributeSet.h"
+#include "AbilitySystemComponent.h"
+#include "GAS/GameplayEffects/GE_Damage.h"
+#include "GAS/GameplayEffects/GE_DamagedTag.h"
+#include "GAS/MainGameplayTags.h"
+#include "PlayerBaseStat/PlayerStatManager.h"
 
 AMainCharacter::AMainCharacter()
 {
@@ -20,10 +23,7 @@ AMainCharacter::AMainCharacter()
 	bReplicates = true;
 	GetCharacterMovement()->SetIsReplicated(true);
 
-	HPComponent = CreateDefaultSubobject<UMainHPComponent>(TEXT("HPComponent"));
-	ManaComponent = CreateDefaultSubobject<UMainManaComponent>(TEXT("ManaComponent"));
 	WeaponComponent = CreateDefaultSubobject<UMainWeaponComponent>(TEXT("WeaponComponent"));
-	EffectTickComponent = CreateDefaultSubobject<UMainEffectTickComponent>(TEXT("EffectTickComponent"));
 }
 
 void AMainCharacter::OnFire(const FInputActionValue& Value)
@@ -77,7 +77,7 @@ void AMainCharacter::OnADSStop(const FInputActionValue& Value)
 void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 {
 	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 반응.
-	GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
+	SyncMovementSpeedFromAttributes(true);
 	ServerSetSprinting(true);
 
 	if (bIsMoving)
@@ -88,7 +88,7 @@ void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 
 void AMainCharacter::OnSprintStop(const FInputActionValue& Value)
 {
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	SyncMovementSpeedFromAttributes(false);
 	ServerSetSprinting(false);
 
 	if (bIsMoving)
@@ -106,7 +106,7 @@ void AMainCharacter::OnMoveStopped(const FInputActionValue& Value)
 void AMainCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)
 {
 	bSprintRequested = bNewSprinting;
-	GetCharacterMovement()->MaxWalkSpeed = bNewSprinting ? RunSpeed : WalkSpeed;
+	SyncMovementSpeedFromAttributes(bNewSprinting);
 }
 
 void AMainCharacter::Tick(float DeltaSeconds)
@@ -147,41 +147,9 @@ void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// PlayerBaseStat.json에서 이동 스탯을 채운다. 로드 실패 시 0으로 남아 눈에 띄게
-	// 망가지는 쪽을 택했다(조용한 폴백 없음) — MainHPComponent와 동일한 정책.
-	if (UGameInstance* GameInstance = GetGameInstance())
-	{
-		if (UPlayerStatManager* StatManager = GameInstance->GetSubsystem<UPlayerStatManager>())
-		{
-			const FPlayerBaseStat& Stat = StatManager->GetBaseStat();
-			WalkSpeed = Stat.WalkSpeed;
-			RunSpeed = Stat.RunSpeed;
-			JumpPower = Stat.JumpPower;
-		}
-	}
-
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-	GetCharacterMovement()->JumpZVelocity = JumpPower;
-
-	// 서버에서만 등록 — HPComponent 자체의 델리게이트 등록과 같은 이유(서버 권위 유지).
-	// 클라이언트에도 등록하면 사망 정산(HandlePlayerDeath)이 클라이언트에서도 시도되어 위험하다.
-	if (HasAuthority() && HPComponent)
-	{
-		HPComponent->OnDeath.AddDynamic(this, &AMainCharacter::OnDeath);
-	}
-
-	// 회복 등 주기적 이펙트 처리 — EffectTickComponent가 신호를 보내면 HP/Mana가 각자 반응한다.
-	if (HasAuthority() && EffectTickComponent)
-	{
-		if (HPComponent)
-		{
-			EffectTickComponent->OnEffectTick.AddDynamic(HPComponent, &UMainHPComponent::OnEffectTick);
-		}
-		if (ManaComponent)
-		{
-			EffectTickComponent->OnEffectTick.AddDynamic(ManaComponent, &UMainManaComponent::OnEffectTick);
-		}
-	}
+	// 이동 스탯은 이제 PlayerState의 AttributeSet이 관리한다(InitAbilitySystem에서
+	// ResetStatsToFull 호출 후 동기화됨) - 혹시 몰라 한 번 더 동기화만 해준다.
+	SyncMovementSpeedFromAttributes(false);
 
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
@@ -200,12 +168,137 @@ void AMainCharacter::BeginPlay()
 	}
 }
 
-void AMainCharacter::OnDeath(AController* Killer)
+void AMainCharacter::PossessedBy(AController* NewController)
 {
+	Super::PossessedBy(NewController);
+	InitAbilitySystem();
+}
+
+void AMainCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	InitAbilitySystem();
+}
+
+UMainAttributeSet* AMainCharacter::GetMainAttributeSet() const
+{
+	const AMainPlayerState* MainPS = GetPlayerState<AMainPlayerState>();
+	return MainPS ? MainPS->GetMainAttributeSet() : nullptr;
+}
+
+bool AMainCharacter::IsSprinting() const
+{
+	const UMainAttributeSet* AttrSet = GetMainAttributeSet();
+	return AttrSet && GetCharacterMovement()->MaxWalkSpeed >= AttrSet->GetRunSpeed();
+}
+
+void AMainCharacter::InitAbilitySystem()
+{
+	AMainPlayerState* MainPS = GetPlayerState<AMainPlayerState>();
+	if (!MainPS)
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = MainPS->GetAbilitySystemComponent())
+	{
+		ASC->InitAbilityActorInfo(MainPS, this);
+	}
+
+	if (UMainAttributeSet* AttrSet = MainPS->GetMainAttributeSet())
+	{
+		AttrSet->OnDeath.RemoveAll(this);
+		AttrSet->OnDeath.AddUObject(this, &AMainCharacter::HandleAttributeDeath);
+
+		AttrSet->OnMovementAttributesChanged.RemoveAll(this);
+		AttrSet->OnMovementAttributesChanged.AddUObject(this, &AMainCharacter::HandleMovementAttributesChanged);
+	}
+
+	if (HasAuthority())
+	{
+		MainPS->ResetStatsToFull();
+
+		// 재빙의 시 중복 등록 방지를 위해 먼저 제거 후 다시 건다 (AttrSet->OnDeath와 동일 패턴).
+		OnTakeAnyDamage.RemoveDynamic(this, &AMainCharacter::OnTakeAnyDamage_GAS);
+		OnTakeAnyDamage.AddDynamic(this, &AMainCharacter::OnTakeAnyDamage_GAS);
+	}
+
+	SyncMovementSpeedFromAttributes(bSprintRequested);
+}
+
+void AMainCharacter::SyncMovementSpeedFromAttributes(bool bSprinting)
+{
+	UMainAttributeSet* AttrSet = GetMainAttributeSet();
+	if (!AttrSet)
+	{
+		return;
+	}
+
+	GetCharacterMovement()->MaxWalkSpeed = bSprinting ? AttrSet->GetRunSpeed() : AttrSet->GetWalkSpeed();
+	GetCharacterMovement()->JumpZVelocity = AttrSet->GetJumpPower();
+}
+
+void AMainCharacter::HandleMovementAttributesChanged()
+{
+	SyncMovementSpeedFromAttributes(bSprintRequested);
+}
+
+void AMainCharacter::HandleAttributeDeath(AActor* Avatar, AController* Killer)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	if (AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
 	{
 		GameMode->HandlePlayerDeath(Cast<APlayerController>(GetController()), Killer);
 	}
+}
+
+void AMainCharacter::OnTakeAnyDamage_GAS(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	if (Damage <= 0.0f)
+	{
+		return;
+	}
+
+	AMainPlayerState* MainPS = GetPlayerState<AMainPlayerState>();
+	UAbilitySystemComponent* ASC = MainPS ? MainPS->GetAbilitySystemComponent() : nullptr;
+	if (!ASC)
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+	Context.AddInstigator(InstigatedBy, DamageCauser);
+
+	FGameplayEffectSpecHandle DamageSpec = ASC->MakeOutgoingSpec(UGE_Damage::StaticClass(), 1.0f, Context);
+	DamageSpec.Data->SetSetByCallerMagnitude(MainGameplayTags::Data_Damage.GetTag(), Damage);
+	ASC->ApplyGameplayEffectSpecToSelf(*DamageSpec.Data);
+
+	// 회복 지연 태그 - HPRegenDelay초 뒤 자동 만료된다. 연속으로 맞으면 매번 새 인스턴스가
+	// 걸리는데(스택 안 함), 각자 독립적으로 만료되므로 결과적으로 "마지막 피격 후
+	// HPRegenDelay초"가 유지되는 것과 동일하다.
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UPlayerStatManager* StatManager = GameInstance->GetSubsystem<UPlayerStatManager>())
+		{
+			FGameplayEffectSpecHandle TagSpec = ASC->MakeOutgoingSpec(UGE_DamagedTag::StaticClass(), 1.0f, Context);
+			TagSpec.Data->SetSetByCallerMagnitude(MainGameplayTags::Data_HPRegenDelay.GetTag(), StatManager->GetBaseStat().HPRegenDelay);
+			ASC->ApplyGameplayEffectSpecToSelf(*TagSpec.Data);
+		}
+	}
+
+	const FString KillerName = (InstigatedBy && InstigatedBy->PlayerState)
+		? InstigatedBy->PlayerState->GetPlayerName()
+		: TEXT("Unknown");
+	const AController* VictimController = GetController();
+	const FString VictimName = (VictimController && VictimController->PlayerState)
+		? VictimController->PlayerState->GetPlayerName()
+		: GetNameSafe(this);
+
+	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s -> %s: %.1f damage (GAS)"), *KillerName, *VictimName, Damage);
 }
 
 void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -271,8 +364,7 @@ void AMainCharacter::OnMove(const FInputActionValue& Value)
 		if (!bIsMoving)
 		{
 			bIsMoving = true;
-			const bool bIsSprinting = GetCharacterMovement()->MaxWalkSpeed >= RunSpeed;
-			ReceiveMovementChange(bIsSprinting ? 2.0f : 1.0f);
+			ReceiveMovementChange(IsSprinting() ? 2.0f : 1.0f);
 		}
 
 		// 디버그용: 각 축 속도 확인

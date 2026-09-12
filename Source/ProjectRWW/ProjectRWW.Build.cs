@@ -23,7 +23,10 @@ public class ProjectRWW : ModuleRules
             "Json",
             "JsonUtilities",
             "SQLiteCore",
-            "DeveloperSettings"
+            "DeveloperSettings",
+            "GameplayAbilities",
+            "GameplayTags",
+            "GameplayTasks"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

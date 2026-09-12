@@ -9,11 +9,15 @@
 #include "Net/UnrealNetwork.h"
 #include "Weapons/WeaponDataManager.h"
 #include "Items/ItemDataManager.h"
-#include "Combat/MainManaComponent.h"
 #include "TimerManager.h"
 #include "Engine/SkeletalMesh.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Player/MainCharacter.h"
+#include "Player/MainPlayerState.h"
+#include "GAS/GameplayEffects/GE_ManaCost.h"
+#include "GAS/MainAttributeSet.h"
+#include "GAS/MainGameplayTags.h"
+#include "AbilitySystemComponent.h"
 
 UMainWeaponComponent::UMainWeaponComponent()
 {
@@ -760,11 +764,20 @@ void UMainWeaponComponent::Server_Reload_Implementation()
 		return;
 	}
 
-	UMainManaComponent* ManaComp = GetOwner() ? GetOwner()->FindComponentByClass<UMainManaComponent>() : nullptr;
-	if (!ManaComp || !ManaComp->ConsumeMana(RequiredMana))
+	AMainCharacter* OwnerCharacter = Cast<AMainCharacter>(GetOwner());
+	AMainPlayerState* MainPS = OwnerCharacter ? OwnerCharacter->GetPlayerState<AMainPlayerState>() : nullptr;
+	UAbilitySystemComponent* ASC = MainPS ? MainPS->GetAbilitySystemComponent() : nullptr;
+	UMainAttributeSet* AttrSet = MainPS ? MainPS->GetMainAttributeSet() : nullptr;
+
+	if (!ASC || !AttrSet || AttrSet->GetMana() < RequiredMana)
 	{
 		return;
 	}
+
+	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+	FGameplayEffectSpecHandle CostSpec = ASC->MakeOutgoingSpec(UGE_ManaCost::StaticClass(), 1.0f, Context);
+	CostSpec.Data->SetSetByCallerMagnitude(MainGameplayTags::Data_ManaCost.GetTag(), -RequiredMana);
+	ASC->ApplyGameplayEffectSpecToSelf(*CostSpec.Data);
 
 	bIsReloading = true;
 	ReloadStartTimeSeconds = GetWorld()->GetTimeSeconds();

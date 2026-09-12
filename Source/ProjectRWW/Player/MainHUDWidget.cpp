@@ -2,8 +2,7 @@
 
 #include "MainHUDWidget.h"
 #include "Player/MainCharacter.h"
-#include "Combat/MainHPComponent.h"
-#include "Combat/MainManaComponent.h"
+#include "GAS/MainAttributeSet.h"
 #include "Combat/MainWeaponComponent.h"
 #include "Player/MainPlayerController.h"
 
@@ -17,16 +16,12 @@ void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		return;
 	}
 
-	if (const UMainHPComponent* HPComp = OwningCharacter->HPComponent)
+	if (const UMainAttributeSet* AttrSet = OwningCharacter->GetMainAttributeSet())
 	{
-		CurrentHP = HPComp->GetCurrentHP();
-		MaxHP = HPComp->GetMaxHP();
-	}
-
-	if (const UMainManaComponent* ManaComp = OwningCharacter->ManaComponent)
-	{
-		CurrentMana = ManaComp->GetCurrentMana();
-		MaxMana = ManaComp->GetMaxMana();
+		CurrentHP = AttrSet->GetHealth();
+		MaxHP = AttrSet->GetMaxHealth();
+		CurrentMana = AttrSet->GetMana();
+		MaxMana = AttrSet->GetMaxMana();
 	}
 
 	if (const UMainWeaponComponent* WeaponComp = OwningCharacter->WeaponComponent)
