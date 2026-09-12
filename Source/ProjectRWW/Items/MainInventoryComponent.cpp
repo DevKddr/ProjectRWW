@@ -6,6 +6,7 @@
 #include "Combat/MainWeaponComponent.h"
 #include "ItemDataManager.h"
 #include "Net/UnrealNetwork.h"
+#include "Abilities/GameplayAbility.h"
 
 UMainWeaponComponent* UMainInventoryComponent::GetWeaponComponent() const
 {
@@ -105,6 +106,20 @@ void UMainInventoryComponent::EquipItem(int32 SlotIndex)
 		// 리플리케이트되기 때문이다. MainInventoryComponent(PlayerController 위)는
 		// 소유 클라이언트에게만 리플리케이트되어 이 용도로 못 쓴다.
 		WeaponComponent->EquipItemVisual(ItemData.Index);
+
+		// 스킬 클래스는 데이터 필드가 아니라 아이템 코드로 직접 조합해서 찾는다 -
+		// "아이템 코드와 스킬 클래스명은 항상 1:1로 일치시킨다"는 규칙 확정에 따름.
+		// 스킬 없는 슬롯(UNARMED, 스킬 하나뿐인 아이템의 나머지 슬롯 등)은 이 이름의
+		// 클래스가 애초에 존재하지 않아 FindObject가 nullptr을 돌려주고,
+		// GrantItemSkillAbility()가 그 슬롯만 조용히 비워둔다. FindObject를 쓰는
+		// 이유: 이 클래스들은 전부 네이티브 C++라 게임 모듈 로드 시점에 이미
+		// 메모리에 있다 - LoadClass처럼 없는 클래스마다 경고 로그를 남기지 않고
+		// 조용히 nullptr을 반환한다.
+		const FString PrimaryClassPath = FString::Printf(TEXT("/Script/ProjectRWW.GA_ItemSkill_%s_Primary"), *ItemData.Index.ToString());
+		WeaponComponent->GrantItemSkillAbility(FindObject<UClass>(nullptr, *PrimaryClassPath), EMainAbilityInputID::Primary);
+
+		const FString SecondaryClassPath = FString::Printf(TEXT("/Script/ProjectRWW.GA_ItemSkill_%s_Secondary"), *ItemData.Index.ToString());
+		WeaponComponent->GrantItemSkillAbility(FindObject<UClass>(nullptr, *SecondaryClassPath), EMainAbilityInputID::Secondary);
 	}
 }
 
@@ -135,6 +150,10 @@ void UMainInventoryComponent::UnequipItem()
 		// "무기가 먼저 스폰된 뒤 아이템 쪽이 뒤늦게 도착해 방금 스폰된 무기를
 		// 지워버리는" 레이스의 원인이었다.
 		WeaponComponent->UnequipWeapon();
+
+		// EquipItem()이 매번 맨 먼저 UnequipItem()을 부르므로, 여기 한 줄이 아이템→무기/
+		// 아이템→다른 아이템/완전 해제 모든 경로를 커버한다.
+		WeaponComponent->RevokeItemSkillAbilities();
 	}
 
 	// EquippedSlotIndex는 여기서 리셋하지 않는다 - TakeSlot()이 "지금 선택된 슬롯을

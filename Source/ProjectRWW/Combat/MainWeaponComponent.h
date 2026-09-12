@@ -6,9 +6,19 @@
 #include "Components/ActorComponent.h"
 #include "Weapons/WeaponData.h"
 #include "TimerManager.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "MainWeaponComponent.generated.h"
 
 class AMainCharacter;
+
+// 아이템 스킬이 묶이는 입력 슬롯. GAS의 FGameplayAbilitySpec::InputID로 그대로 캐스팅해서 쓴다.
+UENUM(BlueprintType)
+enum class EMainAbilityInputID : uint8
+{
+	None,
+	Primary,
+	Secondary
+};
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class PROJECTRWW_API UMainWeaponComponent : public UActorComponent
@@ -98,6 +108,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	void EquipItemVisual(FName ItemIndex);
 
+	// MainInventoryComponent::EquipItem()/UnequipItem()(둘 다 서버 전용 확인됨)이 호출한다 -
+	// EquipWeapon()/UnequipWeapon()/EquipItemVisual() 자체는 서버+클라이언트 리플레이 겸용
+	// 함수라 여기 넣으면 안 된다. HasAuthority() 체크가 없는 이유도 같다 - 호출부가
+	// 이미 서버 전용이라 여기서 다시 검사할 필요가 없다. SkillClass가 비어있으면(그 슬롯에
+	// 스킬이 없는 아이템) 기존에 그 슬롯에 부여돼있던 것만 회수하고 끝난다.
+	void GrantItemSkillAbility(TSubclassOf<class UGameplayAbility> SkillClass, EMainAbilityInputID InputID);
+
+	// 두 슬롯(Primary/Secondary) 다 회수한다 - UnequipItem()에서 호출.
+	void RevokeItemSkillAbilities();
+
+	// GAS 어빌리티가 "지금 장착된 아이템이 뭔지" 알아야 할 때 쓴다 - ActiveItemIndex는
+	// 이미 모든 클라이언트에 정확히 리플리케이트되어 있으므로(EquipItemVisual 참고),
+	// 이 값만 넘겨주면 서버든 클라이언트든 각자 알아서 같은 아이템 데이터를 조회할 수 있다.
+	UFUNCTION(BlueprintPure)
+	FName GetActiveItemIndex() const { return ActiveItemIndex; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	double GetEquippedTimeSeconds() const { return EquippedTimeSeconds; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetEquipTime() const { return EquipTime; }
+
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	int32 GetCurrentAmmo() const { return CurrentAmmo; }
 
@@ -145,6 +177,11 @@ public:
 	float GetMaxSpreadDegrees() const;
 
 protected:
+	// GrantItemSkillAbility()/RevokeItemSkillAbilities()가 관리하는, 지금 손에 든 아이템이
+	// 부여받은 스킬 어빌리티의 핸들. 스킬 없는 슬롯(맨손 등)이면 무효 상태로 남는다.
+	FGameplayAbilitySpecHandle GrantedPrimarySkillHandle;
+	FGameplayAbilitySpecHandle GrantedSecondarySkillHandle;
+
 	// 이번 발의 산포각을 계산하고, 다음 발을 위해 블룸을 누적한다. 서버(FireShot)와
 	// 원격 클라이언트(RequestFire) 각자 자기 상태로 이 함수를 호출한다.
 	float UpdateSpread();

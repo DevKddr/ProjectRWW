@@ -10,6 +10,7 @@
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
+struct FOnAttributeChangeData;
 
 // 팩의 Gait 값과 동일 규칙(0=Idle, 1=Walk, 2=Sprint). ReceiveMovementChange()에
 // 넘길 때만 float으로 변환한다.
@@ -132,6 +133,11 @@ protected:
 	UFUNCTION()
 	void HandleMovementAttributesChanged();
 
+	// ASC->GetGameplayAttributeValueChangeDelegate()에 바인딩되는 콜백. 위 함수(OnRep 기반)와
+	// 달리 서버에서도 발동한다 - GE가 WalkSpeed/RunSpeed를 바꾸는 즉시(리플리케이션을 거치지
+	// 않고) 재동기화해서, 서버 권위 이동속도가 스킬 효과를 실시간으로 반영하게 한다.
+	void HandleMovementAttributeValueChanged(const FOnAttributeChangeData& Data);
+
 	// AActor::OnTakeAnyDamage에 바인딩되는 콜백. GE_Damage/GE_DamagedTag를 적용해
 	// GAS 쪽 Health를 깎는다. 이름에 _GAS를 붙인 이유는 AActor의 OnTakeAnyDamage
 	// 델리게이트 멤버와 이름이 겹치면 이름 가리기(name hiding)로 컴파일이 깨지기 때문이다.
@@ -180,6 +186,9 @@ protected:
 	void OnADSStart(const FInputActionValue& Value);
 	void OnADSStop(const FInputActionValue& Value);
 
+	void OnItemSkillPrimary(const FInputActionValue& Value);
+	void OnItemSkillSecondary(const FInputActionValue& Value);
+
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
 
@@ -203,4 +212,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> ADSAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> ItemSkillPrimaryAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> ItemSkillSecondaryAction;
 };

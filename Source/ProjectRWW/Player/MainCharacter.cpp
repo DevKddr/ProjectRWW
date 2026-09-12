@@ -76,7 +76,11 @@ void AMainCharacter::OnADSStop(const FInputActionValue& Value)
 
 void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 {
-	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 반응.
+	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 반응. bSprintRequested도 여기서 갱신해야
+	// 이후(스킬 만료 등으로) 재동기화가 일어날 때 "지금 달리는 중"이라는 걸 클라이언트가
+	// 정확히 알 수 있다 - 예전엔 ServerSetSprinting_Implementation(서버 전용)에서만
+	// 갱신돼서 클라이언트에서는 항상 false로 고정돼있었다.
+	bSprintRequested = true;
 	SyncMovementSpeedFromAttributes(true);
 	ServerSetSprinting(true);
 
@@ -88,6 +92,7 @@ void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 
 void AMainCharacter::OnSprintStop(const FInputActionValue& Value)
 {
+	bSprintRequested = false;
 	SyncMovementSpeedFromAttributes(false);
 	ServerSetSprinting(false);
 
@@ -214,6 +219,18 @@ void AMainCharacter::InitAbilitySystem()
 		AttrSet->OnMovementAttributesChanged.AddUObject(this, &AMainCharacter::HandleMovementAttributesChanged);
 	}
 
+	if (UAbilitySystemComponent* ASC = MainPS->GetAbilitySystemComponent())
+	{
+		// OnMovementAttributesChanged(OnRep 기반)는 클라이언트에서만 발동해서 서버 쪽
+		// 재동기화 트리거가 없었다 - 이 델리게이트는 서버/클라이언트 양쪽에서 값이 바뀌는
+		// 즉시 발동해서 그 빈틈을 메운다(GetAbilitySystemComponent()는 위에서 이미
+		// InitAbilityActorInfo에 썼던 것과 같은 ASC).
+		ASC->GetGameplayAttributeValueChangeDelegate(UMainAttributeSet::GetWalkSpeedAttribute()).RemoveAll(this);
+		ASC->GetGameplayAttributeValueChangeDelegate(UMainAttributeSet::GetWalkSpeedAttribute()).AddUObject(this, &AMainCharacter::HandleMovementAttributeValueChanged);
+		ASC->GetGameplayAttributeValueChangeDelegate(UMainAttributeSet::GetRunSpeedAttribute()).RemoveAll(this);
+		ASC->GetGameplayAttributeValueChangeDelegate(UMainAttributeSet::GetRunSpeedAttribute()).AddUObject(this, &AMainCharacter::HandleMovementAttributeValueChanged);
+	}
+
 	if (HasAuthority())
 	{
 		MainPS->ResetStatsToFull();
@@ -239,6 +256,11 @@ void AMainCharacter::SyncMovementSpeedFromAttributes(bool bSprinting)
 }
 
 void AMainCharacter::HandleMovementAttributesChanged()
+{
+	SyncMovementSpeedFromAttributes(bSprintRequested);
+}
+
+void AMainCharacter::HandleMovementAttributeValueChanged(const FOnAttributeChangeData& Data)
 {
 	SyncMovementSpeedFromAttributes(bSprintRequested);
 }
@@ -340,6 +362,34 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 			EnhancedInput->BindAction(ADSAction, ETriggerEvent::Started, this, &AMainCharacter::OnADSStart);
 			EnhancedInput->BindAction(ADSAction, ETriggerEvent::Completed, this, &AMainCharacter::OnADSStop);
 		}
+		if (ItemSkillPrimaryAction)
+		{
+			EnhancedInput->BindAction(ItemSkillPrimaryAction, ETriggerEvent::Started, this, &AMainCharacter::OnItemSkillPrimary);
+		}
+		if (ItemSkillSecondaryAction)
+		{
+			EnhancedInput->BindAction(ItemSkillSecondaryAction, ETriggerEvent::Started, this, &AMainCharacter::OnItemSkillSecondary);
+		}
+	}
+}
+
+void AMainCharacter::OnItemSkillPrimary(const FInputActionValue& Value)
+{
+	AMainPlayerState* MainPS = GetPlayerState<AMainPlayerState>();
+	if (UAbilitySystemComponent* ASC = MainPS ? MainPS->GetAbilitySystemComponent() : nullptr)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][진단] OnItemSkillPrimary 입력 수신"));
+		ASC->AbilityLocalInputPressed(static_cast<int32>(EMainAbilityInputID::Primary));
+	}
+}
+
+void AMainCharacter::OnItemSkillSecondary(const FInputActionValue& Value)
+{
+	AMainPlayerState* MainPS = GetPlayerState<AMainPlayerState>();
+	if (UAbilitySystemComponent* ASC = MainPS ? MainPS->GetAbilitySystemComponent() : nullptr)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][진단] OnItemSkillSecondary 입력 수신"));
+		ASC->AbilityLocalInputPressed(static_cast<int32>(EMainAbilityInputID::Secondary));
 	}
 }
 

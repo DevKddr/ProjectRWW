@@ -1,6 +1,7 @@
 #include "GE_HealthRegen.h"
 #include "GAS/MainAttributeSet.h"
 #include "GAS/MainGameplayTags.h"
+#include "GameplayEffectComponents/TargetTagRequirementsGameplayEffectComponent.h"
 
 UGE_HealthRegen::UGE_HealthRegen()
 {
@@ -16,6 +17,13 @@ UGE_HealthRegen::UGE_HealthRegen()
 	RegenMagnitude.DataTag = MainGameplayTags::Data_HPRegen.GetTag();
 	Modifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(RegenMagnitude);
 	Modifiers.Add(Modifier);
+}
 
-	OngoingTagRequirements.IgnoreTags.AddTag(MainGameplayTags::State_Damaged);
+void UGE_HealthRegen::PostInitProperties()
+{
+	Super::PostInitProperties();
+
+	// GE_DamagedTag와 동일한 이유로 생성자 대신 PostInitProperties()에서 호출한다
+	// (FindOrAddComponent 내부의 NewObject(NAME_None)이 생성자 안에서는 크래시를 냄).
+	FindOrAddComponent<UTargetTagRequirementsGameplayEffectComponent>().OngoingTagRequirements.IgnoreTags.AddTag(MainGameplayTags::State_Damaged);
 }

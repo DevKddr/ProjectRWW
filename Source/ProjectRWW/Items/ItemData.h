@@ -49,4 +49,19 @@ struct FItemData : public FTableRowBase
 	// 옮겼다 - 비무기 아이템도 장착 시간이 필요하다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
 	float EquipTime = 0.0f;
+
+	// 이 아이템의 Primary/Secondary 스킬 쿨다운(초)/마나 소모량. 슬롯별로 따로 관리한다 -
+	// 스킬이 없는 슬롯은 0으로 둬도 무해함(UMainGameplayAbility::ConfigureCooldownAndCost가
+	// 0을 받으면 그냥 쿨다운/마나 없는 스킬처럼 동작).
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float PrimarySkillCooldown = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float PrimarySkillManaCost = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float SecondarySkillCooldown = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float SecondarySkillManaCost = 0.0f;
 };

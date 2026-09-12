@@ -12,4 +12,5 @@ class PROJECTRWW_API UGE_DamagedTag : public UGameplayEffect
 	GENERATED_BODY()
 public:
 	UGE_DamagedTag();
+	virtual void PostInitProperties() override;
 };

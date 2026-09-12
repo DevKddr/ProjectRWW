@@ -12,4 +12,5 @@ class PROJECTRWW_API UGE_HealthRegen : public UGameplayEffect
 	GENERATED_BODY()
 public:
 	UGE_HealthRegen();
+	virtual void PostInitProperties() override;
 };

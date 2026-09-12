@@ -18,6 +18,8 @@
 #include "GAS/MainAttributeSet.h"
 #include "GAS/MainGameplayTags.h"
 #include "AbilitySystemComponent.h"
+#include "Abilities/GameplayAbility.h"
+#include "GAS/Abilities/MainGameplayAbility.h"
 
 UMainWeaponComponent::UMainWeaponComponent()
 {
@@ -234,6 +236,12 @@ void UMainWeaponComponent::EquipItemVisual(FName ItemIndex)
 
 	ActiveItemIndex = ItemIndex;
 
+	// EquipWeapon()은 이 시각을 기록하는데 여기는 빠져있었다 - 그래서 아이템 장착 시
+	// IsStillEquipping()이 "마지막으로 무기를 장착했던 시각" 같은 엉뚱한 기준으로
+	// 판단해버려 장착 가드가 무력화되는 버그가 있었다. 무기든 아이템이든 "언제
+	// 장착했는지"는 똑같이 이 시각 하나로 관리해야 한다.
+	EquippedTimeSeconds = FPlatformTime::Seconds();
+
 	// 무기 Actor 스폰 로직(EquipWeapon())과 완전히 같은 패턴 - 새 걸 먼저 붙이고
 	// 헌 걸 나중에 지워서 손이 비는 순간을 없앤다. WeaponMeshComponent는 무기든
 	// 아이템이든 공통으로 쓰는 부착 대상(FirstPersonMesh)이다.
@@ -252,6 +260,11 @@ void UMainWeaponComponent::EquipItemVisual(FName ItemIndex)
 	FItemData ItemData;
 	if (ItemDataManager->GetItemData(ItemIndex, ItemData))
 	{
+		// EquipWeapon()은 이 값을 채우는데 여기는 빠져있었다 - 그래서 아이템 장착 시
+		// WeaponComponent::EquipTime이 갱신 안 되고 마지막 무기 값(또는 0)에 머물러
+		// 있었다. IsStillEquipping()이 이 값을 참조하는데, 갱신이 안 되니 장착 가드가
+		// 무력화되는 버그가 있었다.
+		EquipTime = ItemData.EquipTime;
 		EquipVisual(ItemData.ActorClassPath.LoadSynchronous(), ActiveHandActor);
 	}
 	else if (ActiveHandActor)
@@ -265,6 +278,60 @@ void UMainWeaponComponent::EquipItemVisual(FName ItemIndex)
 	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
 	{
 		OwningCharacter->ReceiveItemEquip(ItemIndex);
+	}
+}
+
+void UMainWeaponComponent::GrantItemSkillAbility(TSubclassOf<UGameplayAbility> SkillClass, EMainAbilityInputID InputID)
+{
+	FGameplayAbilitySpecHandle& TargetHandle = (InputID == EMainAbilityInputID::Primary)
+		? GrantedPrimarySkillHandle
+		: GrantedSecondarySkillHandle;
+
+	AMainCharacter* OwnerCharacter = Cast<AMainCharacter>(GetOwner());
+	AMainPlayerState* MainPS = OwnerCharacter ? OwnerCharacter->GetPlayerState<AMainPlayerState>() : nullptr;
+	UAbilitySystemComponent* ASC = MainPS ? MainPS->GetAbilitySystemComponent() : nullptr;
+	if (!ASC)
+	{
+		return;
+	}
+
+	if (TargetHandle.IsValid())
+	{
+		ASC->ClearAbility(TargetHandle);
+		TargetHandle = FGameplayAbilitySpecHandle();
+	}
+
+	if (!SkillClass)
+	{
+		// 이 슬롯에 스킬이 없는 아이템 - 기존 것만 회수하고 끝.
+		return;
+	}
+
+	// 쿨다운/마나 값은 더 이상 여기서 주입하지 않는다 - 어빌리티가 ActiveItemIndex를 보고
+	// 스스로 조회한다(EquipTime/ReloadTime과 같은 패턴). 서버 인스턴스에만 값이 꽂히고
+	// 클라이언트 예측 인스턴스는 못 받는 문제(Finding #1)가 이 방식 자체를 없애서 해결된다.
+	TargetHandle = ASC->GiveAbility(FGameplayAbilitySpec(SkillClass, 1, static_cast<int32>(InputID), this));
+}
+
+void UMainWeaponComponent::RevokeItemSkillAbilities()
+{
+	AMainCharacter* OwnerCharacter = Cast<AMainCharacter>(GetOwner());
+	AMainPlayerState* MainPS = OwnerCharacter ? OwnerCharacter->GetPlayerState<AMainPlayerState>() : nullptr;
+	UAbilitySystemComponent* ASC = MainPS ? MainPS->GetAbilitySystemComponent() : nullptr;
+	if (!ASC)
+	{
+		return;
+	}
+
+	if (GrantedPrimarySkillHandle.IsValid())
+	{
+		ASC->ClearAbility(GrantedPrimarySkillHandle);
+		GrantedPrimarySkillHandle = FGameplayAbilitySpecHandle();
+	}
+	if (GrantedSecondarySkillHandle.IsValid())
+	{
+		ASC->ClearAbility(GrantedSecondarySkillHandle);
+		GrantedSecondarySkillHandle = FGameplayAbilitySpecHandle();
 	}
 }
 
