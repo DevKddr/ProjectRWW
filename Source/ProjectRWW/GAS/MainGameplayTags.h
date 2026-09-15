@@ -17,4 +17,9 @@ namespace MainGameplayTags
 	// 실제로 "어떤 스킬의 쿨다운인지"는 이 값이 아니라 DynamicGrantedTags로 붙는
 	// Cooldown.ItemSkill.* 태그(각 스킬 파일 안에 로컬 정의됨)가 구분한다.
 	PROJECTRWW_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Cooldown_Duration);
+
+	// 아이템 스킬(Primary/Secondary) 발동을 모든 클라이언트에 알리는 코스메틱 전용 큐.
+	// UMainGameplayAbility::TryCommitSkillActivation() 참고.
+	PROJECTRWW_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_ItemSkill_Primary);
+	PROJECTRWW_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_ItemSkill_Secondary);
 }

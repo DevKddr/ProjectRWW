@@ -141,12 +141,31 @@ bool UMainGameplayAbility::IsStillEquipping(const FGameplayAbilityActorInfo* Act
 	return FPlatformTime::Seconds() - WeaponComp->GetEquippedTimeSeconds() < WeaponComp->GetEquipTime();
 }
 
+bool UMainGameplayAbility::IsStillCasting(const FGameplayAbilityActorInfo* ActorInfo) const
+{
+	const AMainCharacter* Character = ActorInfo ? Cast<AMainCharacter>(ActorInfo->AvatarActor.Get()) : nullptr;
+	const UMainWeaponComponent* WeaponComp = Character ? Character->WeaponComponent : nullptr;
+	if (!WeaponComp)
+	{
+		return false;
+	}
+
+	return FPlatformTime::Seconds() < WeaponComp->GetSkillCastEndTimeSeconds();
+}
+
 bool UMainGameplayAbility::TryCommitSkillActivation(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 	const FGameplayAbilityActivationInfo ActivationInfo)
 {
 	if (IsStillEquipping(ActorInfo))
 	{
 		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 아이템 스킬 발동 실패: 장착 중 (%s)"), *GetClass()->GetName());
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return false;
+	}
+
+	if (IsStillCasting(ActorInfo))
+	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 아이템 스킬 발동 실패: 시전 중 (%s)"), *GetClass()->GetName());
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return false;
 	}
@@ -167,5 +186,40 @@ bool UMainGameplayAbility::TryCommitSkillActivation(const FGameplayAbilitySpecHa
 
 	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 아이템 스킬 발동: %s"), *GetClass()->GetName());
 	ApplyManaCost(Handle, ActorInfo, ActivationInfo);
+
+	// CastTime은 캐스트 종료 시각 기록(SetSkillCastEndTimeSeconds)이랑 GameplayCue로
+	// 넘겨줄 값(RawMagnitude) 둘 다에 필요해서, 여기서 한 번만 조회해 공유한다.
+	AMainCharacter* Character = ActorInfo ? Cast<AMainCharacter>(ActorInfo->AvatarActor.Get()) : nullptr;
+	float CastTime = 0.0f;
+	if (Character && Character->WeaponComponent)
+	{
+		FItemData ItemData;
+		if (GetOwnerItemData(ActorInfo, ItemData))
+		{
+			CastTime = SkillSlot == EMainAbilityInputID::Primary
+				? ItemData.PrimarySkillCastTime
+				: ItemData.SecondarySkillCastTime;
+			Character->WeaponComponent->SetSkillCastEndTimeSeconds(FPlatformTime::Seconds() + CastTime);
+		}
+	}
+
+	// 스킬 발동을 모든 클라이언트(오너 포함 리모트 전부)에게 알리는 코스메틱 신호 -
+	// 어빌리티 자체는 LocalPredicted라 오너+서버에서만 실행되므로, 다른 플레이어 화면에
+	// 애니메이션을 보여주려면 GAS의 GameplayCue(멀티캐스트)를 거쳐야 한다. 실제 재생
+	// 로직(몽타주 Use()/Use2() 호출)은 이 태그에 등록된 GameplayCueNotify_Static(BP)이 담당한다.
+	if (UAbilitySystemComponent* ASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr)
+	{
+		FGameplayCueParameters CueParams;
+		CueParams.Instigator = ActorInfo->AvatarActor.Get();
+		// BP 쪽(GameplayCueNotify)이 이 값을 받아서 몽타주 재생 속도를 CastTime에 맞게
+		// 역산한다 - PlayRate = 몽타주 원래 길이 / CastTime.
+		CueParams.RawMagnitude = CastTime;
+
+		const FGameplayTag CueTag = SkillSlot == EMainAbilityInputID::Primary
+			? MainGameplayTags::GameplayCue_ItemSkill_Primary.GetTag()
+			: MainGameplayTags::GameplayCue_ItemSkill_Secondary.GetTag();
+		ASC->ExecuteGameplayCue(CueTag, CueParams);
+	}
+
 	return true;
 }

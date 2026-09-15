@@ -27,4 +27,11 @@ namespace MainGameplayTags
 	// Cooldown.ItemSkill.* 태그(각 스킬 파일 안에 로컬 정의됨)가 구분한다. 아이템 스킬
 	// 쿨다운은 리스폰해도 유지되도록 의도했으므로 Effect_ClearOnDeath는 안 붙인다.
 	UE_DEFINE_GAMEPLAY_TAG(Data_Cooldown_Duration, "Data.Cooldown.Duration");
+
+	// 아이템 스킬(Primary/Secondary) 발동 시 실행되는 코스메틱 전용 큐 - 몽타주 재생/VFX는
+	// GameplayCueNotify_Static(BP)에서 처리한다. 모든 아이템이 이 태그 2개를 공유하고,
+	// Notify 쪽에서 Instigator로부터 지금 장착된 아이템을 직접 조회한다(TryCommitSkillActivation의
+	// GetOwnerItemData()와 같은 원리) - 아이템마다 새 태그/클래스를 안 만들어도 됨.
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_ItemSkill_Primary, "GameplayCue.ItemSkill.Primary");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_ItemSkill_Secondary, "GameplayCue.ItemSkill.Secondary");
 }

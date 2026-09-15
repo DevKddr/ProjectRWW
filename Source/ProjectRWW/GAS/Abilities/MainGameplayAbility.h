@@ -69,6 +69,10 @@ protected:
 	// Reload가 이미 쓰고 있는 EquippedTimeSeconds/EquipTime 가드를 스킬에도 그대로 적용.
 	bool IsStillEquipping(const FGameplayAbilityActorInfo* ActorInfo) const;
 
+	// 스킬 시전 애니메이션 재생 중엔 (Primary/Secondary 구분 없이) 재발동을 막는다 - 어느
+	// 쪽이든 같은 SkillUseSlot을 공유하기 때문. IsStillEquipping과 같은 원리.
+	bool IsStillCasting(const FGameplayAbilityActorInfo* ActorInfo) const;
+
 	// IsStillEquipping -> HasEnoughMana -> CommitAbility 3단 가드를 통과하면 ApplyManaCost()까지
 	// 적용하고 true를 반환한다. 실패하면 알맞은 로그를 남기고 EndAbility()까지 처리한 뒤
 	// false를 반환한다 - 모든 아이템 스킬의 ActivateAbility()가 완전히 동일하게 반복하던

@@ -64,4 +64,12 @@ struct FItemData : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
 	float SecondarySkillManaCost = 0.0f;
+
+	// 이 스킬의 시전(Use) 애니메이션 재생 시간(초). 재생 중엔 같은 스킬을 재발동할 수 없다 -
+	// UMainGameplayAbility::IsStillCasting() 참고.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float PrimarySkillCastTime = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float SecondarySkillCastTime = 0.0f;
 };

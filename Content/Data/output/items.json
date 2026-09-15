@@ -75,12 +75,14 @@
     "description": "인벤토리 테스트용 더미 아이템.",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_I_1.T_Icon_I_1",
-    "actorClassPath": "/Game/Items/Dummy/BP_I_1.BP_I_1_C",
+    "actorClassPath": "/Game/Items/I_1/BP_I_1.BP_I_1_C",
     "equipTime": 2,
     "primarySkillCooldown": 10.0,
     "primarySkillManaCost": 500.0,
     "secondarySkillCooldown": 0.0,
-    "secondarySkillManaCost": 0.0
+    "secondarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.7,
+    "secondarySkillCastTime": 0.0
   },
   {
     "index": "I_2",
@@ -89,7 +91,7 @@
     "description": "인벤토리 테스트용 더미 아이템.",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_I_2.T_Icon_I_2",
-    "actorClassPath": "/Game/Items/Dummy/BP_I_2.BP_I_2_C",
+    "actorClassPath": "/Game/Items/I_2/BP_I_2.BP_I_2_C",
     "equipTime": 2,
     "primarySkillCooldown": 15.0,
     "primarySkillManaCost": 500.0,

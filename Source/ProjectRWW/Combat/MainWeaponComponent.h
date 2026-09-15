@@ -131,6 +131,11 @@ public:
 	float GetEquipTime() const { return EquipTime; }
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
+	double GetSkillCastEndTimeSeconds() const { return SkillCastEndTimeSeconds; }
+
+	void SetSkillCastEndTimeSeconds(double InTime) { SkillCastEndTimeSeconds = InTime; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
 	int32 GetCurrentAmmo() const { return CurrentAmmo; }
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
@@ -406,6 +411,10 @@ protected:
 	bool bAmmoEmptyNotified = false;
 
 	double EquippedTimeSeconds = 0.0;
+
+	// Primary/Secondary 어느 쪽 스킬을 쓰든 같은 SkillUseSlot 애니메이션을 공유하므로,
+	// 슬롯별로 나누지 않고 "지금 캐스팅이 끝나는 절대 시각" 하나만 저장한다.
+	double SkillCastEndTimeSeconds = 0.0;
 
 	// FullAuto 반복 발사용 타이머 핸들.
 	FTimerHandle AutoFireTimerHandle;
