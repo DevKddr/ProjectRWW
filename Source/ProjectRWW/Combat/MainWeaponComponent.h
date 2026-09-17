@@ -10,6 +10,7 @@
 #include "MainWeaponComponent.generated.h"
 
 class AMainCharacter;
+class UAnimMontage;
 
 // 아이템 스킬이 묶이는 입력 슬롯. GAS의 FGameplayAbilitySpec::InputID로 그대로 캐스팅해서 쓴다.
 UENUM(BlueprintType)
@@ -129,6 +130,14 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetEquipTime() const { return EquipTime; }
+
+	// 아이템 파이프라인(Equip/스킬)이 마지막으로 재생을 시작한 몽타주. AItemActor는 아이템이
+	// 바뀔 때마다 파괴/재생성되지만 이 컴포넌트는 계속 살아있어서, 여기에 저장해두면 "이전
+	// 아이템이 재생 중이던 몽타주"를 정확히 짚어서 끊을 수 있다(다른 무관한 몽타주는 안 건드림).
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	UAnimMontage* GetCurrentItemActionMontage() const { return CurrentItemActionMontage; }
+
+	void SetCurrentItemActionMontage(UAnimMontage* Montage) { CurrentItemActionMontage = Montage; }
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	double GetSkillCastEndTimeSeconds() const { return SkillCastEndTimeSeconds; }
@@ -386,6 +395,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	float EquipTime = 0.0f;
+
+	UPROPERTY()
+	TObjectPtr<UAnimMontage> CurrentItemActionMontage = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	float PelletSpreadAngle = 0.0f;

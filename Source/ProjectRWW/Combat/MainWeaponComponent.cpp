@@ -9,6 +9,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Weapons/WeaponDataManager.h"
 #include "Items/ItemDataManager.h"
+#include "Items/ItemActor.h"
 #include "TimerManager.h"
 #include "Engine/SkeletalMesh.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -47,9 +48,27 @@ void UMainWeaponComponent::EquipVisual(UClass* ActorClass, TObjectPtr<AActor>& O
 		AActor* NewActor = GetWorld()->SpawnActor<AActor>(ActorClass, SpawnParams);
 		if (NewActor)
 		{
+			// AItemActor 파생 액터는 자기 ItemVisualData에서 부착 소켓/오프셋을 직접
+			// 정의할 수 있다 - 무기 액터(AItemActor가 아님)는 이 분기를 안 타서
+			// 기존 하드코딩 값("VB ik_hand_gun_pivot", 오프셋 0) 그대로 유지된다.
+			FName SocketName = TEXT("VB ik_hand_gun_pivot");
+			FVector OffsetLocation = FVector::ZeroVector;
+			FRotator OffsetRotation = FRotator::ZeroRotator;
+			if (const AItemActor* ItemActor = Cast<AItemActor>(NewActor))
+			{
+				SocketName = ItemActor->GetAttachSocketName();
+				OffsetLocation = ItemActor->GetAttachOffsetLocation();
+				OffsetRotation = ItemActor->GetAttachOffsetRotation();
+			}
+
 			if (USceneComponent* AttachTarget = WeaponMeshComponent->GetAttachParent())
 			{
-				NewActor->AttachToComponent(AttachTarget, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("VB ik_hand_gun_pivot"));
+				// 스케일은 소켓 것을 따라가지 않게 한다 - IncludingScale로 부착하면
+				// BP에서 설정한 아이템 메시 스케일이 매번 부착 시점에 소켓 스케일로
+				// 덮어써져서 무시된다.
+				NewActor->AttachToComponent(AttachTarget, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+				NewActor->AddActorLocalOffset(OffsetLocation);
+				NewActor->AddActorLocalRotation(OffsetRotation);
 			}
 
 			if (OutActiveActor)
