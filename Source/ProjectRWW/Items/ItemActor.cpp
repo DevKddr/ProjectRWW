@@ -131,7 +131,6 @@ void AItemActor::PlayTimedMontage(UAnimMontage* Montage, float DesiredDuration) 
 {
 	if (!Montage)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW] PlayTimedMontage(%s): Montage가 None이라 재생 안 함"), *GetName());
 		return;
 	}
 
@@ -139,17 +138,12 @@ void AItemActor::PlayTimedMontage(UAnimMontage* Montage, float DesiredDuration) 
 	USkeletalMeshComponent* ParentMesh = Cast<USkeletalMeshComponent>(AttachParent);
 	if (!ParentMesh)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW] PlayTimedMontage(%s): 부모 컴포넌트(%s, 클래스=%s)가 SkeletalMeshComponent가 아님"),
-			*GetName(),
-			AttachParent ? *AttachParent->GetName() : TEXT("None"),
-			AttachParent ? *AttachParent->GetClass()->GetName() : TEXT("None"));
 		return;
 	}
 
 	UAnimInstance* OuterAnimInstance = ParentMesh->GetAnimInstance();
 	if (!OuterAnimInstance)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW] PlayTimedMontage(%s): %s에 AnimInstance가 없음"), *GetName(), *ParentMesh->GetName());
 		return;
 	}
 
@@ -159,7 +153,6 @@ void AItemActor::PlayTimedMontage(UAnimMontage* Montage, float DesiredDuration) 
 	UAnimInstance* TargetInstance = OuterAnimInstance->GetLinkedAnimGraphInstanceByTag(FName("UpperBody"));
 	if (!TargetInstance)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW] PlayTimedMontage(%s): \"UpperBody\" 태그로 링크된 인스턴스를 못 찾음"), *GetName());
 		return;
 	}
 
@@ -175,9 +168,5 @@ void AItemActor::PlayTimedMontage(UAnimMontage* Montage, float DesiredDuration) 
 	}
 
 	const float PlayRate = DesiredDuration > 0.f ? Montage->GetPlayLength() / DesiredDuration : 1.f;
-	const float PlayedLength = TargetInstance->Montage_Play(Montage, PlayRate);
-
-	UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW] PlayTimedMontage(%s): TargetInstance=%s, Montage=%s, MontageLength=%.3f, DesiredDuration=%.3f, PlayRate=%.3f, Montage_Play 반환값=%.3f"),
-		*GetName(), *TargetInstance->GetClass()->GetName(), *Montage->GetName(),
-		Montage->GetPlayLength(), DesiredDuration, PlayRate, PlayedLength);
+	TargetInstance->Montage_Play(Montage, PlayRate);
 }
