@@ -26,7 +26,7 @@ public:
 	// 데이터가 바뀔 때마다 부모가 이 함수를 호출한다. 아이콘 조회/로드까지 여기서 끝내고,
 	// 결과(로드된 텍스처, 없으면 nullptr)를 OnIconChanged로 블루프린트에 넘긴다.
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void SetSlotData(int32 InSlotIndex, const FInventorySlot& SlotData);
+	virtual void SetSlotData(int32 InSlotIndex, const FInventorySlot& SlotData);
 
 	// 아이콘을 표시할 이미지 위젯. Details 패널에는 노출하지 않는다 - 거기서 값을 지정하면
 	// 클래스 디폴트(CDO) 값 하나를 모든 인스턴스가 공유해버리는 문제가 있다. 대신 BP의

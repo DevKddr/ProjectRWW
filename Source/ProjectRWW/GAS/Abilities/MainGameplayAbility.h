@@ -34,6 +34,11 @@ public:
 		const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr,
 		FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
 
+	// 이 스킬이 Primary/Secondary 중 어느 입력 슬롯용인지 외부(핫바 UI 등)에서 조회할 수
+	// 있게 하는 getter. CDO에서 호출하면 인스턴스화 없이 바로 값을 얻는다.
+	UFUNCTION(BlueprintPure, Category = "Ability")
+	EMainAbilityInputID GetSkillSlot() const { return SkillSlot; }
+
 protected:
 	FGameplayTag CooldownTag;
 
