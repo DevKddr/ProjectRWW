@@ -22,6 +22,11 @@
 #include "Abilities/GameplayAbility.h"
 #include "GAS/Abilities/MainGameplayAbility.h"
 
+// 프레임/네트워크 지터로 발사 호출이 늦어져도, 그 지연이 이 한도 이하면 다음 발의 허용 시각을
+// 뒤로 밀지 않는다. 늦은 호출 시각으로 일정을 다시 고정하면 바로 다음 정상 호출이 "너무 이르다"로
+// 잘려서, 빠른 연사일수록 발사가 취소되는 문제가 있었다. 서버 검증과 클라 예측이 같이 쓴다.
+static constexpr float MaxFireBacklogSeconds = 0.15f;
+
 UMainWeaponComponent::UMainWeaponComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -413,6 +418,7 @@ void UMainWeaponComponent::RequestFire()
 	// 재장전 중에는 발사 예측(애니메이션)도 하지 않는다 - 서버가 어차피 거부한다.
 	if (bIsReloading)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 클라: 재장전 중이라 발사 안 함 (%s)"), *GetNameSafe(GetOwner()));
 		return;
 	}
 
@@ -421,6 +427,7 @@ void UMainWeaponComponent::RequestFire()
 	// 달리기 중에는 발사할 수 없다.
 	if (OwningCharacter && OwningCharacter->IsSprinting())
 	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 클라: 달리기 중 (%s)"), *GetNameSafe(GetOwner()));
 		return;
 	}
 
@@ -429,6 +436,7 @@ void UMainWeaponComponent::RequestFire()
 	// 무시함" 불일치가 다른 조건들과 똑같이 재현된다.
 	if (FPlatformTime::Seconds() - EquippedTimeSeconds < EquipTime)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 클라: 장착 직후 (%s)"), *GetNameSafe(GetOwner()));
 		return;
 	}
 
@@ -452,7 +460,7 @@ void UMainWeaponComponent::RequestFire()
 			// 밀린다고 다음 발까지 통째로 한 텀 더 밀리지 않는다. 다만 오래 안 쐈다가
 			// 다시 쏘는 경우(트리거 첫 입력 포함)까지 밀린 발수만큼 몰아 쏘면 안 되므로
 			// Now보다 과거로는 안 잡는다.
-			NextAllowedPredictedFireTimeSeconds = FMath::Max(NextAllowedPredictedFireTimeSeconds, Now) + FireIntervalSeconds;
+			NextAllowedPredictedFireTimeSeconds = FMath::Max(NextAllowedPredictedFireTimeSeconds, Now - MaxFireBacklogSeconds) + FireIntervalSeconds;
 
 			// 리슨 서버 호스트는 이 오브젝트가 곧 서버 권위 오브젝트이기도 해서 FireShot()에서
 			// 이미 UpdateSpread()를 호출한다. 여기서 또 부르면 이중 계산되므로, 권한이 없을 때만
@@ -489,6 +497,13 @@ void UMainWeaponComponent::RequestFire()
 					World->GetTimerManager().SetTimer(ClientBurstTimerHandle, this, &UMainWeaponComponent::PlayClientBurstShot, Interval, true);
 				}
 			}
+		}
+		else
+		{
+			// 예측(애니메이션)만 생략하고 아래 ServerFire는 그대로 보내므로, 서버 로그의
+			// "연사 간격 위반"과 짝을 맞춰 볼 수 있다.
+			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 클라: 예측 스킵(서버 요청은 전송) (%s) 부족한 시간=%.1fms"),
+				*GetNameSafe(GetOwner()), (NextAllowedPredictedFireTimeSeconds - Now) * 1000.0);
 		}
 
 		// 탄약이 있을 때만 서버에 발사 요청을 보낸다 - 어차피 서버(ServerFire_Implementation)가
@@ -666,14 +681,17 @@ void UMainWeaponComponent::Server_SetAiming_Implementation(bool bNewAiming)
 
 void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
 {
+	// [발사취소] 로그는 발사가 어디서 잘리는지 추적하는 진단용이다. 원인이 확정되면 제거한다.
 	if (CurrentAmmo <= 0)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 서버: 탄약 없음 (%s)"), *GetNameSafe(GetOwner()));
 		return;
 	}
 
 	// 재장전 중에는 발사를 거부한다.
 	if (bIsReloading)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 서버: 재장전 중 (%s)"), *GetNameSafe(GetOwner()));
 		return;
 	}
 
@@ -682,6 +700,7 @@ void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& 
 	{
 		if (OwningCharacter->IsSprinting())
 		{
+			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 서버: 달리기 중 (%s)"), *GetNameSafe(GetOwner()));
 			return;
 		}
 	}
@@ -697,17 +716,24 @@ void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& 
 	constexpr float ServerFireRateToleranceRatio = 0.1f;
 	if (Now < NextAllowedFireTimeSeconds - FireIntervalSeconds * ServerFireRateToleranceRatio)
 	{
+		// "너무 이른 정도"가 허용오차를 넘은 만큼이 도착 지터/뭉침의 크기다.
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 서버: 연사 간격 위반 (%s) 너무 이른 정도=%.1fms, 간격=%.1fms, 허용오차=%.1fms"),
+			*GetNameSafe(GetOwner()),
+			(NextAllowedFireTimeSeconds - Now) * 1000.0,
+			FireIntervalSeconds * 1000.0,
+			FireIntervalSeconds * ServerFireRateToleranceRatio * 1000.0);
 		return;
 	}
 
 	if (Now - EquippedTimeSeconds < EquipTime)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 서버: 장착 직후 (%s)"), *GetNameSafe(GetOwner()));
 		return;
 	}
 
 	// 다음 허용 시각을 "지금"이 아니라 "이전 허용 시각 + 간격"으로 고정한다 -
 	// 이유는 RequestFire()의 같은 패턴 주석 참고.
-	NextAllowedFireTimeSeconds = FMath::Max(NextAllowedFireTimeSeconds, Now) + FireIntervalSeconds;
+	NextAllowedFireTimeSeconds = FMath::Max(NextAllowedFireTimeSeconds, Now - MaxFireBacklogSeconds) + FireIntervalSeconds;
 	--CurrentAmmo;
 	FireShot(TraceStart, TraceDirection);
 
@@ -978,8 +1004,8 @@ void UMainWeaponComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UMainWeaponComponent, CurrentAmmo, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UMainWeaponComponent, MagazineSize, COND_OwnerOnly);
+	DOREPLIFETIME(UMainWeaponComponent, CurrentAmmo);
+	DOREPLIFETIME(UMainWeaponComponent, MagazineSize);
 
 	// 재장전/조준 애니메이션은 남에게도 보여야 하므로(OnRep_IsReloading/OnRep_IsAiming의
 	// 원격 클라이언트 경로), 탄약 수치와 달리 전체 공개로 리플리케이트한다.

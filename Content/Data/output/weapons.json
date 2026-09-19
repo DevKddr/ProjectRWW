@@ -65,7 +65,7 @@
       "Damage": 28,
       "PelletCount": 1,
       "HeadshotMultiplier": 2,
-      "FireRate_RPS": 30,
+      "FireRate_RPS": 20,
       "FireMode": "FullAuto",
       "BurstCount": 0,
       "BurstShotInterval": 0,
