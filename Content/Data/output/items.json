@@ -56,7 +56,7 @@
     "description": "근거리에서 강력한 산탄을 발사하는 샷건.",
     "rarityId": "Rare",
     "iconPath": "/Game/UI/Icons/T_Icon_SG_1.T_Icon_SG_1",
-    "actorClassPath": "/Game/Weapons/SRM-12/BP_SRM-12.BP_SRM-12_C",
+    "actorClassPath": "/Game/Weapons/Herrington_11-87/BP_Herrington_11-87_Police.BP_Herrington_11-87_Police_C",
     "equipTime": 1.8
   },
   {
