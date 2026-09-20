@@ -6,7 +6,7 @@ rem regardless of where it was double-clicked from.
 cd /d "%~dp0"
 
 echo ============================================
-echo Weapon Data Converter
+echo Item Data Converter
 echo ============================================
 echo Working directory: %cd%
 echo.
@@ -18,18 +18,13 @@ if errorlevel 1 (
     goto :end
 )
 
-if not exist "RandomBox.xlsx" (
-    echo ERROR: RandomBox.xlsx not found in this folder.
+if not exist "items.xlsx" (
+    echo ERROR: items.xlsx not found in this folder.
     goto :end
 )
 
-if not exist "WeaponData.xlsx" (
-    echo ERROR: WeaponData.xlsx not found in this folder.
-    goto :end
-)
-
-if not exist "WeaponDataConverter.py" (
-    echo ERROR: WeaponDataConverter.py not found in this folder.
+if not exist "ItemDataConverter.py" (
+    echo ERROR: ItemDataConverter.py not found in this folder.
     goto :end
 )
 
@@ -37,7 +32,7 @@ if not exist "output" (
     mkdir "output"
 )
 
-python WeaponDataConverter.py RandomBox.xlsx WeaponData.xlsx ./output
+python ItemDataConverter.py items.xlsx ./output
 
 echo.
 echo ============================================
