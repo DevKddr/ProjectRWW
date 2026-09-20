@@ -2,102 +2,199 @@
   {
     "index": "P_1",
     "category": "Weapon",
-    "name": "사이드암 Mk1",
-    "description": "빠른 발도와 안정적인 명중률을 갖춘 기본 보조무기.",
+    "name": {
+      "ko": "사이드암 Mk1",
+      "en": "Sidearm Mk1"
+    },
+    "description": {
+      "ko": "빠른 발도와 안정적인 명중률을 갖춘 기본 보조무기.",
+      "en": "A basic sidearm with a fast draw and reliable accuracy."
+    },
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_P_1.T_Icon_P_1",
     "actorClassPath": "/Game/Weapons/WK-11_Viper/BP_WK-11_Viper.BP_WK-11_Viper_C",
-    "equipTime": 2.03
+    "equipTime": 2.03,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
   },
   {
     "index": "AR_1",
     "category": "Weapon",
-    "name": "돌격소총 1",
-    "description": "범용성이 뛰어난 기본 돌격소총.",
+    "name": {
+      "ko": "돌격소총 1",
+      "en": "Assault Rifle 1"
+    },
+    "description": {
+      "ko": "범용성이 뛰어난 기본 돌격소총.",
+      "en": "A versatile standard-issue assault rifle."
+    },
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_AR_1.T_Icon_AR_1",
     "actorClassPath": "/Game/Weapons/AK105/BP_AK105.BP_AK105_C",
-    "equipTime": 1.55
+    "equipTime": 1.55,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
   },
   {
     "index": "AR_2",
     "category": "Weapon",
-    "name": "돌격소총 2",
-    "description": "상급 돌격소총.",
+    "name": {
+      "ko": "돌격소총 2",
+      "en": "Assault Rifle 2"
+    },
+    "description": {
+      "ko": "상급 돌격소총.",
+      "en": "An advanced assault rifle."
+    },
     "rarityId": "Rare",
     "iconPath": "/Game/UI/Icons/T_Icon_AR_2.T_Icon_AR_2",
     "actorClassPath": "/Game/Weapons/TR15/BP_TR15.BP_TR15_C",
-    "equipTime": 2
+    "equipTime": 2.0,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
   },
   {
     "index": "SR_1",
     "category": "Weapon",
-    "name": "저격소총",
-    "description": "장거리 교전에 특화된 저격소총.",
+    "name": {
+      "ko": "저격소총",
+      "en": "Sniper Rifle"
+    },
+    "description": {
+      "ko": "장거리 교전에 특화된 저격소총.",
+      "en": "A sniper rifle specialized for long-range engagements."
+    },
     "rarityId": "Epic",
     "iconPath": "/Game/UI/Icons/T_Icon_SR_1.T_Icon_SR_1",
     "actorClassPath": "/Game/Weapons/SRM-12/BP_SRM-12.BP_SRM-12_C",
-    "equipTime": 1.8
+    "equipTime": 1.8,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
   },
   {
     "index": "SMG_1",
     "category": "Weapon",
-    "name": "기관단총",
-    "description": "근거리 연사에 강한 기관단총.",
+    "name": {
+      "ko": "기관단총",
+      "en": "Submachine Gun"
+    },
+    "description": {
+      "ko": "근거리 연사에 강한 기관단총.",
+      "en": "A submachine gun strong in close-range rapid fire."
+    },
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_SMG_1.T_Icon_SMG_1",
     "actorClassPath": "/Game/Weapons/MKR9/BP_MKR9.BP_MKR9_C",
-    "equipTime": 1.13
+    "equipTime": 1.13,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
   },
   {
     "index": "SG_1",
     "category": "Weapon",
-    "name": "샷건",
-    "description": "근거리에서 강력한 산탄을 발사하는 샷건.",
+    "name": {
+      "ko": "샷건",
+      "en": "Shotgun"
+    },
+    "description": {
+      "ko": "근거리에서 강력한 산탄을 발사하는 샷건.",
+      "en": "A shotgun that fires powerful buckshot at close range."
+    },
     "rarityId": "Rare",
     "iconPath": "/Game/UI/Icons/T_Icon_SG_1.T_Icon_SG_1",
-    "actorClassPath": "/Game/Weapons/SRM-12/BP_SRM-12.BP_SRM-12_C",
-    "equipTime": 1.8
+    "actorClassPath": "/Game/Weapons/Herrington_11-87/BP_Herrington_11-87_Police.BP_Herrington_11-87_Police_C",
+    "equipTime": 1.8,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
   },
   {
     "index": "UNARMED",
     "category": "Item",
-    "name": "맨손",
-    "description": "아무것도 장착하지 않은 상태.",
+    "name": {
+      "ko": "맨손",
+      "en": "Unarmed"
+    },
+    "description": {
+      "ko": "아무것도 장착하지 않은 상태.",
+      "en": "No weapon or item equipped."
+    },
     "rarityId": "Common",
+    "iconPath": "",
     "actorClassPath": "/Game/Items/Unarmed/BP_Unarmed.BP_Unarmed_C",
-    "equipTime": 1
+    "equipTime": 1.0,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
   },
   {
     "index": "I_1",
     "category": "Item",
-    "name": "더미 아이템 1",
-    "description": "인벤토리 테스트용 더미 아이템.",
+    "name": {
+      "ko": "더미 아이템 1",
+      "en": "Dummy Item 1"
+    },
+    "description": {
+      "ko": "인벤토리 테스트용 더미 아이템.",
+      "en": "A dummy item for inventory testing."
+    },
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_I_1.T_Icon_I_1",
     "actorClassPath": "/Game/Items/I_1/BP_I_1.BP_I_1_C",
     "equipTime": 0.5,
     "primarySkillCooldown": 3.0,
     "primarySkillManaCost": 100.0,
+    "primarySkillCastTime": 0.7,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "primarySkillCastTime": 0.7,
     "secondarySkillCastTime": 0.0
   },
   {
     "index": "I_2",
     "category": "Item",
-    "name": "더미 아이템 2",
-    "description": "인벤토리 테스트용 더미 아이템.",
+    "name": {
+      "ko": "더미 아이템 2",
+      "en": "Dummy Item 2"
+    },
+    "description": {
+      "ko": "인벤토리 테스트용 더미 아이템.",
+      "en": "A dummy item for inventory testing."
+    },
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_I_2.T_Icon_I_2",
     "actorClassPath": "/Game/Items/I_2/BP_I_2.BP_I_2_C",
     "equipTime": 0.5,
     "primarySkillCooldown": 3.0,
     "primarySkillManaCost": 100.0,
+    "primarySkillCastTime": 1.2,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "primarySkillCastTime": 1.2,
     "secondarySkillCastTime": 0.0
   }
 ]

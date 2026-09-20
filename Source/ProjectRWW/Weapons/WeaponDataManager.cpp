@@ -1,5 +1,4 @@
 #include "WeaponDataManager.h"
-#include "Rarities/RarityDataManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "JsonObjectConverter.h"
@@ -102,40 +101,37 @@ void UWeaponDataManager::SetLanguage(const FString& LanguageCode)
 
 FText UWeaponDataManager::GetWeaponDisplayName(FName WeaponIndex) const
 {
-	const FWeaponItem* Weapon = WeaponMap.Find(WeaponIndex);
-	if (!Weapon)
+	// Name은 weapons.json에서 빠지고 items.json(ItemDataManager) 쪽으로 옮겨갔다.
+	// ItemDataManager 연동은 별도 작업 범위라, 지금은 무기 존재 여부만 확인하고
+	// Index를 그대로 보여주는 자리표시자로 남겨둔다.
+	if (!WeaponMap.Contains(WeaponIndex))
 	{
 		return FText::FromString(FString::Printf(TEXT("[Unknown Weapon: %s]"), *WeaponIndex.ToString()));
 	}
-	const FString& Text = (CurrentLanguage == TEXT("en")) ? Weapon->Name.En : Weapon->Name.Ko;
-	return FText::FromString(Text);
+	return FText::FromString(WeaponIndex.ToString());
 }
 
 FText UWeaponDataManager::GetWeaponDescription(FName WeaponIndex) const
 {
-	const FWeaponItem* Weapon = WeaponMap.Find(WeaponIndex);
-	if (!Weapon)
+	// Description도 Name과 마찬가지로 items.json 쪽으로 옮겨갔다 (ItemDataManager 연동은 별도 작업).
+	if (!WeaponMap.Contains(WeaponIndex))
 	{
 		return FText::GetEmpty();
 	}
-	const FString& Text = (CurrentLanguage == TEXT("en")) ? Weapon->Description.En : Weapon->Description.Ko;
-	return FText::FromString(Text);
+	return FText::GetEmpty();
 }
 
 bool UWeaponDataManager::GetWeaponSellValue(FName WeaponIndex, int32& OutSellValue) const
 {
-	const FWeaponItem* Weapon = WeaponMap.Find(WeaponIndex);
-	if (!Weapon) return false;
-
-	// 판매가는 이 매니저가 계산하지 않는다 - RarityDataManager가 유일한 출처.
-	const URarityDataManager* RarityMgr = GetGameInstance()->GetSubsystem<URarityDataManager>();
-	if (!RarityMgr) return false;
-
-	FRarityData Rarity;
-	if (!RarityMgr->GetRarityData(Weapon->Rarity, Rarity)) return false;
-
-	OutSellValue = Rarity.SellValue;
-	return true;
+	// Rarity가 weapons.json에서 빠지고 items.json 쪽으로 옮겨갔다. 판매가 계산은
+	// ItemDataManager(RarityId 조회) + RarityDataManager 연동이 필요한데, 그건 별도
+	// 작업 범위라 지금은 계산 불가로 처리한다 - ItemDataManager 연동 시 이 함수만 고치면 된다.
+	if (!WeaponMap.Contains(WeaponIndex))
+	{
+		return false;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("[WeaponDataManager] GetWeaponSellValue: Rarity가 items.json으로 이전되어 아직 계산할 수 없습니다 (ItemDataManager 연동 대기 중)."));
+	return false;
 }
 
 bool UWeaponDataManager::GetWeaponMaxTotalDamage(FName WeaponIndex, float& OutTotalDamage) const
@@ -190,17 +186,20 @@ void UWeaponDataManager::DebugPrintAllWeapons() const
 	{
 		const FWeaponItem& W = Pair.Value;
 		UE_LOG(LogTemp, Log,
-			TEXT("[%s] Type=%s Rarity=%s Name(ko)=%s | Damage=%.1f PelletCount=%d FireRate=%.2f FireMode=%s BurstCount=%d "
+			TEXT("[%s] Type=%s | Damage=%.1f PelletCount=%d FireRate=%.2f FireMode=%s BurstCount=%d "
 				 "| IsHitscan=%s CanADS=%s ScopeZoom=%.1f | MagSize=%d ReloadTime=%.2f ReloadType=%s "
-				 "| CanReload=%s WeaponReqMana=%.1f ManaPerAmmo=%.1f"),
-			*W.Index.ToString(), *W.WeaponType.ToString(), *W.Rarity.ToString(), *W.Name.Ko,
+				 "| CanReload=%s WeaponReqMana=%.1f ManaPerAmmo=%.1f "
+				 "| Recoil V[%.2f,%.2f] H[%.2f,%.2f]"),
+			*W.Index.ToString(), *W.WeaponType.ToString(),
 			W.Stats.Damage, W.Stats.PelletCount, W.Stats.FireRate_RPS, *W.Stats.FireMode.ToString(), W.Stats.BurstCount,
 			W.Stats.IsHitscan ? TEXT("true") : TEXT("false"),
 			W.Stats.CanADS ? TEXT("true") : TEXT("false"),
 			W.Stats.ScopeZoomLevel,
 			W.Stats.MagazineSize, W.Stats.ReloadTime, *W.Stats.ReloadType,
 			W.Stats.CanReload ? TEXT("true") : TEXT("false"),
-			W.Stats.WeaponReqMana, W.Stats.ManaPerAmmo);
+			W.Stats.WeaponReqMana, W.Stats.ManaPerAmmo,
+			W.Stats.VerticalRecoilMin, W.Stats.VerticalRecoilMax,
+			W.Stats.HorizontalRecoilMin, W.Stats.HorizontalRecoilMax);
 	}
 	UE_LOG(LogTemp, Log, TEXT("========================================================"));
 }

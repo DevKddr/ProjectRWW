@@ -6,6 +6,21 @@
 #include "Engine/DataTable.h"
 #include "ItemData.generated.h"
 
+// items.json의 "name"/"description" ({"ko":.., "en":..}) 과 1:1 대응.
+// 원래 Weapons/WeaponData.h에 있었으나, 이제 이 타입을 쓰는 곳이 FItemData뿐이라
+// (weapons.json에서는 Rarity/Name/Description이 전부 items.json 쪽으로 이전됨) 이리로 옮겼다.
+USTRUCT(BlueprintType)
+struct FLocalizedPair
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Localization")
+	FString Ko;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Localization")
+	FString En;
+};
+
 // items.json 각 항목과 1:1 대응. 무기를 포함한 모든 카테고리의 아이템이 여기 들어간다.
 // 게임플레이 스탯(데미지 등)은 다루지 않고, 표시/시각적인 데이터만 담당한다 -
 // 무기의 실제 스탯은 같은 Index로 WeaponDataManager를 따로 조회해야 한다.
@@ -21,11 +36,14 @@ struct FItemData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
 	FName Category;
 
+	// 언어 설정(ko/en)에 따라 다르게 보여줘야 하므로 문자열이 아니라 언어쌍으로 저장한다.
+	// 실제로 어떤 언어를 보여줄지 고르는 로직은 여기 없다 - 그건 언어 설정 UI를 만들 때
+	// 추가할 별도 매니저(예: LocalizationManager)의 책임이다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
-	FString Name;
+	FLocalizedPair Name;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
-	FString Description;
+	FLocalizedPair Description;
 
 	// RarityDataManager 조회용 키.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")

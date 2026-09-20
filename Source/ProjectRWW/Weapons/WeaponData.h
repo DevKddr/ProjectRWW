@@ -4,30 +4,11 @@
 #include "Engine/DataTable.h"
 #include "WeaponData.generated.h"
 
-// weapons.json 각 항목의 "name"/"description" ({"ko":.., "en":..}) 과 1:1 대응.
-USTRUCT(BlueprintType)
-struct FLocalizedPair
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Localization")
-	FString Ko;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Localization")
-	FString En;
-};
-
 // weapons.json 각 항목의 "stats" 객체와 1:1 대응.
 USTRUCT(BlueprintType)
 struct FWeaponStats
 {
 	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	FName WeaponType;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	FName Rarity;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float Damage = 0.f;
@@ -117,6 +98,21 @@ struct FWeaponStats
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float SpreadRecoveryRate = 0.f;
 
+	// 사격 1회당 수직/수평 반동을 [Min, Max] 범위에서 랜덤하게 뽑아 적용한다.
+	// 이전엔 RecoilVertical/RecoilHorizontal 단일값(미사용)이었으나, 사격마다 편차를
+	// 주기 위해 최소/최대 범위로 대체했다. Horizontal은 음수=좌측, 양수=우측.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Recoil")
+	float VerticalRecoilMin = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Recoil")
+	float VerticalRecoilMax = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Recoil")
+	float HorizontalRecoilMin = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Recoil")
+	float HorizontalRecoilMax = 0.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float ADSSpeed = 0.f;
 
@@ -132,6 +128,8 @@ struct FWeaponStats
 };
 
 // weapons.json 배열의 각 항목과 1:1 대응.
+// Rarity/Name/Description은 items.json(ItemDataManager)으로 표시 책임이 옮겨가서
+// 여기선 더 이상 들고 있지 않는다 - 같은 Index로 ItemDataManager를 조회해야 한다.
 USTRUCT(BlueprintType)
 struct FWeaponItem : public FTableRowBase
 {
@@ -142,15 +140,6 @@ struct FWeaponItem : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	FName WeaponType;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
-	FName Rarity;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
-	FLocalizedPair Name;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
-	FLocalizedPair Description;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	FWeaponStats Stats;

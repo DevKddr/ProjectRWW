@@ -70,15 +70,10 @@ def sheet_rows(ws, has_type_row=True):
 # ---------------------------------------------------------------------------
 
 def load_weapon_category(xlsx_path):
+    """이름/설명/등급은 이제 여기서 다루지 않는다 - items.json이 그 값들의 유일한 출처다
+    (ItemDataManager: "무기를 포함한 모든 아이템의 표시 데이터"). 이 함수는 순수하게
+    게임플레이 스탯(WeaponData.xlsx)만 만든다."""
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
-
-    localization = {}
-    for row in sheet_rows(wb["Localization"], has_type_row=False):
-        localization[row["Key"]] = {"ko": row["ko"], "en": row["en"]}
-
-    def localize(key):
-        entry = localization.get(key)
-        return entry if entry is not None else {"ko": key, "en": key}
 
     items = {}
     for sheet_name in WEAPON_SHEETS:
@@ -86,16 +81,24 @@ def load_weapon_category(xlsx_path):
             continue
         for row in sheet_rows(wb[sheet_name]):
             index = row["Index"]
-            stats = {k: v for k, v in row.items() if k not in ("Index", "NameKey", "DescKey")}
+            stats = {k: v for k, v in row.items() if k not in ("Index",)}
             items[index] = {
                 "index": index,
                 "weaponType": row["WeaponType"],
-                "rarity": row["Rarity"],
-                "name": localize(row["NameKey"]),
-                "description": localize(row["DescKey"]),
                 "stats": stats,
             }
     return items
+
+
+def load_item_rarities(items_json_path):
+    """items.json(수동 관리, Rarity의 유일한 출처)에서 Index -> RarityID 매핑을 읽는다.
+    build_gacha_tables()가 DropTable_<등급> 시트 이름과 실제 등급이 일치하는지
+    검증할 때만 쓰인다 - weapons.json 등 카테고리 출력물에는 더 이상 rarity가 포함되지 않는다."""
+    if not items_json_path.exists():
+        return {}
+    with open(items_json_path, encoding="utf-8") as f:
+        data = json.load(f)
+    return {entry["index"]: entry["rarityId"] for entry in data}
 
 
 # 카테고리 이름 -> 로더 함수. 앞으로 "Skin": load_skin_category 처럼 추가.
@@ -147,8 +150,9 @@ def load_randombox_data(randombox_path):
     return rarities, boxes_meta, drop_rows
 
 
-def build_gacha_tables(rarities, category_items, boxes_meta, drop_rows):
-    """category_items: {"Weapon": {index: item, ...}, "Skin": {...}, ...}"""
+def build_gacha_tables(rarities, category_items, boxes_meta, drop_rows, item_rarities):
+    """category_items: {"Weapon": {index: item, ...}, "Skin": {...}, ...}
+    item_rarities: items.json에서 읽은 {index: rarityId} - 등급의 유일한 출처."""
     boxes = {}
     warnings = []
 
@@ -177,9 +181,15 @@ def build_gacha_tables(rarities, category_items, boxes_meta, drop_rows):
             warnings.append(f"[DropTable_{sheet_rarity}] BoxID={box_id}, {category}:{item_index}: ItemDropWeight 가 0 이하입니다. 건너뜀.")
             continue
 
-        # 핵심 검증: 시트 이름(=등급)과 원본 데이터의 실제 Rarity 가 일치해야 한다.
-        # 진짜 등급의 출처는 항상 원본 카테고리 파일이므로, 어긋나면 여기서 걸러낸다.
-        actual_rarity = item["rarity"]
+        # 핵심 검증: 시트 이름(=등급)과 실제 Rarity 가 일치해야 한다.
+        # 진짜 등급의 출처는 이제 items.json 이므로, 거기서 못 찾거나 어긋나면 걸러낸다.
+        actual_rarity = item_rarities.get(item_index)
+        if actual_rarity is None:
+            warnings.append(
+                f"[DropTable_{sheet_rarity}] BoxID={box_id}: {category}:{item_index} 의 Rarity를 "
+                f"items.json에서 찾을 수 없습니다. 건너뜀."
+            )
+            continue
         if actual_rarity != sheet_rarity:
             warnings.append(
                 f"[DropTable_{sheet_rarity}] BoxID={box_id}: {category}:{item_index} 의 실제 Rarity 는 "
@@ -251,8 +261,15 @@ def main():
             json.dump(list(items.values()), f, ensure_ascii=False, indent=2)
         category_output_paths[category] = path
 
+    # gacha_tables.json 등급 검증용: items.json(수동 관리, Rarity 유일 출처)에서 읽어온다.
+    # 카테고리 출력물(weapons.json 등)에는 이제 rarity가 없으므로 이 매핑이 꼭 필요하다.
+    items_json_path = out_dir / "items.json"
+    item_rarities = load_item_rarities(items_json_path)
+    if not item_rarities:
+        print(f"[WARN] {items_json_path} 를 찾을 수 없거나 비어 있습니다 - 등급 검증이 전부 스킵됩니다.")
+
     # gacha_tables.json : 박스/추첨 전용 경량 데이터
-    gacha_data, warnings = build_gacha_tables(rarities, category_items, boxes_meta, drop_rows)
+    gacha_data, warnings = build_gacha_tables(rarities, category_items, boxes_meta, drop_rows, item_rarities)
     gacha_path = out_dir / "gacha_tables.json"
     with open(gacha_path, "w", encoding="utf-8") as f:
         json.dump(gacha_data, f, ensure_ascii=False, indent=2)
