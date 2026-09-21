@@ -132,6 +132,94 @@
     "secondarySkillCastTime": 0.0
   },
   {
+    "index": "DMR_1",
+    "category": "Weapon",
+    "name": {
+      "ko": "지정사수소총 1",
+      "en": "Designated Marksman Rifle 1"
+    },
+    "description": {
+      "ko": "지정사수소총 1",
+      "en": "(description needed)"
+    },
+    "rarityId": "Common",
+    "iconPath": "/Game/UI/Icons/T_Icon_SR_2.T_Icon_SR_2",
+    "actorClassPath": "/Game/Weapons/MK14EBR/BP_MK14EBR.BP_MK14EBR_C",
+    "equipTime": 1.8,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
+  },
+  {
+    "index": "SMG_2",
+    "category": "Weapon",
+    "name": {
+      "ko": "기관단총 2",
+      "en": "Submachine Gun 2"
+    },
+    "description": {
+      "ko": "연사력이 빠른 기관단총",
+      "en": "(description needed)"
+    },
+    "rarityId": "Common",
+    "iconPath": "/Game/UI/Icons/T_Icon_SMG_2.T_Icon_SMG_2",
+    "actorClassPath": "/Game/Weapons/MKR9/BP_MKR9.BP_MKR9_C",
+    "equipTime": 1.5,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
+  },
+  {
+    "index": "MG_1",
+    "category": "Weapon",
+    "name": {
+      "ko": "기관총 1",
+      "en": "Machine Gun 1"
+    },
+    "description": {
+      "ko": "많은 양의 탄창을 가진 기관총",
+      "en": "(description needed)"
+    },
+    "rarityId": "Common",
+    "iconPath": "/Game/UI/Icons/T_Icon_AR_3.T_Icon_AR_3",
+    "actorClassPath": "/Game/Weapons/MX68/BP_MX68.BP_MX68_C",
+    "equipTime": 2.0,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
+  },
+  {
+    "index": "P_2",
+    "category": "Weapon",
+    "name": {
+      "ko": "권총 2",
+      "en": "Pistol 2"
+    },
+    "description": {
+      "ko": "6발의 리볼버",
+      "en": "(description needed)"
+    },
+    "rarityId": "Common",
+    "iconPath": "/Game/UI/Icons/T_Icon_P_2.T_Icon_P_2",
+    "actorClassPath": "/Game/Weapons/R08/BP_R08.BP_R08_C",
+    "equipTime": 2.11,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
+  },
+  {
     "index": "UNARMED",
     "category": "Item",
     "name": {

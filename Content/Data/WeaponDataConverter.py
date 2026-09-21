@@ -37,7 +37,8 @@ import json
 from pathlib import Path
 import openpyxl
 
-WEAPON_SHEETS = ["Pistol", "AssaultRifle", "SniperRifle", "SubMachineGun", "ShotGun"]
+WEAPON_SHEETS = ["Pistol", "AssaultRifle", "SniperRifle", "SubMachineGun", "ShotGun",
+                  "DesignatedMarksmanRifle", "MachineGun"]
 
 
 def _normalize_value(v):
