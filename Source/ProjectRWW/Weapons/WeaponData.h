@@ -37,6 +37,24 @@ struct FWeaponStats
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float ReloadTime = 0.f;
 
+	// 탄창이 완전히 비었을 때의 재장전 소요 시간(초). 일반 ReloadTime과 별도로 관리 -
+	// 슬라이드/볼트 릴리즈 등 추가 동작이 붙어 보통 더 길다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")
+	float ReloadTime_Empty = 0.f;
+
+	// 재장전 시작 애니메이션 출력 시간(초).
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")
+	float ReloadTime_Start = 0.f;
+
+	// ReloadType=Single(한 발씩 장전)일 때, 한 발 삽입 애니메이션의 루프 시간(초).
+	// Magazine 재장전 무기는 반복 동작이 없어 0.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")
+	float ReloadTime_Loop = 0.f;
+
+	// 재장전 완료 후 마무리 애니메이션 출력 시간(초).
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")
+	float ReloadTime_End = 0.f;
+
 	// 장전 가능 여부. FALSE면 장전 자체가 불가능 (탄창 교체 없음).
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	bool CanReload = true;
