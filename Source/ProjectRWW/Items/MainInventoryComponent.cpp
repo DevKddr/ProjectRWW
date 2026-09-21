@@ -23,9 +23,9 @@ AMainCharacter* UMainInventoryComponent::GetMainCharacter() const
 	return nullptr;
 }
 
-int32 UMainInventoryComponent::AddItem(FName ItemIndex)
+int32 UMainInventoryComponent::AddItem(FName ItemIndex, int32 InCurrentAmmo)
 {
-	const int32 FilledSlot = Super::AddItem(ItemIndex);
+	const int32 FilledSlot = Super::AddItem(ItemIndex, InCurrentAmmo);
 
 	// 지금 선택된 슬롯(핫바)에 새 아이템이 막 들어왔으면, 즉시 장착까지 반영한다 -
 	// 안 그러면 빈손으로 선택돼있던 슬롯에 아이템이 들어와도 다시 핫키를 눌러야만

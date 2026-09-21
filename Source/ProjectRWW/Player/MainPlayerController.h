@@ -123,6 +123,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "HUD")
 	TSubclassOf<class UMainHUDWidget> HUDWidgetClass;
 
+	// 바라보는 줍기 대상 위 마커/프롬프트 전용 뷰포트 위젯. HUD와 생명주기를 같이한다.
+	UPROPERTY(EditDefaultsOnly, Category = "HUD")
+	TSubclassOf<class UInteractionHUDWidget> InteractionHUDWidgetClass;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
 	TSubclassOf<class UMainInventoryScreenWidget> InventoryWidgetClass;
 
@@ -138,6 +142,9 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<class UMainHUDWidget> HUDWidgetInstance;
+
+	UPROPERTY()
+	TObjectPtr<class UInteractionHUDWidget> InteractionHUDWidgetInstance;
 
 	UPROPERTY()
 	TObjectPtr<class UMainInventoryScreenWidget> InventoryWidgetInstance;

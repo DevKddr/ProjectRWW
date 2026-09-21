@@ -28,7 +28,7 @@ public:
 	UPROPERTY(Replicated)
 	int32 EquippedSlotIndex = -1;
 
-	virtual int32 AddItem(FName ItemIndex) override;
+	virtual int32 AddItem(FName ItemIndex, int32 InCurrentAmmo = -1) override;
 	virtual FInventorySlot TakeSlot(int32 SlotIndex) override;
 	virtual bool PlaceSlot(int32 SlotIndex, const FInventorySlot& SlotData) override;
 

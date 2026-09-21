@@ -7,6 +7,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Combat/MainWeaponComponent.h"
+#include "Items/InteractionComponent.h"
 #include "Core/MainGameMode.h"
 #include "Net/UnrealNetwork.h"
 #include "Player/MainPlayerState.h"
@@ -24,6 +25,7 @@ AMainCharacter::AMainCharacter()
 	GetCharacterMovement()->SetIsReplicated(true);
 
 	WeaponComponent = CreateDefaultSubobject<UMainWeaponComponent>(TEXT("WeaponComponent"));
+	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 }
 
 void AMainCharacter::OnFire(const FInputActionValue& Value)
@@ -370,6 +372,25 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		{
 			EnhancedInput->BindAction(ItemSkillSecondaryAction, ETriggerEvent::Started, this, &AMainCharacter::OnItemSkillSecondary);
 		}
+		if (InteractAction)
+		{
+			EnhancedInput->BindAction(InteractAction, ETriggerEvent::Started, this, &AMainCharacter::OnInteract);
+		}
+
+		// SetupPlayerInputComponent는 로컬 조종 폰에서만 호출되므로, 다른 플레이어 폰은
+		// 트레이스 타이머를 아예 돌리지 않는다.
+		if (InteractionComponent)
+		{
+			InteractionComponent->StartScanning();
+		}
+	}
+}
+
+void AMainCharacter::OnInteract(const FInputActionValue& Value)
+{
+	if (InteractionComponent)
+	{
+		InteractionComponent->TryInteract();
 	}
 }
 

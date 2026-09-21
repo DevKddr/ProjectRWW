@@ -3,6 +3,7 @@
 #include "MainPlayerController.h"
 #include "MainDeathWidget.h"
 #include "MainHUDWidget.h"
+#include "InteractionHUDWidget.h"
 #include "Core/MainNetworkSettings.h"
 #include "Core/MainGameMode.h"
 #include "Map/MainMapMarker.h"
@@ -55,6 +56,21 @@ void AMainPlayerController::ClientRestart_Implementation(APawn* NewPawn)
 		}
 	}
 
+	// 줍기 마커도 HUD와 생명주기를 같이한다. 나중에 추가된 위젯이 위에 그려지므로 HUD 위에,
+	// 인벤토리/지도 창(사용자가 나중에 여는 것) 아래에 놓인다.
+	if (IsLocalController() && InteractionHUDWidgetClass)
+	{
+		if (!InteractionHUDWidgetInstance)
+		{
+			InteractionHUDWidgetInstance = CreateWidget<UInteractionHUDWidget>(this, InteractionHUDWidgetClass);
+		}
+
+		if (InteractionHUDWidgetInstance && !InteractionHUDWidgetInstance->IsInViewport())
+		{
+			InteractionHUDWidgetInstance->AddToViewport();
+		}
+	}
+
 	// 핫바는 HUD와 생명주기를 같이한다 - 사망/리스폰 때 같이 없어졌다 다시 생김.
 	if (IsLocalController() && HotbarWidgetClass)
 	{
@@ -80,6 +96,11 @@ void AMainPlayerController::CloseAllGameplayUI()
 	if (HUDWidgetInstance)
 	{
 		HUDWidgetInstance->RemoveFromParent();
+	}
+
+	if (InteractionHUDWidgetInstance)
+	{
+		InteractionHUDWidgetInstance->RemoveFromParent();
 	}
 
 	if (HotbarWidgetInstance)

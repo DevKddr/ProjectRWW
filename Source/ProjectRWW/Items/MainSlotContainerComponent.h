@@ -48,8 +48,16 @@ public:
 	// 빈 슬롯을 찾아 넣는다. 반환값은 채워진 슬롯 번호 - 꽉 차서 실패하면 INDEX_NONE(-1).
 	// bool이 아니라 슬롯 번호를 돌려주는 이유는, 자식(UMainInventoryComponent)이 "방금
 	// 채운 자리가 지금 장착 중인 슬롯인지" 판단하려면 위치 정보가 필요하기 때문이다.
+	// InCurrentAmmo는 FInventorySlot::CurrentAmmo와 같은 규칙이다 - 기본값 -1은 "새것"(첫
+	// 장착 때 탄창을 가득 채움). 바닥에 떨어진 총을 주울 때만 실제 남은 탄약을 넘긴다.
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	virtual int32 AddItem(FName ItemIndex);
+	virtual int32 AddItem(FName ItemIndex, int32 InCurrentAmmo = -1);
+
+	// 빈 슬롯이 하나라도 있는지. AddItem()이 실패할지 미리 알아야 하는 쪽(줍기 프롬프트,
+	// 서버 검증)이 쓴다. Slots가 오너 클라이언트에 리플리케이트되므로 클라이언트에서도
+	// 호출할 수 있다.
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	bool HasEmptySlot() const;
 
 	// 지정 슬롯의 내용을 꺼내고 그 자리를 비운다. 빈 슬롯/잘못된 인덱스면 빈 값 반환.
 	// 브로드캐스트하지 않는다 - Server_MoveSlot이 최종적으로 한 번씩 처리한다.

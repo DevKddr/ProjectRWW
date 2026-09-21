@@ -31,14 +31,26 @@ void UMainSlotContainerComponent::SetGridSize(int32 NewColumns)
 	Columns = NewColumns;
 }
 
-int32 UMainSlotContainerComponent::AddItem(FName ItemIndex)
+bool UMainSlotContainerComponent::HasEmptySlot() const
+{
+	for (const FInventorySlot& Slot : Slots)
+	{
+		if (Slot.IsEmpty())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+int32 UMainSlotContainerComponent::AddItem(FName ItemIndex, int32 InCurrentAmmo)
 {
 	for (int32 i = 0; i < Slots.Num(); ++i)
 	{
 		if (Slots[i].IsEmpty())
 		{
 			Slots[i].ItemIndex = ItemIndex;
-			Slots[i].CurrentAmmo = -1;
+			Slots[i].CurrentAmmo = InCurrentAmmo;
 
 			// 리슨 서버 호스트는 자기 자신에게는 리플리케이션(OnRep)이 안 오므로,
 			// 여기서 직접 알려줘야 본인 화면도 즉시 갱신된다.

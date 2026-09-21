@@ -50,6 +50,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<class UMainWeaponComponent> WeaponComponent;
 
+	// 바라보는 줍기 대상 감지 + F 입력 처리. HUD가 OnFocusChanged를 구독한다.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
+	TObjectPtr<class UInteractionComponent> InteractionComponent;
+
 	// 아래 이벤트들은 Kinemation Tactical Shooter Pack 애니메이션 컴포넌트를 실제로
 	// 구동하는 지점이다. C++은 "언제 뭐가 바뀌었는지"만 알려주고, 그 값으로 서드파티
 	// BP 컴포넌트(AC_RecoilAnimation 등)의 함수를 부르는 건 BP_MainCharacter 쪽
@@ -188,6 +192,7 @@ protected:
 
 	void OnItemSkillPrimary(const FInputActionValue& Value);
 	void OnItemSkillSecondary(const FInputActionValue& Value);
+	void OnInteract(const FInputActionValue& Value);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
@@ -218,4 +223,8 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> ItemSkillSecondaryAction;
+
+	// F키. 바라보는 아이템 줍기.
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> InteractAction;
 };
