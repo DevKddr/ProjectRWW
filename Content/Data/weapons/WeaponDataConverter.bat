@@ -18,11 +18,6 @@ if errorlevel 1 (
     goto :end
 )
 
-if not exist "RandomBox.xlsx" (
-    echo ERROR: RandomBox.xlsx not found in this folder.
-    goto :end
-)
-
 if not exist "WeaponData.xlsx" (
     echo ERROR: WeaponData.xlsx not found in this folder.
     goto :end
@@ -33,24 +28,15 @@ if not exist "WeaponDataConverter.py" (
     goto :end
 )
 
-if not exist "output" (
-    mkdir "output"
+if not exist "..\output" (
+    mkdir "..\output"
 )
 
-rem weapons.json no longer contains rarity, so the rarity check (DropTable sheet name
-rem vs actual item rarity) now reads output\items.json instead. If it is missing, that
-rem check is skipped and everything else still runs normally.
-if not exist "output\items.json" (
-    echo WARNING: output\items.json not found.
-    echo          Rarity validation against DropTable sheets will be skipped.
-    echo.
-)
-
-python WeaponDataConverter.py RandomBox.xlsx WeaponData.xlsx ./output
+python WeaponDataConverter.py WeaponData.xlsx ..\output
 
 echo.
 echo ============================================
-echo Done. Check the "output" folder for results.
+echo Done. Check the "output" folder (one level up) for results.
 echo ============================================
 
 :end

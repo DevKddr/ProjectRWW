@@ -28,15 +28,15 @@ if not exist "ItemDataConverter.py" (
     goto :end
 )
 
-if not exist "output" (
-    mkdir "output"
+if not exist "..\output" (
+    mkdir "..\output"
 )
 
-python ItemDataConverter.py items.xlsx ./output
+python ItemDataConverter.py items.xlsx ..\output
 
 echo.
 echo ============================================
-echo Done. Check the "output" folder for results.
+echo Done. Check the "output" folder (one level up) for results.
 echo ============================================
 
 :end
