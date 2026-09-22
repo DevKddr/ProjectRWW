@@ -201,6 +201,7 @@ void UMainWeaponComponent::ApplyWeaponStats(const FWeaponStats& Stats)
 	BurstShotInterval = Stats.BurstShotInterval;
 	MagazineSize = Stats.MagazineSize;
 	ReloadTime = Stats.ReloadTime;
+	ReloadTime_Empty = Stats.ReloadTime_Empty;
 	CanReload = Stats.CanReload;
 	WeaponReqMana = Stats.WeaponReqMana;
 	ManaPerAmmo = Stats.ManaPerAmmo;
@@ -902,7 +903,12 @@ void UMainWeaponComponent::Server_Reload_Implementation()
 		World->GetTimerManager().ClearTimer(BurstTimerHandle);
 		PendingBurstShotsRemaining = 0;
 
-		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::CompleteReload, ReloadTime, false);
+		// 탄창이 완전히 빈 상태였다면(재장전 시작 시점 기준) 더 긴 ReloadTime_Empty를 쓴다 -
+		// BP_TacticalShooterWeapon::OnReload가 ReloadEmpty 몽타주 재생 시간을 이 값에
+		// 맞추므로, 서버 완료 시점도 반드시 같은 값을 써야 애니메이션 도중에 탄창이
+		// 채워지는 어긋남이 생기지 않는다.
+		const float EffectiveReloadTime = (CurrentAmmo == 0 && ReloadTime_Empty > 0.0f) ? ReloadTime_Empty : ReloadTime;
+		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::CompleteReload, EffectiveReloadTime, false);
 	}
 }
 

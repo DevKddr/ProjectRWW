@@ -172,6 +172,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetADSSpeed() const { return ADSSpeed; }
 
+	// 탄창에 탄약이 남아있는 상태의 재장전 소요 시간(초). BP_TacticalShooterWeapon의
+	// OnReload가 ReloadTactical 몽타주 재생 속도를 여기 맞추는 데 쓴다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetReloadTime() const { return ReloadTime; }
+
+	// 탄창이 완전히 빈 상태의 재장전 소요 시간(초, 보통 ReloadTime보다 길다). weapons.json의
+	// ReloadTime_Empty와 이름을 그대로 맞춰서 대응 관계를 한눈에 알아볼 수 있게 한다.
+	// ReloadEmpty 몽타주 재생 속도를 여기 맞추는 데 쓴다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetReloadTime_Empty() const { return ReloadTime_Empty; }
+
 	// 지금 재장전 중인지. HUD에서 재장전 UI 표시 여부에 쓴다.
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	bool IsReloading() const { return bIsReloading; }
@@ -329,6 +340,11 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	float ReloadTime = 0.0f;
+
+	// 탄창이 완전히 빈 상태의 재장전 소요 시간(초). FWeaponStats::ReloadTime_Empty,
+	// weapons.json의 "ReloadTime_Empty"와 이름을 그대로 맞춘다.
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	float ReloadTime_Empty = 0.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	bool CanReload = true;
