@@ -24,6 +24,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Crosshair")
 	bool bIsAiming = false;
 
+	// ADS 진행도(0~1). 크로스헤어 페이드에 쓴다.
+	UPROPERTY(BlueprintReadOnly, Category = "Crosshair")
+	float ADSAlpha = 0.0f;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Crosshair")
 	float OffsetX = 0.0f;
 

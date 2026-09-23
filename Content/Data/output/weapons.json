@@ -40,7 +40,7 @@
       "VerticalRecoilMax": -2,
       "HorizontalRecoilMin": -0.8,
       "HorizontalRecoilMax": 1.2,
-      "ADSSpeed": 0.2,
+      "ADSSpeed": 0.3,
       "ADSMoveSpeedMultiplier": 0.95,
       "MoveSpeedMultiplier": 1
     }
@@ -339,6 +339,8 @@
       "ReloadTime_Start": 0.67,
       "ReloadTime_Loop": 0.92,
       "ReloadTime_End": 0.85,
+      "ReloadTime_EmptyAmmoUp": 1.9,
+      "ReloadTime_LoopAmmoUp": 0.5,
       "CanReload": true,
       "WeaponReqMana": 6,
       "ManaPerAmmo": 1,
@@ -386,6 +388,8 @@
       "ReloadTime_Start": 0.67,
       "ReloadTime_Loop": 0.92,
       "ReloadTime_End": 0.85,
+      "ReloadTime_EmptyAmmoUp": 1.9,
+      "ReloadTime_LoopAmmoUp": 0.5,
       "CanReload": true,
       "WeaponReqMana": 6,
       "ManaPerAmmo": 1,

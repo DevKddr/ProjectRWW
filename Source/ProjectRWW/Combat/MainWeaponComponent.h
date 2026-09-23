@@ -168,6 +168,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	bool IsAiming() const { return bIsAiming; }
 
+	// ADS 진행도(0 = 히프파이어, 1 = 완전 ADS). bIsAiming이 뒤집힌 시점부터 ADSSpeed초에 걸쳐
+	// 선형으로 변한다. 호출될 때마다 시각으로 계산하므로 Tick이 필요 없다(GetReloadProgress와
+	// 같은 패턴). 산포(Spread)/크로스헤어 페이드처럼 "전환 도중 값"이 필요한 곳은 IsAiming()이
+	// 아니라 이걸 쓴다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetADSAlpha() const;
+
 	// 조준 완료까지 걸리는 시간(초). 이름은 Speed지만 weapons.json 값은 시간(초) 단위로 쓰인다.
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetADSSpeed() const { return ADSSpeed; }
@@ -254,8 +261,12 @@ protected:
 	// 이번 루프 애니메이션 시작 신호만 보낸다(탄약 변화 없음).
 	void BeginLoopStep();
 
-	// 이번 루프가 끝남 - 탄약 증가 + 다 찼는지 확인해서 다음 단계를 결정한다.
+	// 이번 루프가 끝남 - 다 찼는지 확인해서 다음 단계를 결정한다(탄약 증가는 이제
+	// IncrementReloadAmmo()가 별도 타이머로 담당).
 	void EndLoopStep();
+
+	// ReloadAmmoUpTimerHandle 콜백 - 탄약 카운트만 올린다(애니메이션 단계 전환과 무관).
+	void IncrementReloadAmmo();
 
 	void EndSingleReload();
 
@@ -324,6 +335,13 @@ protected:
 	// 재생했으니 원격 클라이언트일 때만 ReceiveADSChange()를 호출한다.
 	UFUNCTION()
 	void OnRep_IsAiming();
+
+	// bIsAiming을 바꾸는 유일한 경로 - 바뀌는 순간의 진행도와 시각을 기록한다.
+	void SetAiming(bool bNewAiming);
+
+	// 주어진 조준 상태를 기준으로 지금 진행도를 계산한다. OnRep_IsAiming에서는 이미 새 값으로
+	// 덮어써져 있어서 "이전 상태" 기준 계산이 필요하다.
+	float CalcADSAlpha(bool bAimingState) const;
 
 	// ReplicationSequence가 복제되어 도착하면 클라이언트가 스스로 EquipWeapon() 또는
 	// EquipItemVisual()을 재실행해 로컬 상태를 서버와 맞춘다. 무기/아이템 둘 다 이
@@ -402,6 +420,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	float ReloadTime_Empty = 0.0f;
 
+	// Empty Start 안에서 첫 탄이 실제로 올라가는 시점(초). -1이면 Empty Start에 장전
+	// 동작이 없다는 뜻(선반영 안 함, 첫 발은 첫 Loop에서 채워짐).
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	float ReloadTime_EmptyAmmoUp = 0.0f;
+
 	// 장전 방식: "Single"(한 발씩, 예: SG_1) 또는 "Magazine"(탄창째로 한번에). 값 타입은
 	// FWeaponStats::ReloadType과 그대로 맞춘다(요청대로 문자열).
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
@@ -413,11 +436,15 @@ protected:
 	float ReloadTime_Start = 0.0f;
 
 	// ReloadType=Single일 때, 한 발 삽입 애니메이션의 루프 시간(초). Magazine 무기는 0.
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	float ReloadTime_Loop = 0.0f;
 
-	// ReloadType=Single일 때, 재장전 완료 후 마무리 애니메이션 시간(초).
+	// Loop 애니메이션 안에서 탄이 실제로 올라가는 시점(초).
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	float ReloadTime_LoopAmmoUp = 0.0f;
+
+	// ReloadType=Single일 때, 재장전 완료 후 마무리 애니메이션 시간(초).
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	float ReloadTime_End = 0.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
@@ -543,6 +570,11 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_IsAiming)
 	bool bIsAiming = false;
 
+	// ADS 진행도 계산용 - bIsAiming이 바뀐 순간의 진행도와 시각. 서버/클라이언트 시계가 정확히
+	// 동기화되어 있지 않아서 복제하지 않고 각자 자기 시계로 기록한다(ReloadStartTimeSeconds와 같은 정책).
+	float ADSAlphaAtChange = 0.0f;
+	double ADSChangeTimeSeconds = 0.0;
+
 	// 지금 재장전 중인지. 클라이언트 UI 표시용으로 써야 하므로 복제한다.
 	UPROPERTY(ReplicatedUsing = OnRep_IsReloading)
 	bool bIsReloading = false;
@@ -560,6 +592,10 @@ protected:
 	// ReloadTime초 뒤 CompleteReload를 호출하는 타이머 핸들. Single 타입은 이 핸들을
 	// StartSingleReload/LoopSingleReload/EndSingleReload가 돌아가며 재사용한다.
 	FTimerHandle ReloadTimerHandle;
+
+	// "다음 애니메이션 단계로 언제 넘어가는지"(ReloadTimerHandle)와 별개로, "탄약 카운트를
+	// 언제 실제로 올리는지"만 따로 담당하는 타이머.
+	FTimerHandle ReloadAmmoUpTimerHandle;
 
 	// PlayClientReloadLoopStep()이 몇 발 더 남았는지 세는 카운터. 오너 클라이언트 로컬 예측 전용.
 	int32 ReloadAmmoRemaining = 0;

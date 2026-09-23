@@ -21,6 +21,7 @@ void UMainCrosshairWidget::NativeTick(const FGeometry& MyGeometry, float InDelta
 		CurrentSpreadDegrees = WeaponComp->GetCurrentSpreadDegrees();
 		MaxSpreadDegrees = WeaponComp->GetMaxSpreadDegrees();
 		bIsAiming = WeaponComp->IsAiming();
+		ADSAlpha = WeaponComp->GetADSAlpha();
 	}
 
 	const APlayerController* PC = GetOwningPlayer();

@@ -42,6 +42,11 @@ struct FWeaponStats
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")
 	float ReloadTime_Empty = 0.f;
 
+	// Empty Start 애니메이션 안에서 첫 탄이 실제로 올라가는 시점(초). -1이면 이 무기는
+	// Empty Start에 장전 동작이 없다는 뜻(첫 발은 그냥 첫 Loop에서 채워짐).
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")
+	float ReloadTime_EmptyAmmoUp = 0.f;
+
 	// 재장전 시작 애니메이션 출력 시간(초).
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")
 	float ReloadTime_Start = 0.f;
@@ -50,6 +55,10 @@ struct FWeaponStats
 	// Magazine 재장전 무기는 반복 동작이 없어 0.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")
 	float ReloadTime_Loop = 0.f;
+
+	// Loop 애니메이션 안에서 탄이 실제로 올라가는 시점(초).
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")
+	float ReloadTime_LoopAmmoUp = 0.f;
 
 	// 재장전 완료 후 마무리 애니메이션 출력 시간(초).
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ReloadAnim")

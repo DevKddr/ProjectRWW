@@ -129,6 +129,7 @@ void UMainWeaponComponent::EquipWeapon(FName NewWeaponIndex, int32 SavedAmmo, in
 		World->GetTimerManager().ClearTimer(BurstTimerHandle);
 		World->GetTimerManager().ClearTimer(ClientBurstTimerHandle);
 		World->GetTimerManager().ClearTimer(ReloadTimerHandle);
+		World->GetTimerManager().ClearTimer(ReloadAmmoUpTimerHandle);
 	}
 	PendingBurstShotsRemaining = 0;
 	ClientBurstShotsRemaining = 0;
@@ -226,9 +227,11 @@ void UMainWeaponComponent::ApplyWeaponStats(const FWeaponStats& Stats)
 	MagazineSize = Stats.MagazineSize;
 	ReloadTime = Stats.ReloadTime;
 	ReloadTime_Empty = Stats.ReloadTime_Empty;
+	ReloadTime_EmptyAmmoUp = Stats.ReloadTime_EmptyAmmoUp;
 	ReloadType = Stats.ReloadType;
 	ReloadTime_Start = Stats.ReloadTime_Start;
 	ReloadTime_Loop = Stats.ReloadTime_Loop;
+	ReloadTime_LoopAmmoUp = Stats.ReloadTime_LoopAmmoUp;
 	ReloadTime_End = Stats.ReloadTime_End;
 	CanReload = Stats.CanReload;
 	WeaponReqMana = Stats.WeaponReqMana;
@@ -596,8 +599,9 @@ float UMainWeaponComponent::UpdateSpread()
 	const UWorld* World = GetWorld();
 	const double Now = World ? World->GetTimeSeconds() : 0.0;
 
-	const float BaseSpread = bIsAiming ? SpreadADS : SpreadHipfire;
-	const float MaxBloom = bIsAiming ? MaxSpreadBloomADS : MaxSpreadBloomHipfire;
+	const float ADSAlpha = GetADSAlpha();
+	const float BaseSpread = FMath::Lerp(SpreadHipfire, SpreadADS, ADSAlpha);
+	const float MaxBloom = FMath::Lerp(MaxSpreadBloomHipfire, MaxSpreadBloomADS, ADSAlpha);
 
 	const double TimeSinceLastShot = Now - LastSpreadUpdateTimeSeconds;
 	if (TimeSinceLastShot > SpreadRecoveryDelay)
@@ -616,8 +620,9 @@ float UMainWeaponComponent::UpdateSpread()
 
 float UMainWeaponComponent::GetCurrentSpreadDegrees() const
 {
-	const float BaseSpread = bIsAiming ? SpreadADS : SpreadHipfire;
-	const float MaxBloom = bIsAiming ? MaxSpreadBloomADS : MaxSpreadBloomHipfire;
+	const float ADSAlpha = GetADSAlpha();
+	const float BaseSpread = FMath::Lerp(SpreadHipfire, SpreadADS, ADSAlpha);
+	const float MaxBloom = FMath::Lerp(MaxSpreadBloomHipfire, MaxSpreadBloomADS, ADSAlpha);
 
 	// UpdateSpread()가 실제 탄 궤적에 쓰는 것과 동일한 회복 계산. BaseSpread를 더해야
 	// GetMaxSpreadDegrees()와 같은 기준(0 ~ BaseSpread+MaxBloom)이 되어 UI에서
@@ -638,8 +643,9 @@ float UMainWeaponComponent::GetCurrentSpreadDegrees() const
 
 float UMainWeaponComponent::GetMaxSpreadDegrees() const
 {
-	const float BaseSpread = bIsAiming ? SpreadADS : SpreadHipfire;
-	const float MaxBloom = bIsAiming ? MaxSpreadBloomADS : MaxSpreadBloomHipfire;
+	const float ADSAlpha = GetADSAlpha();
+	const float BaseSpread = FMath::Lerp(SpreadHipfire, SpreadADS, ADSAlpha);
+	const float MaxBloom = FMath::Lerp(MaxSpreadBloomHipfire, MaxSpreadBloomADS, ADSAlpha);
 	return BaseSpread + MaxBloom;
 }
 
@@ -682,7 +688,7 @@ void UMainWeaponComponent::RequestReload()
 		{
 			// 서버 BeginLoopStep()의 Empty Start 1발 선반영과 예측 횟수를 맞춘다.
 			int32 EffectiveStartAmmo = CurrentAmmo;
-			if (EffectiveStartAmmo == 0)
+			if (EffectiveStartAmmo == 0 && ReloadTime_EmptyAmmoUp >= 0.0f)
 			{
 				++EffectiveStartAmmo;
 			}
@@ -726,7 +732,7 @@ void UMainWeaponComponent::StartADS()
 	}
 
 	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 조준 연출을 시작할 수 있게 한다.
-	bIsAiming = true;
+	SetAiming(true);
 	Server_SetAiming(true);
 
 	if (OwningCharacter)
@@ -737,7 +743,7 @@ void UMainWeaponComponent::StartADS()
 
 void UMainWeaponComponent::StopADS()
 {
-	bIsAiming = false;
+	SetAiming(false);
 	Server_SetAiming(false);
 
 	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
@@ -770,7 +776,7 @@ void UMainWeaponComponent::Server_SetAiming_Implementation(bool bNewAiming)
 		}
 	}
 
-	bIsAiming = bNewAiming;
+	SetAiming(bNewAiming);
 }
 
 void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
@@ -788,6 +794,7 @@ void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& 
 			if (UWorld* World = GetWorld())
 			{
 				World->GetTimerManager().ClearTimer(ReloadTimerHandle);
+				World->GetTimerManager().ClearTimer(ReloadAmmoUpTimerHandle);
 			}
 			bIsReloading = false;
 			bAmmoEmptyNotified = false;
@@ -1003,8 +1010,8 @@ void UMainWeaponComponent::Server_Reload_Implementation()
 	ASC->ApplyGameplayEffectSpecToSelf(*CostSpec.Data);
 
 	bIsReloading = true;
-	bIsAiming = false; // 재장전 중엔 조준 상태일 수 없다 - 서버 권위로 강제 해제
-	                   // (리플리케이트되어 OnRep_IsAiming이 원격 클라이언트 조준 해제 연출도 처리한다).
+	SetAiming(false); // 재장전 중엔 조준 상태일 수 없다 - 서버 권위로 강제 해제
+	                  // (리플리케이트되어 OnRep_IsAiming이 원격 클라이언트 조준 해제 연출도 처리한다).
 	ReloadStartTimeSeconds = GetWorld()->GetTimeSeconds();
 
 	if (ReloadType == TEXT("Single"))
@@ -1056,6 +1063,14 @@ void UMainWeaponComponent::StartSingleReload()
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::BeginLoopStep, GetReloadStartTime(), false);
+
+		// Empty Start가 탄약을 선반영하는 무기만(ReloadTime_EmptyAmmoUp >= 0) Start 애니메이션
+		// 도중 별도 타이밍에 첫 발을 채운다. -1이면 이 무기는 Empty Start에 장전 동작이 없다는
+		// 뜻이라 아무것도 안 하고, 첫 발은 그냥 첫 Loop에서 채워진다.
+		if (CurrentAmmo == 0 && ReloadTime_EmptyAmmoUp >= 0.0f)
+		{
+			World->GetTimerManager().SetTimer(ReloadAmmoUpTimerHandle, this, &UMainWeaponComponent::IncrementReloadAmmo, ReloadTime_EmptyAmmoUp, false);
+		}
 	}
 }
 
@@ -1067,19 +1082,11 @@ void UMainWeaponComponent::BeginLoopStep()
 		return;
 	}
 
-	// Empty Start로 시작했으면(재장전 시작 시점에 탄창이 완전히 빔) Start 애니메이션
-	// 자체에 첫 발 장전이 포함된 것으로 보고 이 시점에 1발 선반영한다. Tactical Start는
-	// 장전 동작이 없어서 해당 없음 - 이 시점에 CurrentAmmo가 여전히 0이라는 게 Empty
-	// Start였다는 뜻이다(그 사이 아무것도 탄약을 안 건드리므로).
-	if (CurrentAmmo == 0)
-	{
-		++CurrentAmmo;
-	}
-
 	MulticastReloadLoop(); // 원격 클라이언트에게 지금 이 루프 애니메이션을 재생하라고 알린다.
 
 	if (UWorld* World = GetWorld())
 	{
+		World->GetTimerManager().SetTimer(ReloadAmmoUpTimerHandle, this, &UMainWeaponComponent::IncrementReloadAmmo, ReloadTime_LoopAmmoUp, false);
 		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::EndLoopStep, ReloadTime_Loop, false);
 	}
 }
@@ -1090,8 +1097,6 @@ void UMainWeaponComponent::EndLoopStep()
 	{
 		return;
 	}
-
-	++CurrentAmmo; // 이 루프의 애니메이션이 실제로 끝난 시점에 탄약을 늘린다.
 
 	if (CurrentAmmo >= MagazineSize)
 	{
@@ -1107,6 +1112,16 @@ void UMainWeaponComponent::EndLoopStep()
 		// 실제 재장전 속도가 의도한 것의 절반으로 느려진다.
 		BeginLoopStep();
 	}
+}
+
+void UMainWeaponComponent::IncrementReloadAmmo()
+{
+	if (!bIsReloading)
+	{
+		return;
+	}
+
+	++CurrentAmmo;
 }
 
 void UMainWeaponComponent::MulticastReloadLoop_Implementation()
@@ -1298,6 +1313,13 @@ void UMainWeaponComponent::MulticastWeaponFireStopped_Implementation()
 
 void UMainWeaponComponent::OnRep_IsAiming()
 {
+	// 복제로 이미 새 값이 덮어써진 상태라, 이전 상태 기준으로 전환 시점의 진행도를 복원한다.
+	ADSAlphaAtChange = CalcADSAlpha(!bIsAiming);
+	if (const UWorld* World = GetWorld())
+	{
+		ADSChangeTimeSeconds = World->GetTimeSeconds();
+	}
+
 	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
 	{
 		if (!GetOwner()->HasLocalNetOwner())
@@ -1305,6 +1327,41 @@ void UMainWeaponComponent::OnRep_IsAiming()
 			OwningCharacter->ReceiveADSChange(bIsAiming);
 		}
 	}
+}
+
+float UMainWeaponComponent::CalcADSAlpha(bool bAimingState) const
+{
+	const float Target = bAimingState ? 1.0f : 0.0f;
+	const UWorld* World = GetWorld();
+	if (!World || ADSSpeed <= 0.0f)
+	{
+		return Target; // 시간이 0이면 즉시 전환
+	}
+
+	const float Delta = static_cast<float>(World->GetTimeSeconds() - ADSChangeTimeSeconds) / ADSSpeed;
+	return bAimingState
+		? FMath::Min(1.0f, ADSAlphaAtChange + Delta)
+		: FMath::Max(0.0f, ADSAlphaAtChange - Delta);
+}
+
+float UMainWeaponComponent::GetADSAlpha() const
+{
+	return CalcADSAlpha(bIsAiming);
+}
+
+void UMainWeaponComponent::SetAiming(bool bNewAiming)
+{
+	if (bIsAiming == bNewAiming)
+	{
+		return;
+	}
+
+	ADSAlphaAtChange = GetADSAlpha(); // 값이 바뀌기 전에 계산해야 한다
+	if (const UWorld* World = GetWorld())
+	{
+		ADSChangeTimeSeconds = World->GetTimeSeconds();
+	}
+	bIsAiming = bNewAiming;
 }
 
 void UMainWeaponComponent::OnRep_CurrentAmmo()
