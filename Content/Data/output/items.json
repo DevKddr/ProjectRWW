@@ -132,6 +132,28 @@
     "secondarySkillCastTime": 0.0
   },
   {
+    "index": "SG_2",
+    "category": "Weapon",
+    "name": {
+      "ko": "샷건",
+      "en": "Shotgun"
+    },
+    "description": {
+      "ko": "근거리에서 강력한 산탄을 발사하는 샷건.",
+      "en": "A shotgun that fires powerful buckshot at close range."
+    },
+    "rarityId": "Rare",
+    "iconPath": "/Game/UI/Icons/T_Icon_SG_1.T_Icon_SG_1",
+    "actorClassPath": "/Game/Weapons/Herrington_11-87/BP_Herrington_11-87.BP_Herrington_11-87_C",
+    "equipTime": 1.8,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0
+  },
+  {
     "index": "DMR_1",
     "category": "Weapon",
     "name": {

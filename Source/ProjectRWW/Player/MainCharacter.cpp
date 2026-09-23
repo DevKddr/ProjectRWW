@@ -78,6 +78,12 @@ void AMainCharacter::OnADSStop(const FInputActionValue& Value)
 
 void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 {
+	// 달리기 시작하면 조준 상태일 수 없다 - 이미 조준 중이었다면 풀어준다.
+	if (WeaponComponent && WeaponComponent->IsAiming())
+	{
+		WeaponComponent->StopADS();
+	}
+
 	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 반응. bSprintRequested도 여기서 갱신해야
 	// 이후(스킬 만료 등으로) 재동기화가 일어날 때 "지금 달리는 중"이라는 걸 클라이언트가
 	// 정확히 알 수 있다 - 예전엔 ServerSetSprinting_Implementation(서버 전용)에서만
@@ -112,6 +118,11 @@ void AMainCharacter::OnMoveStopped(const FInputActionValue& Value)
 
 void AMainCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)
 {
+	if (bNewSprinting && WeaponComponent && WeaponComponent->IsAiming())
+	{
+		WeaponComponent->StopADS();
+	}
+
 	bSprintRequested = bNewSprinting;
 	SyncMovementSpeedFromAttributes(bNewSprinting);
 }

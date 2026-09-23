@@ -105,6 +105,18 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Animation")
 	void ReceiveReloadStart();
 
+	// Single 타입(한 발씩 장전, 예: SG_1) 재장전 중 총알 한 발이 채워질 때마다 호출된다.
+	// 본인 클라이언트는 로컬 예측 타이머(PlayClientReloadLoopStep)로, 원격 클라이언트는
+	// CurrentAmmo 리플리케이션(OnRep_CurrentAmmo)으로 호출된다.
+	UFUNCTION(BlueprintImplementableEvent, Category = "Animation")
+	void ReceiveReloadLoop();
+
+	// Single 타입 재장전이 정상적으로(발사로 중단되지 않고) 끝났을 때 호출된다.
+	// 본인 클라이언트는 로컬 예측 타이머로, 원격 클라이언트는 전용 Multicast RPC
+	// (MulticastReloadEnd)로 호출된다 - 발사로 중단된 경우엔 절대 호출되지 않는다.
+	UFUNCTION(BlueprintImplementableEvent, Category = "Animation")
+	void ReceiveReloadEnd();
+
 	// 지금 손에 부착되어 있는 비무기 아이템 Actor(BP_Unarmed 등)를 반환한다.
 	// WeaponComponent의 ActiveHandActor(무기/아이템 공용 슬롯)를, 무기가 장착 중이
 	// 아닐 때만 반환한다 - GetMainWeapon()과 대칭되는 필터링. ActiveHandActor는

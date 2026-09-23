@@ -27,6 +27,30 @@
 // 잘려서, 빠른 연사일수록 발사가 취소되는 문제가 있었다. 서버 검증과 클라 예측이 같이 쓴다.
 static constexpr float MaxFireBacklogSeconds = 0.15f;
 
+// 무기별 "원본 애니메이션에서 실제로 재장전이 끝나는 시점"(초, 고정값). weapons.json처럼
+// 밸런스 목적으로 바뀌면 안 되는 값이라 데이터 파일이 아니라 코드에 직접 둔다.
+// SG_1/SG_2(ReloadType: Single)은 재장전 방식이 완전히 달라서 이 필드 자체를 안 쓴다 -
+// 표에서 빼서 조용히 폴백시키는 대신 0으로 명시해서, 실수로 호출되면 바로 티가 나게 한다.
+struct FBaseReloadTime
+{
+	float Time = 0.0f;
+	float TimeEmpty = 0.0f;
+};
+
+static const TMap<FName, FBaseReloadTime> BaseReloadTimeTable = {
+	{ TEXT("P_1"),   { 2.5f, 3.3f } },
+	{ TEXT("P_2"),   { 4.1f, 4.1f } },
+	{ TEXT("AR_1"),  { 2.9f, 3.7f } },
+	{ TEXT("AR_2"),  { 3.1f, 3.9f } },
+	{ TEXT("SR_1"),  { 3.0f, 5.0f } },
+	{ TEXT("SMG_1"), { 3.2f, 3.6f } },
+	{ TEXT("SMG_2"), { 3.2f, 3.6f } },
+	{ TEXT("SG_1"),  { 0.0f, 0.0f } },
+	{ TEXT("SG_2"),  { 0.0f, 0.0f } },
+	{ TEXT("DMR_1"), { 3.2f, 4.5f } },
+	{ TEXT("MG_1"),  { 6.8f, 8.0f } },
+};
+
 UMainWeaponComponent::UMainWeaponComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -202,6 +226,10 @@ void UMainWeaponComponent::ApplyWeaponStats(const FWeaponStats& Stats)
 	MagazineSize = Stats.MagazineSize;
 	ReloadTime = Stats.ReloadTime;
 	ReloadTime_Empty = Stats.ReloadTime_Empty;
+	ReloadType = Stats.ReloadType;
+	ReloadTime_Start = Stats.ReloadTime_Start;
+	ReloadTime_Loop = Stats.ReloadTime_Loop;
+	ReloadTime_End = Stats.ReloadTime_End;
 	CanReload = Stats.CanReload;
 	WeaponReqMana = Stats.WeaponReqMana;
 	ManaPerAmmo = Stats.ManaPerAmmo;
@@ -417,10 +445,32 @@ void UMainWeaponComponent::RequestFire()
 	}
 
 	// 재장전 중에는 발사 예측(애니메이션)도 하지 않는다 - 서버가 어차피 거부한다.
+	bool bJustCancelledSingleReload = false;
 	if (bIsReloading)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 클라: 재장전 중이라 발사 안 함 (%s)"), *GetNameSafe(GetOwner()));
-		return;
+		// Single 타입은 ReloadStart 이후 언제든 발사가 재장전을 취소할 수 있다 - 로컬 예측
+		// 타이머 체인만 끊고(EndSingleReload 없이) 아래로 흘러가 정상 발사 로직을 그대로 탄다.
+		if (ReloadType == TEXT("Single"))
+		{
+			if (UWorld* World = GetWorld())
+			{
+				World->GetTimerManager().ClearTimer(ClientSingleReloadTimerHandle);
+			}
+			bIsReloading = false;
+			bJustCancelledSingleReload = true; // 탄약이 아직 0이어도 서버에 요청을 보내야 서버도 취소한다.
+
+			// 재장전 애니메이션(특히 Loop)이 중간에 기울어진 자세로 끝나도록 만들어져 있어서,
+			// 그냥 끊으면 그 자세로 고정된다 - ReloadEnd를 재생해서 정자세로 풀어준다.
+			if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
+			{
+				OwningCharacter->ReceiveReloadEnd();
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 클라: 재장전 중이라 발사 안 함 (%s)"), *GetNameSafe(GetOwner()));
+			return;
+		}
 	}
 
 	AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner());
@@ -516,6 +566,16 @@ void UMainWeaponComponent::RequestFire()
 
 		ServerFire(ViewLocation, ViewRotation.Vector());
 	}
+	else if (bJustCancelledSingleReload)
+	{
+		// 실제로 쏠 탄약은 없지만, 서버가 자기 쪽 Single 재장전 상태 머신을 취소할 수
+		// 있게 요청은 그대로 보낸다 - 안 보내면 클라만 끊기고 서버는 계속 재장전을 진행한다.
+		FVector ViewLocation;
+		FRotator ViewRotation;
+		OwnerPawn->GetController()->GetPlayerViewPoint(ViewLocation, ViewRotation);
+
+		ServerFire(ViewLocation, ViewRotation.Vector());
+	}
 	else if (!bAmmoEmptyNotified)
 	{
 		bAmmoEmptyNotified = true;
@@ -597,6 +657,12 @@ void UMainWeaponComponent::RequestReload()
 		return;
 	}
 
+	// 재장전 중엔 조준 상태일 수 없다 - 이미 조준 중이었다면 풀어준다.
+	if (bIsAiming)
+	{
+		StopADS();
+	}
+
 	// 재장전을 시작하면 진행 중이던 연사를 확실히 끊는다 - 안 그러면 탄약 0일 때와
 	// 같은 이유(IsLooping이 안 꺼짐)로 반동 애니메이션이 재장전 중에도 계속 남아있는다.
 	StopFire();
@@ -610,6 +676,22 @@ void UMainWeaponComponent::RequestReload()
 		{
 			OwningCharacter->ReceiveReloadStart();
 		}
+
+		// Single 타입은 서버와 같은 타이밍으로 로컬 예측 재생 체인을 시작한다.
+		if (ReloadType == TEXT("Single"))
+		{
+			// 서버 BeginLoopStep()의 Empty Start 1발 선반영과 예측 횟수를 맞춘다.
+			int32 EffectiveStartAmmo = CurrentAmmo;
+			if (EffectiveStartAmmo == 0)
+			{
+				++EffectiveStartAmmo;
+			}
+			ReloadAmmoRemaining = MagazineSize - EffectiveStartAmmo;
+			if (UWorld* World = GetWorld())
+			{
+				World->GetTimerManager().SetTimer(ClientSingleReloadTimerHandle, this, &UMainWeaponComponent::PlayClientReloadLoopStep, GetReloadStartTime(), false);
+			}
+		}
 	}
 
 	Server_Reload();
@@ -618,6 +700,12 @@ void UMainWeaponComponent::RequestReload()
 void UMainWeaponComponent::StartADS()
 {
 	if (!HasWeaponEquipped())
+	{
+		return;
+	}
+
+	// 재장전 중에는 조준할 수 없다.
+	if (bIsReloading)
 	{
 		return;
 	}
@@ -663,6 +751,11 @@ void UMainWeaponComponent::Server_SetAiming_Implementation(bool bNewAiming)
 	// 조준을 켜려는 요청이면 달리기 중인지, 장착 시간이 지났는지 확인한다. 조준 해제(false)는 항상 허용.
 	if (bNewAiming)
 	{
+		if (bIsReloading)
+		{
+			return;
+		}
+
 		if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
 		{
 			if (OwningCharacter->IsSprinting())
@@ -683,16 +776,33 @@ void UMainWeaponComponent::Server_SetAiming_Implementation(bool bNewAiming)
 void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
 {
 	// [발사취소] 로그는 발사가 어디서 잘리는지 추적하는 진단용이다. 원인이 확정되면 제거한다.
+
+	// 재장전 중에는 발사를 거부한다 - 단, Single 타입은 재장전 취소가 먼저다. 탄약이
+	// 아직 0(Empty Start 도중)이어도 취소 자체는 일어나야 하므로 탄약 체크보다 앞에 둔다.
+	if (bIsReloading)
+	{
+		// 클라이언트 RequestFire()와 같은 정책 - Single 타입만 발사로 재장전을 취소할 수 있다.
+		// 지금까지 채운 CurrentAmmo는 그대로 두고 서버 권위 타이머만 끊는다.
+		if (ReloadType == TEXT("Single"))
+		{
+			if (UWorld* World = GetWorld())
+			{
+				World->GetTimerManager().ClearTimer(ReloadTimerHandle);
+			}
+			bIsReloading = false;
+			bAmmoEmptyNotified = false;
+			MulticastReloadEnd(); // 원격 클라이언트도 ReloadEnd로 기울어진 자세를 풀어준다.
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 서버: 재장전 중 (%s)"), *GetNameSafe(GetOwner()));
+			return;
+		}
+	}
+
 	if (CurrentAmmo <= 0)
 	{
 		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 서버: 탄약 없음 (%s)"), *GetNameSafe(GetOwner()));
-		return;
-	}
-
-	// 재장전 중에는 발사를 거부한다.
-	if (bIsReloading)
-	{
-		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 서버: 재장전 중 (%s)"), *GetNameSafe(GetOwner()));
 		return;
 	}
 
@@ -893,7 +1003,23 @@ void UMainWeaponComponent::Server_Reload_Implementation()
 	ASC->ApplyGameplayEffectSpecToSelf(*CostSpec.Data);
 
 	bIsReloading = true;
+	bIsAiming = false; // 재장전 중엔 조준 상태일 수 없다 - 서버 권위로 강제 해제
+	                   // (리플리케이트되어 OnRep_IsAiming이 원격 클라이언트 조준 해제 연출도 처리한다).
 	ReloadStartTimeSeconds = GetWorld()->GetTimeSeconds();
+
+	if (ReloadType == TEXT("Single"))
+	{
+		int32 EffectiveStartAmmo = CurrentAmmo;
+		if (EffectiveStartAmmo == 0)
+		{
+			++EffectiveStartAmmo;
+		}
+		ReloadTotalDuration = GetReloadStartTime() + (MagazineSize - EffectiveStartAmmo) * ReloadTime_Loop;
+	}
+	else
+	{
+		ReloadTotalDuration = GetEffectiveReloadTime();
+	}
 
 	if (UWorld* World = GetWorld())
 	{
@@ -904,11 +1030,17 @@ void UMainWeaponComponent::Server_Reload_Implementation()
 		PendingBurstShotsRemaining = 0;
 
 		// 탄창이 완전히 빈 상태였다면(재장전 시작 시점 기준) 더 긴 ReloadTime_Empty를 쓴다 -
-		// BP_TacticalShooterWeapon::OnReload가 ReloadEmpty 몽타주 재생 시간을 이 값에
-		// 맞추므로, 서버 완료 시점도 반드시 같은 값을 써야 애니메이션 도중에 탄창이
-		// 채워지는 어긋남이 생기지 않는다.
-		const float EffectiveReloadTime = (CurrentAmmo == 0 && ReloadTime_Empty > 0.0f) ? ReloadTime_Empty : ReloadTime;
-		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::CompleteReload, EffectiveReloadTime, false);
+		// BP_TacticalShooterWeapon::OnReload의 GetEffectiveReloadTime() 호출과 반드시 같은
+		// 값을 써야 애니메이션 도중에 탄창이 채워지는 어긋남이 생기지 않는다(로직은
+		// GetEffectiveReloadTime()에 한 곳으로 모아 중복을 없앴다).
+		if (ReloadType == TEXT("Single"))
+		{
+			StartSingleReload();
+		}
+		else
+		{
+			World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::CompleteReload, GetEffectiveReloadTime(), false);
+		}
 	}
 }
 
@@ -919,6 +1051,132 @@ void UMainWeaponComponent::CompleteReload()
 	bAmmoEmptyNotified = false;
 }
 
+void UMainWeaponComponent::StartSingleReload()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::BeginLoopStep, GetReloadStartTime(), false);
+	}
+}
+
+void UMainWeaponComponent::BeginLoopStep()
+{
+	// 발사로 이미 취소됐는데 타이머가 남아있던 경우의 방어 코드.
+	if (!bIsReloading)
+	{
+		return;
+	}
+
+	// Empty Start로 시작했으면(재장전 시작 시점에 탄창이 완전히 빔) Start 애니메이션
+	// 자체에 첫 발 장전이 포함된 것으로 보고 이 시점에 1발 선반영한다. Tactical Start는
+	// 장전 동작이 없어서 해당 없음 - 이 시점에 CurrentAmmo가 여전히 0이라는 게 Empty
+	// Start였다는 뜻이다(그 사이 아무것도 탄약을 안 건드리므로).
+	if (CurrentAmmo == 0)
+	{
+		++CurrentAmmo;
+	}
+
+	MulticastReloadLoop(); // 원격 클라이언트에게 지금 이 루프 애니메이션을 재생하라고 알린다.
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UMainWeaponComponent::EndLoopStep, ReloadTime_Loop, false);
+	}
+}
+
+void UMainWeaponComponent::EndLoopStep()
+{
+	if (!bIsReloading)
+	{
+		return;
+	}
+
+	++CurrentAmmo; // 이 루프의 애니메이션이 실제로 끝난 시점에 탄약을 늘린다.
+
+	if (CurrentAmmo >= MagazineSize)
+	{
+		// End는 Loop와 달리 여기서 더 대기할 이유가 없다 - 마지막 탄이 약실에 들어간
+		// 순간 발사 가능해야 하고(Loop처럼 발사로 끊겨도 되는 후속 연출), End 애니메이션도
+		// 그 즉시 재생돼야 한다(대기 후 재생하면 그 사이 아무 것도 안 보이는 공백이 생김).
+		EndSingleReload();
+	}
+	else
+	{
+		// 다음 루프 애니메이션을 즉시 시작한다 - 여기서 또 ReloadTime_Loop초를 기다리면
+		// 한 발당 ReloadTime_Loop가 두 번(이 대기 + BeginLoopStep이 여는 대기) 들어가서
+		// 실제 재장전 속도가 의도한 것의 절반으로 느려진다.
+		BeginLoopStep();
+	}
+}
+
+void UMainWeaponComponent::MulticastReloadLoop_Implementation()
+{
+	if (GetOwner() && !GetOwner()->HasLocalNetOwner())
+	{
+		if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
+		{
+			OwningCharacter->ReceiveReloadLoop();
+		}
+	}
+}
+
+void UMainWeaponComponent::EndSingleReload()
+{
+	bIsReloading = false;
+	bAmmoEmptyNotified = false;
+	MulticastReloadEnd();
+}
+
+void UMainWeaponComponent::PlayClientReloadLoopStep()
+{
+	if (!bIsReloading)
+	{
+		return;
+	}
+
+	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
+	{
+		OwningCharacter->ReceiveReloadLoop();
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	--ReloadAmmoRemaining;
+	if (ReloadAmmoRemaining > 0)
+	{
+		World->GetTimerManager().SetTimer(ClientSingleReloadTimerHandle, this, &UMainWeaponComponent::PlayClientReloadLoopStep, ReloadTime_Loop, false);
+	}
+	else
+	{
+		// 마지막 루프 애니메이션이 다 재생될 때까지(ReloadTime_Loop) 기다린 뒤 End를 즉시
+		// 재생한다 - 서버(EndLoopStep -> EndSingleReload 즉시 호출)와 같은 타이밍.
+		World->GetTimerManager().SetTimer(ClientSingleReloadTimerHandle, this, &UMainWeaponComponent::PlayClientReloadEndStep, ReloadTime_Loop, false);
+	}
+}
+
+void UMainWeaponComponent::PlayClientReloadEndStep()
+{
+	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
+	{
+		OwningCharacter->ReceiveReloadEnd();
+	}
+}
+
+void UMainWeaponComponent::MulticastReloadEnd_Implementation()
+{
+	if (GetOwner() && !GetOwner()->HasLocalNetOwner())
+	{
+		if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
+		{
+			OwningCharacter->ReceiveReloadEnd();
+		}
+	}
+}
+
 void UMainWeaponComponent::OnRep_IsReloading()
 {
 	if (bIsReloading)
@@ -926,6 +1184,20 @@ void UMainWeaponComponent::OnRep_IsReloading()
 		if (UWorld* World = GetWorld())
 		{
 			ReloadStartTimeSeconds = World->GetTimeSeconds();
+		}
+
+		if (ReloadType == TEXT("Single"))
+		{
+			int32 EffectiveStartAmmo = CurrentAmmo;
+			if (EffectiveStartAmmo == 0)
+			{
+				++EffectiveStartAmmo;
+			}
+			ReloadTotalDuration = GetReloadStartTime() + (MagazineSize - EffectiveStartAmmo) * ReloadTime_Loop;
+		}
+		else
+		{
+			ReloadTotalDuration = GetEffectiveReloadTime();
 		}
 
 		// 본인 클라이언트는 RequestReload()에서 이미 로컬 예측으로 애니메이션을
@@ -943,7 +1215,7 @@ void UMainWeaponComponent::OnRep_IsReloading()
 
 float UMainWeaponComponent::GetReloadProgress() const
 {
-	if (!bIsReloading || ReloadTime <= 0.0f)
+	if (!bIsReloading || ReloadTotalDuration <= 0.0f)
 	{
 		return 0.0f;
 	}
@@ -955,7 +1227,41 @@ float UMainWeaponComponent::GetReloadProgress() const
 	}
 
 	const float ElapsedTime = World->GetTimeSeconds() - ReloadStartTimeSeconds;
-	return FMath::Clamp(ElapsedTime / ReloadTime, 0.0f, 1.0f);
+	return FMath::Clamp(ElapsedTime / ReloadTotalDuration, 0.0f, 1.0f);
+}
+
+float UMainWeaponComponent::GetBaseReloadTime() const
+{
+	if (const FBaseReloadTime* Found = BaseReloadTimeTable.Find(WeaponIndex))
+	{
+		return Found->Time;
+	}
+	return ReloadTime; // 표에 없는 무기는 비율 1.0(원래 속도)으로 폴백
+}
+
+float UMainWeaponComponent::GetBaseReloadTime_Empty() const
+{
+	if (const FBaseReloadTime* Found = BaseReloadTimeTable.Find(WeaponIndex))
+	{
+		return Found->TimeEmpty;
+	}
+	return ReloadTime_Empty;
+}
+
+float UMainWeaponComponent::GetEffectiveReloadTime() const
+{
+	return (CurrentAmmo == 0 && ReloadTime_Empty > 0.0f) ? ReloadTime_Empty : ReloadTime;
+}
+
+float UMainWeaponComponent::GetReloadPlayRate() const
+{
+	const float BaseTime = (CurrentAmmo == 0 && ReloadTime_Empty > 0.0f) ? GetBaseReloadTime_Empty() : GetBaseReloadTime();
+	return BaseTime / FMath::Max(GetEffectiveReloadTime(), 0.01f);
+}
+
+float UMainWeaponComponent::GetReloadStartTime() const
+{
+	return (CurrentAmmo == 0 && ReloadTime_Empty > 0.0f) ? ReloadTime_Empty : ReloadTime_Start;
 }
 
 void UMainWeaponComponent::MulticastPlayFireEffects_Implementation(const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& TraceEnd, bool bHit)
@@ -1004,6 +1310,8 @@ void UMainWeaponComponent::OnRep_IsAiming()
 void UMainWeaponComponent::OnRep_CurrentAmmo()
 {
 	// TODO: 탄약 UI 갱신 등, 클라이언트 반응 로직이 필요해지면 여기에 추가
+	// (Single 타입 ReloadLoop 애니메이션 신호는 이제 MulticastReloadLoop()가 전담한다 -
+	// 탄약은 그 루프가 끝난 뒤에야 바뀌므로 더 이상 여기서 트리거하면 안 된다.)
 }
 
 void UMainWeaponComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

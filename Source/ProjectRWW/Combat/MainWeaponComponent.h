@@ -183,6 +183,32 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetReloadTime_Empty() const { return ReloadTime_Empty; }
 
+	// 애니메이션 원본 재생 기준으로 "실제 재장전이 끝나 발사 가능해지는" 시점(초, 고정값).
+	// weapons.json의 ReloadTime과 달리 밸런스 조정 대상이 아니라 애니메이션 자체의 성질이라
+	// 코드에서만 관리한다(MainWeaponComponent.cpp의 BaseReloadTimeTable 참고).
+	// SG_1/SG_2(ReloadType: Single)은 재장전 방식 자체가 달라서 대상이 아니다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetBaseReloadTime() const;
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetBaseReloadTime_Empty() const;
+
+	// 지금(재장전 시작 시점) 기준으로 적용해야 할 실제 재장전 소요 시간(초) - CurrentAmmo==0이면
+	// ReloadTime_Empty를 쓴다. BP의 StartAction.ResetTime과 서버 완료 타이머
+	// (Server_Reload_Implementation)가 반드시 이 값을 그대로 같이 써야 애니메이션과 판정
+	// 타이밍이 어긋나지 않는다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetEffectiveReloadTime() const;
+
+	// 재장전 몽타주 재생 속도(PlayRate) = GetBaseReloadTime(Empty) / GetEffectiveReloadTime().
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetReloadPlayRate() const;
+
+	// Single 타입의 ReloadStart 단계 길이. 완전히 빈 상태면 ReloadTime_Empty(Empty Start 몽타주
+	// 기준), 아니면 ReloadTime_Start(Tactical Start 몽타주 기준)를 쓴다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetReloadStartTime() const;
+
 	// 지금 재장전 중인지. HUD에서 재장전 UI 표시 여부에 쓴다.
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	bool IsReloading() const { return bIsReloading; }
@@ -219,6 +245,36 @@ protected:
 
 	// ReloadTime초 뒤에 실제로 탄창을 채우는 타이머 콜백.
 	void CompleteReload();
+
+	// Single 타입(한 발씩 장전) 재장전 상태 머신 - 서버 권위로 실제 탄약을 채운다.
+	// StartSingleReload(GetEffectiveReloadTime()초) → LoopSingleReload(반복, ReloadTime_Loop 간격)
+	// → 다 차면 EndSingleReload(ReloadTime_End초 뒤).
+	void StartSingleReload();
+
+	// 이번 루프 애니메이션 시작 신호만 보낸다(탄약 변화 없음).
+	void BeginLoopStep();
+
+	// 이번 루프가 끝남 - 탄약 증가 + 다 찼는지 확인해서 다음 단계를 결정한다.
+	void EndLoopStep();
+
+	void EndSingleReload();
+
+	// Single 타입 오너 클라이언트 전용 로컬 예측 재생 - CurrentAmmo는 서버 권위라 안 건드리고,
+	// ReloadLoop/ReloadEnd 애니메이션 타이밍만 서버와 같은 간격으로 미리 재생한다
+	// (버스트 발사의 PlayClientBurstShot()과 같은 패턴).
+	void PlayClientReloadLoopStep();
+	void PlayClientReloadEndStep();
+
+	// 서버 -> 전체 클라이언트: Single 타입 재장전이 발사로 중단되지 않고 정상적으로
+	// 끝났을 때만 호출된다 - 원격 클라이언트에게 마무리 연출(ReloadEnd)을 알리는 용도.
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastReloadEnd();
+
+	// 서버 -> 전체 클라이언트: Single 타입 루프 한 스텝이 시작될 때마다 호출된다 - 원격
+	// 클라이언트에게 ReloadLoop 애니메이션 재생 시점을 정확히 알려주는 용도(탄약 변화와는
+	// 별개 신호 - 탄약은 그 루프가 끝난 뒤에야 증가한다).
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastReloadLoop();
 
 	// bIsReloading이 복제되어 도착하면 호출된다. 서버 시각을 그대로 믿지 않고,
 	// 클라이언트가 소식을 받은 그 순간을 자기 시계로 다시 찍어서 기준으로 삼는다.
@@ -345,6 +401,24 @@ protected:
 	// weapons.json의 "ReloadTime_Empty"와 이름을 그대로 맞춘다.
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	float ReloadTime_Empty = 0.0f;
+
+	// 장전 방식: "Single"(한 발씩, 예: SG_1) 또는 "Magazine"(탄창째로 한번에). 값 타입은
+	// FWeaponStats::ReloadType과 그대로 맞춘다(요청대로 문자열).
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	FString ReloadType;
+
+	// ReloadType=Single일 때, ReloadStart 단계 길이(초, 탄이 남은 상태). Magazine 타입은
+	// 이 필드를 안 쓴다(ReloadTime을 대신 씀).
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	float ReloadTime_Start = 0.0f;
+
+	// ReloadType=Single일 때, 한 발 삽입 애니메이션의 루프 시간(초). Magazine 무기는 0.
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	float ReloadTime_Loop = 0.0f;
+
+	// ReloadType=Single일 때, 재장전 완료 후 마무리 애니메이션 시간(초).
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	float ReloadTime_End = 0.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	bool CanReload = true;
@@ -477,8 +551,22 @@ protected:
 	// 복제하지 않고, 각자 자기 시계로 이 값을 따로 찍는다(NextAllowedFireTimeSeconds와 같은 정책).
 	float ReloadStartTimeSeconds = 0.0f;
 
-	// ReloadTime초 뒤 CompleteReload를 호출하는 타이머 핸들.
+	// 재장전 전체 예상 소요 시간 - GetReloadProgress()가 이 값으로 진행률을 계산한다.
+	// Single 타입은 ReloadTime이 0이라 못 쓰고(Start + 남은 발수 * Loop로 별도 계산),
+	// Magazine 타입은 GetEffectiveReloadTime()(Empty 탄창이면 ReloadTime_Empty)과 같은 값을 담아
+	// 계산 경로를 통일한다.
+	float ReloadTotalDuration = 0.0f;
+
+	// ReloadTime초 뒤 CompleteReload를 호출하는 타이머 핸들. Single 타입은 이 핸들을
+	// StartSingleReload/LoopSingleReload/EndSingleReload가 돌아가며 재사용한다.
 	FTimerHandle ReloadTimerHandle;
+
+	// PlayClientReloadLoopStep()이 몇 발 더 남았는지 세는 카운터. 오너 클라이언트 로컬 예측 전용.
+	int32 ReloadAmmoRemaining = 0;
+
+	// Single 타입 오너 클라이언트 로컬 예측 타이머(위 ReloadTimerHandle의 클라이언트 쪽 짝 -
+	// ClientBurstTimerHandle과 같은 패턴).
+	FTimerHandle ClientSingleReloadTimerHandle;
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
