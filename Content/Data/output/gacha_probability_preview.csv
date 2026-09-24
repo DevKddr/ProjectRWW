@@ -1,0 +1,7 @@
+﻿BoxId,ItemIndex,RarityId,Category,Weight,FinalProbability(%)
+WeaponBox_Default,P_1,Common,Weapon,10.0,23.3333
+WeaponBox_Default,AR_1,Common,Weapon,10.0,23.3333
+WeaponBox_Default,SMG_1,Common,Weapon,10.0,23.3333
+WeaponBox_Default,AR_2,Rare,Weapon,10.0,12.5000
+WeaponBox_Default,SG_1,Rare,Weapon,10.0,12.5000
+WeaponBox_Default,SR_1,Epic,Weapon,10.0,5.0000

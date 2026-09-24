@@ -46,6 +46,16 @@ bool UGachaManager::LoadGachaTables()
 	return true;
 }
 
+bool UGachaManager::GetBoxInfo(FName BoxId, FGachaBox& OutBox) const
+{
+	if (const FGachaBox* Box = GachaTables.Boxes.Find(BoxId.ToString()))
+	{
+		OutBox = *Box;
+		return true;
+	}
+	return false;
+}
+
 bool UGachaManager::DrawFromBox(FName BoxId, FName& OutCategory, FName& OutItemIndex, FName& OutRarityId) const
 {
 	const FGachaBox* Box = GachaTables.Boxes.Find(BoxId.ToString());
@@ -55,16 +65,24 @@ bool UGachaManager::DrawFromBox(FName BoxId, FName& OutCategory, FName& OutItemI
 		return false;
 	}
 
-	// ---------- 1단계: 등급 추첨 (RarityDropWeight, 아이템이 있는 등급만) ----------
+	// ---------- 1단계: 등급 추첨 (RarityWeights, 아이템이 있는 등급만) ----------
 	float RarityTotal = 0.f;
 	TArray<TPair<FString, float>> RarityPairs;
 	for (const auto& PoolPair : Box->Pools)
 	{
-		if (PoolPair.Value.Items.Num() > 0)
+		if (PoolPair.Value.Items.Num() == 0)
 		{
-			RarityPairs.Add(TPair<FString, float>(PoolPair.Key, PoolPair.Value.RarityDropWeight));
-			RarityTotal += PoolPair.Value.RarityDropWeight;
+			continue;
 		}
+		const float* Weight = Box->RarityWeights.Find(PoolPair.Key);
+		if (!Weight || *Weight <= 0.f)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[GachaManager] BoxID '%s'의 등급 '%s'에 RarityWeights 값이 없어 후보에서 제외됨"),
+				*BoxId.ToString(), *PoolPair.Key);
+			continue;
+		}
+		RarityPairs.Add(TPair<FString, float>(PoolPair.Key, *Weight));
+		RarityTotal += *Weight;
 	}
 	if (RarityPairs.Num() == 0 || RarityTotal <= 0.f)
 	{
@@ -85,7 +103,7 @@ bool UGachaManager::DrawFromBox(FName BoxId, FName& OutCategory, FName& OutItemI
 		}
 	}
 
-	// ---------- 2단계: 아이템 추첨 (선택된 등급 내 ItemDropWeight) ----------
+	// ---------- 2단계: 아이템 추첨 (선택된 등급 내 Weight) ----------
 	const FGachaRarityPool* Pool = Box->Pools.Find(ChosenRarity);
 	if (!Pool || Pool->Items.Num() == 0)
 	{
