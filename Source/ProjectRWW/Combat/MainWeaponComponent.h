@@ -220,6 +220,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	bool IsReloading() const { return bIsReloading; }
 
+	// 현재 무기의 이동 배율/조준 이동 배율(UPlayerMovementComponent::GetMaxSpeed가 읽는다).
+	// 무기를 안 들면 FWeaponStats 기본값인 1.0이다.
+	float GetMoveSpeedMultiplier() const { return MoveSpeedMultiplier; }
+	float GetADSMoveSpeedMultiplier() const { return ADSMoveSpeedMultiplier; }
+
 	// 재장전 진행률(0.0~1.0). HUD 프로그레스 바에 그대로 연결해서 쓸 수 있다.
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetReloadProgress() const;

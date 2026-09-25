@@ -11,6 +11,7 @@ class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
 struct FOnAttributeChangeData;
+class UPlayerMovementComponent;
 
 // 팩의 Gait 값과 동일 규칙(0=Idle, 1=Walk, 2=Sprint). ReceiveMovementChange()에
 // 넘길 때만 float으로 변환한다.
@@ -28,21 +29,22 @@ class PROJECTRWW_API AMainCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	AMainCharacter();
+	AMainCharacter(const FObjectInitializer& ObjectInitializer);
+
+	// 이 캐릭터의 이동 컴포넌트(스프린트/조준 의도를 이동 패킷에 실어 보내는 확장 CMC).
+	UPlayerMovementComponent* GetPlayerMovement() const;
 
 	// PlayerState의 AttributeSet에서 이동 스탯을 가져온다. 이동/HP/Mana 등 모든 스탯이
 	// GAS로 통합되면서, 캐릭터 자신은 더 이상 이 값들을 로컬로 들고 있지 않는다.
 	UFUNCTION(BlueprintPure, Category = "GAS")
 	class UMainAttributeSet* GetMainAttributeSet() const;
 
-	// 지금 달리기(Sprint) 중인지. MaxWalkSpeed로 판단 - 별도 상태 변수 없이
-	// 이미 있는 값을 재사용한다. 구현은 cpp에 있다 - UMainAttributeSet의 멤버 함수를
-	// 호출하려면 완전한 타입 정의가 필요한데, 헤더에서는 전방선언만 해뒀기 때문이다.
+	// 지금 달리기(Sprint) 중인지. 이동 컴포넌트의 스프린트 상태(서버 검증 포함)를 그대로 읽는다.
 	UFUNCTION(BlueprintPure, Category = "Movement")
 	bool IsSprinting() const;
 
 	// 다른 클라이언트에게 "지금 이 캐릭터가 Idle/Walk/Sprint 중 뭘 보여줘야 하는지"를
-	// 전달하는 리플리케이트 값. bSprintRequested(입력 의도)와 실제 이동 여부를
+	// 전달하는 리플리케이트 값. 스프린트 상태(이동 컴포넌트)와 실제 이동 여부를
 	// 서버가 합쳐서 계산한다 - 나중에 이동속도에 배율이 붙어도 이 판단 로직은 안 바뀐다.
 	UPROPERTY(ReplicatedUsing = OnRep_MovementChange)
 	EMovementStatus MovementStatus = EMovementStatus::Idle;
@@ -137,7 +139,9 @@ protected:
 	// PossessedBy(서버)/OnRep_PlayerState(클라이언트) 양쪽에서 호출된다 - GAS 공식 패턴.
 	void InitAbilitySystem();
 
-	void SyncMovementSpeedFromAttributes(bool bSprinting);
+	// 점프력만 어트리뷰트에서 CMC로 옮긴다. 이동 속도는 UPlayerMovementComponent::GetMaxSpeed()가
+	// 매 계산마다 직접 계산하므로 여기서 다루지 않는다.
+	void SyncJumpPowerFromAttributes();
 
 	// UMainAttributeSet::OnDeath에 바인딩되는 콜백. 실제 처리는 GameMode에 위임한다.
 	UFUNCTION()
@@ -174,11 +178,6 @@ protected:
 	// 지금 이동 입력이 들어오고 있는지. OnMove/OnMoveStopped가 관리한다.
 	bool bIsMoving = false;
 
-	// 스프린트 키를 누르고 있으려는 "입력 의도". 실제 결과 속도(MaxWalkSpeed)와
-	// 별개로 유지해서, 나중에 조준/디버프 등으로 속도에 배율이 붙어도 이 값은
-	// 오염되지 않는다 - MovementStatus 계산의 유일한 판단 기준이 된다.
-	bool bSprintRequested = false;
-
 	// MovementStatus가 리플리케이트되어 도착하면 호출된다. 본인은 이미 로컬 예측으로
 	// 재생했으니 원격 클라이언트일 때만 ReceiveMovementChange()를 호출한다
 	// (OnRep_IsReloading과 같은 패턴).
@@ -191,10 +190,6 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-
-	// 클라이언트 요청을 받아 서버 쪽 이동 속도를 실제로 바꾸는 함수. 속도 변경은 항상 이 함수를 거처야 한다.
-	UFUNCTION(Server, Reliable)
-	void ServerSetSprinting(bool bNewSprinting);
 
 	void OnFire(const FInputActionValue& Value);
 	void OnStopFire(const FInputActionValue& Value);

@@ -7,6 +7,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Combat/MainWeaponComponent.h"
+#include "Player/PlayerMovementComponent.h"
 #include "Items/InteractionComponent.h"
 #include "Core/MainGameMode.h"
 #include "Net/UnrealNetwork.h"
@@ -18,7 +19,8 @@
 #include "GAS/MainGameplayTags.h"
 #include "PlayerBaseStat/PlayerStatManager.h"
 
-AMainCharacter::AMainCharacter()
+AMainCharacter::AMainCharacter(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UPlayerMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	// ACharacter는 기본적으로 bReplicates = true이지만, 서버 권위 캐릭터임을 명시적으로 표시한다.
 	bReplicates = true;
@@ -84,13 +86,11 @@ void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 		WeaponComponent->StopADS();
 	}
 
-	// 로컬 예측: 서버 응답을 기다리지 않고 즉시 반응. bSprintRequested도 여기서 갱신해야
-	// 이후(스킬 만료 등으로) 재동기화가 일어날 때 "지금 달리는 중"이라는 걸 클라이언트가
-	// 정확히 알 수 있다 - 예전엔 ServerSetSprinting_Implementation(서버 전용)에서만
-	// 갱신돼서 클라이언트에서는 항상 false로 고정돼있었다.
-	bSprintRequested = true;
-	SyncMovementSpeedFromAttributes(true);
-	ServerSetSprinting(true);
+	// 스프린트 의도를 이동 컴포넌트에 알린다. 이동 패킷의 플래그로 서버에 전달되므로 별도 RPC가 필요 없다.
+	if (UPlayerMovementComponent* Movement = GetPlayerMovement())
+	{
+		Movement->SetWantsToSprint(true);
+	}
 
 	if (bIsMoving)
 	{
@@ -100,9 +100,10 @@ void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 
 void AMainCharacter::OnSprintStop(const FInputActionValue& Value)
 {
-	bSprintRequested = false;
-	SyncMovementSpeedFromAttributes(false);
-	ServerSetSprinting(false);
+	if (UPlayerMovementComponent* Movement = GetPlayerMovement())
+	{
+		Movement->SetWantsToSprint(false);
+	}
 
 	if (bIsMoving)
 	{
@@ -116,17 +117,6 @@ void AMainCharacter::OnMoveStopped(const FInputActionValue& Value)
 	ReceiveMovementChange(0.0f);
 }
 
-void AMainCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)
-{
-	if (bNewSprinting && WeaponComponent && WeaponComponent->IsAiming())
-	{
-		WeaponComponent->StopADS();
-	}
-
-	bSprintRequested = bNewSprinting;
-	SyncMovementSpeedFromAttributes(bNewSprinting);
-}
-
 void AMainCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -138,7 +128,7 @@ void AMainCharacter::Tick(float DeltaSeconds)
 
 	const bool bMoving = GetVelocity().SizeSquared() > KINDA_SMALL_NUMBER;
 	const EMovementStatus NewStatus = !bMoving ? EMovementStatus::Idle
-		: (bSprintRequested ? EMovementStatus::Sprint : EMovementStatus::Walk);
+		: (IsSprinting() ? EMovementStatus::Sprint : EMovementStatus::Walk);
 
 	if (NewStatus != MovementStatus)
 	{
@@ -165,9 +155,9 @@ void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 이동 스탯은 이제 PlayerState의 AttributeSet이 관리한다(InitAbilitySystem에서
-	// ResetStatsToFull 호출 후 동기화됨) - 혹시 몰라 한 번 더 동기화만 해준다.
-	SyncMovementSpeedFromAttributes(false);
+	// 점프력은 PlayerState의 AttributeSet이 관리한다(InitAbilitySystem에서 ResetStatsToFull 호출 후 동기화됨) -
+	// 혹시 몰라 한 번 더 동기화만 해준다.
+	SyncJumpPowerFromAttributes();
 
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
@@ -204,10 +194,15 @@ UMainAttributeSet* AMainCharacter::GetMainAttributeSet() const
 	return MainPS ? MainPS->GetMainAttributeSet() : nullptr;
 }
 
+UPlayerMovementComponent* AMainCharacter::GetPlayerMovement() const
+{
+	return Cast<UPlayerMovementComponent>(GetCharacterMovement());
+}
+
 bool AMainCharacter::IsSprinting() const
 {
-	const UMainAttributeSet* AttrSet = GetMainAttributeSet();
-	return AttrSet && GetCharacterMovement()->MaxWalkSpeed >= AttrSet->GetRunSpeed();
+	const UPlayerMovementComponent* Movement = GetPlayerMovement();
+	return Movement && Movement->IsSprintingEffective();
 }
 
 void AMainCharacter::InitAbilitySystem()
@@ -253,10 +248,10 @@ void AMainCharacter::InitAbilitySystem()
 		OnTakeAnyDamage.AddDynamic(this, &AMainCharacter::OnTakeAnyDamage_GAS);
 	}
 
-	SyncMovementSpeedFromAttributes(bSprintRequested);
+	SyncJumpPowerFromAttributes();
 }
 
-void AMainCharacter::SyncMovementSpeedFromAttributes(bool bSprinting)
+void AMainCharacter::SyncJumpPowerFromAttributes()
 {
 	UMainAttributeSet* AttrSet = GetMainAttributeSet();
 	if (!AttrSet)
@@ -264,18 +259,17 @@ void AMainCharacter::SyncMovementSpeedFromAttributes(bool bSprinting)
 		return;
 	}
 
-	GetCharacterMovement()->MaxWalkSpeed = bSprinting ? AttrSet->GetRunSpeed() : AttrSet->GetWalkSpeed();
 	GetCharacterMovement()->JumpZVelocity = AttrSet->GetJumpPower();
 }
 
 void AMainCharacter::HandleMovementAttributesChanged()
 {
-	SyncMovementSpeedFromAttributes(bSprintRequested);
+	SyncJumpPowerFromAttributes();
 }
 
 void AMainCharacter::HandleMovementAttributeValueChanged(const FOnAttributeChangeData& Data)
 {
-	SyncMovementSpeedFromAttributes(bSprintRequested);
+	SyncJumpPowerFromAttributes();
 }
 
 void AMainCharacter::HandleAttributeDeath(AActor* Avatar, AController* Killer)

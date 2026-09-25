@@ -14,6 +14,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Player/MainCharacter.h"
+#include "Player/PlayerMovementComponent.h"
 #include "Player/MainPlayerState.h"
 #include "GAS/GameplayEffects/GE_ManaCost.h"
 #include "GAS/MainAttributeSet.h"
@@ -123,6 +124,32 @@ void UMainWeaponComponent::EquipWeapon(FName NewWeaponIndex, int32 SavedAmmo, in
 	// 이전 무기가 예약해둔 발사(FullAuto 연사 타이머, 버스트 잔탄)를 정리한다 —
 	// 안 하면 새 무기 스탯으로 이전 무기의 남은 발사가 뒤섞여 나갈 수 있다.
 	StopFire();
+
+	// 무기(또는 아이템)가 바뀌면 조준은 항상 풀린다. ApplyWeaponStats()가 ADSSpeed를 바꾸기 전에
+	// 해제해야 ADSAlphaAtChange가 이전 무기 기준으로 계산된다.
+	// 이 함수는 서버·오너 클라이언트·원격 클라이언트 모두에서 돌기 때문에 실행 주체별로 나눈다.
+	//  - 서버/오너: SetAiming(false)를 직접 한다(서버 값은 복제된다).
+	//  - 원격 클라이언트: 로컬로 바꾸지 않는다 - 서버 복제가 OnRep_IsAiming을 발동시켜야
+	//    ReceiveADSChange(false) 연출이 나온다(값이 이미 같으면 OnRep이 안 돈다).
+	//  - 오너: OnRep_IsAiming이 ReceiveADSChange를 부르지 않으므로 직접 호출한다.
+	if (bIsAiming)
+	{
+		AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner());
+		const bool bLocallyControlled = OwningCharacter && OwningCharacter->IsLocallyControlled();
+
+		if (GetOwner()->HasAuthority() || bLocallyControlled)
+		{
+			SetAiming(false);
+		}
+		if (bLocallyControlled)
+		{
+			if (UPlayerMovementComponent* Movement = OwningCharacter->GetPlayerMovement())
+			{
+				Movement->SetWantsToAim(false);
+			}
+			OwningCharacter->ReceiveADSChange(false);
+		}
+	}
 
 	if (UWorld* World = GetWorld())
 	{
@@ -291,6 +318,11 @@ void UMainWeaponComponent::EquipItemVisual(FName ItemIndex)
 	++ReplicationSequence;
 
 	ActiveItemIndex = ItemIndex;
+
+	// 무기가 아닌 아이템(맨손 포함)을 들면 이동 배율은 항상 1.0이다. 서버는 UnequipWeapon()이 스탯을 리셋하지만
+	// 클라이언트는 이 함수(EquipItemVisual)만 타서 옛 무기의 배율이 남으므로, 여기서 직접 맞춘다.
+	MoveSpeedMultiplier = 1.0f;
+	ADSMoveSpeedMultiplier = 1.0f;
 
 	// EquipWeapon()은 이 시각을 기록하는데 여기는 빠져있었다 - 그래서 아이템 장착 시
 	// IsStillEquipping()이 "마지막으로 무기를 장착했던 시각" 같은 엉뚱한 기준으로
@@ -737,6 +769,11 @@ void UMainWeaponComponent::StartADS()
 
 	if (OwningCharacter)
 	{
+		// 이동 속도 계산에 쓰이는 조준 의도. StartADS의 모든 조기 반환(재장전/스프린트/장착 시간)을 통과했을 때만 켜진다.
+		if (UPlayerMovementComponent* Movement = OwningCharacter->GetPlayerMovement())
+		{
+			Movement->SetWantsToAim(true);
+		}
 		OwningCharacter->ReceiveADSChange(true);
 	}
 }
@@ -748,6 +785,10 @@ void UMainWeaponComponent::StopADS()
 
 	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
 	{
+		if (UPlayerMovementComponent* Movement = OwningCharacter->GetPlayerMovement())
+		{
+			Movement->SetWantsToAim(false);
+		}
 		OwningCharacter->ReceiveADSChange(false);
 	}
 }
@@ -1325,6 +1366,14 @@ void UMainWeaponComponent::OnRep_IsAiming()
 		if (!GetOwner()->HasLocalNetOwner())
 		{
 			OwningCharacter->ReceiveADSChange(bIsAiming);
+		}
+		else if (!bIsAiming)
+		{
+			// 서버가 강제로 조준을 풀었을 때(재장전 시작 등) 오너도 의도 플래그를 꺼야 다음 이동 패킷이 "조준 아님"을 싣는다.
+			if (UPlayerMovementComponent* Movement = OwningCharacter->GetPlayerMovement())
+			{
+				Movement->SetWantsToAim(false);
+			}
 		}
 	}
 }
