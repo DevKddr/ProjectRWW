@@ -795,20 +795,15 @@ void UMainWeaponComponent::StopADS()
 
 void UMainWeaponComponent::Server_SetAiming_Implementation(bool bNewAiming)
 {
-	// 조준을 켜려는 요청이면 달리기 중인지, 장착 시간이 지났는지 확인한다. 조준 해제(false)는 항상 허용.
+	// 조준을 켜려는 요청이면 재장전 중인지, 장착 시간이 지났는지 확인한다. 조준 해제(false)는 항상 허용.
+	// 스프린트 여부는 여기서 검사하지 않는다 - 서버의 IsSprinting()은 이동 패킷으로 오는 플래그라서 이 RPC보다
+	// 늦게 도착할 수 있고(스프린트를 떼자마자 조준하면 잘못 거부됨), 속도 계산은 UPlayerMovementComponent::
+	// IsAimingEffective()가 스프린트를 우선해서 이미 막고 있다. 클라이언트 StartADS도 스프린트 중이면 시작하지 않는다.
 	if (bNewAiming)
 	{
 		if (bIsReloading)
 		{
 			return;
-		}
-
-		if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
-		{
-			if (OwningCharacter->IsSprinting())
-			{
-				return;
-			}
 		}
 
 		if (FPlatformTime::Seconds() - EquippedTimeSeconds < EquipTime)

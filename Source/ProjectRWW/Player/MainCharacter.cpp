@@ -227,18 +227,6 @@ void AMainCharacter::InitAbilitySystem()
 		AttrSet->OnMovementAttributesChanged.AddUObject(this, &AMainCharacter::HandleMovementAttributesChanged);
 	}
 
-	if (UAbilitySystemComponent* ASC = MainPS->GetAbilitySystemComponent())
-	{
-		// OnMovementAttributesChanged(OnRep 기반)는 클라이언트에서만 발동해서 서버 쪽
-		// 재동기화 트리거가 없었다 - 이 델리게이트는 서버/클라이언트 양쪽에서 값이 바뀌는
-		// 즉시 발동해서 그 빈틈을 메운다(GetAbilitySystemComponent()는 위에서 이미
-		// InitAbilityActorInfo에 썼던 것과 같은 ASC).
-		ASC->GetGameplayAttributeValueChangeDelegate(UMainAttributeSet::GetWalkSpeedAttribute()).RemoveAll(this);
-		ASC->GetGameplayAttributeValueChangeDelegate(UMainAttributeSet::GetWalkSpeedAttribute()).AddUObject(this, &AMainCharacter::HandleMovementAttributeValueChanged);
-		ASC->GetGameplayAttributeValueChangeDelegate(UMainAttributeSet::GetRunSpeedAttribute()).RemoveAll(this);
-		ASC->GetGameplayAttributeValueChangeDelegate(UMainAttributeSet::GetRunSpeedAttribute()).AddUObject(this, &AMainCharacter::HandleMovementAttributeValueChanged);
-	}
-
 	if (HasAuthority())
 	{
 		MainPS->ResetStatsToFull();
@@ -263,11 +251,6 @@ void AMainCharacter::SyncJumpPowerFromAttributes()
 }
 
 void AMainCharacter::HandleMovementAttributesChanged()
-{
-	SyncJumpPowerFromAttributes();
-}
-
-void AMainCharacter::HandleMovementAttributeValueChanged(const FOnAttributeChangeData& Data)
 {
 	SyncJumpPowerFromAttributes();
 }

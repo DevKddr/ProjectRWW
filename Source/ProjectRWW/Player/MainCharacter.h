@@ -10,7 +10,6 @@
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
-struct FOnAttributeChangeData;
 class UPlayerMovementComponent;
 
 // 팩의 Gait 값과 동일 규칙(0=Idle, 1=Walk, 2=Sprint). ReceiveMovementChange()에
@@ -39,7 +38,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAS")
 	class UMainAttributeSet* GetMainAttributeSet() const;
 
-	// 지금 달리기(Sprint) 중인지. 이동 컴포넌트의 스프린트 상태(서버 검증 포함)를 그대로 읽는다.
+	// 지금 달리기(Sprint) 중인지. 이동 컴포넌트의 스프린트 상태를 그대로 읽는다. 서버는 클라이언트가 이동 패킷에
+	// 실어 보낸 값을 검증 없이 그대로 쓴다(이전 RPC 방식도 검증은 없었다) - 서버 판정에 쓸 때 이 점에 유의.
 	UFUNCTION(BlueprintPure, Category = "Movement")
 	bool IsSprinting() const;
 
@@ -135,7 +135,7 @@ protected:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
 
-	// PlayerState의 ASC에 자신을 Avatar로 연결하고, 사망/이동속도 동기화 델리게이트를 건다.
+	// PlayerState의 ASC에 자신을 Avatar로 연결하고, 사망/점프력 동기화 델리게이트를 건다.
 	// PossessedBy(서버)/OnRep_PlayerState(클라이언트) 양쪽에서 호출된다 - GAS 공식 패턴.
 	void InitAbilitySystem();
 
@@ -147,16 +147,11 @@ protected:
 	UFUNCTION()
 	void HandleAttributeDeath(AActor* Avatar, AController* Killer);
 
-	// UMainAttributeSet::OnMovementAttributesChanged에 바인딩되는 콜백. 클라이언트에서
-	// 이동 Attribute(WalkSpeed/RunSpeed/JumpPower)가 늦게 리플리케이트되어 도착해도
-	// 이 콜백이 재동기화를 트리거해 스스로 회복시킨다.
+	// UMainAttributeSet::OnMovementAttributesChanged에 바인딩되는 콜백. 클라이언트에서 JumpPower가
+	// 늦게 리플리케이트되어 도착해도 이 콜백이 점프력을 재동기화해 스스로 회복시킨다(이동 속도는
+	// GetMaxSpeed()가 어트리뷰트를 직접 읽으므로 재동기화가 필요 없다).
 	UFUNCTION()
 	void HandleMovementAttributesChanged();
-
-	// ASC->GetGameplayAttributeValueChangeDelegate()에 바인딩되는 콜백. 위 함수(OnRep 기반)와
-	// 달리 서버에서도 발동한다 - GE가 WalkSpeed/RunSpeed를 바꾸는 즉시(리플리케이션을 거치지
-	// 않고) 재동기화해서, 서버 권위 이동속도가 스킬 효과를 실시간으로 반영하게 한다.
-	void HandleMovementAttributeValueChanged(const FOnAttributeChangeData& Data);
 
 	// AActor::OnTakeAnyDamage에 바인딩되는 콜백. GE_Damage/GE_DamagedTag를 적용해
 	// GAS 쪽 Health를 깎는다. 이름에 _GAS를 붙인 이유는 AActor의 OnTakeAnyDamage
