@@ -12,6 +12,7 @@
 #include "Core/MainGameMode.h"
 #include "Net/UnrealNetwork.h"
 #include "Player/MainPlayerState.h"
+#include "Player/MainPlayerController.h"
 #include "GAS/MainAttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/GameplayEffects/GE_Damage.h"
@@ -155,6 +156,13 @@ void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 폰 BeginPlay 전에 도착해 건너뛴 장착 BP 이벤트를 지금 보낸다 - BP BeginPlay는 방금 끝났다.
+	// 전용 서버처럼 장착이 BeginPlay 이후에 오는 폰은 아직 장착 상태가 없어 아무것도 보내지 않는다.
+	if (WeaponComponent)
+	{
+		WeaponComponent->SendCurrentEquipStateToBlueprint();
+	}
+
 	// 점프력은 PlayerState의 AttributeSet이 관리한다(InitAbilitySystem에서 ResetStatsToFull 호출 후 동기화됨) -
 	// 혹시 몰라 한 번 더 동기화만 해준다.
 	SyncJumpPowerFromAttributes();
@@ -173,6 +181,17 @@ void AMainCharacter::BeginPlay()
 		// 실제 캐릭터를 조작하는 시점에 게임 입력 모드로 되돌려준다.
 		PC->SetInputMode(FInputModeGameOnly());
 		PC->SetShowMouseCursor(false);
+	}
+
+	// 소유 클라이언트의 BeginPlay가 끝났음을 서버에 알린다. 이 신호를 받은 뒤에야
+	// 서버가 보상 지급/장착을 실행한다. 이 시점엔 클라이언트에 Controller가 아직
+	// 없을 수 있어 IsLocallyControlled() 대신 네트워크 역할로 판별한다.
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		if (AMainPlayerController* MainPC = GetWorld()->GetFirstPlayerController<AMainPlayerController>())
+		{
+			MainPC->Server_NotifyPawnReady(this);
+		}
 	}
 }
 

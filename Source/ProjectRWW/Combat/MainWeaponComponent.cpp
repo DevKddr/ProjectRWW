@@ -236,10 +236,7 @@ void UMainWeaponComponent::EquipWeapon(FName NewWeaponIndex, int32 SavedAmmo, in
 	// Branch로 성공/실패(=빈손)를 다시 판단해서 각각 다른 TacticalViewSettings를
 	// 적용해야 하는데, 여기서 실패 시 호출을 건너뛰면 빈손 분기가 아예 실행될
 	// 기회가 없다.
-	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
-	{
-		OwningCharacter->ReceiveWeaponEquip(WeaponIndex);
-	}
+	NotifyEquipToBlueprint(true);
 }
 
 void UMainWeaponComponent::ApplyWeaponStats(const FWeaponStats& Stats)
@@ -363,9 +360,49 @@ void UMainWeaponComponent::EquipItemVisual(FName ItemIndex)
 
 	// 스폰이 끝난 뒤에 호출해야 BP의 ReceiveItemEquip 구현부에서 GetMainItem()으로
 	// 방금 스폰된 새 아이템 Actor를 정확히 가져올 수 있다.
-	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
+	NotifyEquipToBlueprint(false);
+}
+
+void UMainWeaponComponent::NotifyEquipToBlueprint(bool bIsWeapon)
+{
+	const AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner());
+	if (!OwningCharacter || !OwningCharacter->HasActorBegunPlay())
 	{
-		OwningCharacter->ReceiveItemEquip(ItemIndex);
+		return; // 폰이 BeginPlay 전 - 여기서는 보내지 않는다. BeginPlay 끝에서 현재 상태를 보낸다.
+	}
+
+	SendEquipEventToBlueprint(bIsWeapon);
+}
+
+void UMainWeaponComponent::SendEquipEventToBlueprint(bool bIsWeapon)
+{
+	AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner());
+	if (!OwningCharacter)
+	{
+		return;
+	}
+
+	if (bIsWeapon)
+	{
+		OwningCharacter->ReceiveWeaponEquip(WeaponIndex);
+	}
+	else
+	{
+		OwningCharacter->ReceiveItemEquip(ActiveItemIndex);
+	}
+}
+
+void UMainWeaponComponent::SendCurrentEquipStateToBlueprint()
+{
+	// OnRep_ReplicationSequence와 같은 규칙 - 지금 진짜 활성 상태(무기 또는 아이템) 하나만 보낸다.
+	// BeginPlay 도중이라 HasActorBegunPlay()가 아직 false이므로 검사 없이 바로 보낸다.
+	if (HasWeaponEquipped())
+	{
+		SendEquipEventToBlueprint(true);
+	}
+	else if (!ActiveItemIndex.IsNone())
+	{
+		SendEquipEventToBlueprint(false);
 	}
 }
 

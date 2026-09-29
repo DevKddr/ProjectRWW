@@ -73,12 +73,21 @@ public:
 	UFUNCTION()
 	void OnRep_IsExtracting();
 
+	// 소유 클라이언트가 폰의 BeginPlay를 마친 뒤 서버에 보내는 신호.
+	// 서버는 이걸 받은 뒤에야 스폰 초기화(보상/장착)를 실행한다 - 그 전에 장착하면
+	// 클라이언트의 장착 BP 이벤트가 BeginPlay보다 먼저 돌아 애니메이션이 꼬인다.
+	UFUNCTION(Server, Reliable)
+	void Server_NotifyPawnReady(APawn* ReadyPawn);
+
 protected:
 	virtual void SetupInputComponent() override;
 
 	// 서버에서 이 컨트롤러가 새 폰을 빙의할 때마다(최초 스폰+리스폰 모두) 호출된다.
-	// 핫바 1번(슬롯 0)을 자동으로 장착시키는 용도.
+	// 스폰 초기화(인벤토리 복원/스폰 보상/1번 슬롯 장착)는 GameMode::HandlePlayerSpawned()에 위임한다.
 	virtual void OnPossess(APawn* InPawn) override;
+
+	// 서버 전용: 새 폰을 빙의했지만 클라이언트 준비 신호를 아직 못 받은 상태.
+	bool bSpawnInitPending = false;
 
 	// 서버가 이 컨트롤러에 새 Pawn을 Possess시킬 때마다(최초 스폰 + 리스폰 모두) 호출된다.
 	// HUD 생성/재표시를 여기 한 곳에서만 관리한다.

@@ -11,6 +11,7 @@
 #include "Items/MainInventoryComponent.h"
 #include "Items/InventorySlotSerialization.h"
 #include "Core/MainNetworkSettings.h"
+#include "RandomBox/GachaManager.h"
 
 AMainGameMode::AMainGameMode()
 {
@@ -86,33 +87,48 @@ void AMainGameMode::PreLogin(const FString& Options, const FString& Address, con
 
 void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
+	// Super::PostLogin() 내부에서 RestartPlayer -> Possess -> OnPossess()가 실행되고,
+	// 그 안에서 HandlePlayerSpawned()가 DB 로드/인벤토리 복원/장착까지 전부 처리한다.
 	Super::PostLogin(NewPlayer);
 
 	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] Player joined: %s"), *GetNameSafe(NewPlayer));
 	UpdatePlayerCount();
+}
 
-	// 로비에서 로드했던 걸 넘겨받는 게 아니라, 세션 서버가 같은 PlayerID로 독립적으로 다시 로드한다.
-	AMainPlayerController* MainPC = Cast<AMainPlayerController>(NewPlayer);
-	if (MainPC && PlayerDataRepository)
+void AMainGameMode::HandlePlayerSpawned(AMainPlayerController* PC)
+{
+	if (!PC || !PC->InventoryComponent)
 	{
-		const FString PlayerID = NewPlayer->PlayerState ? NewPlayer->PlayerState->GetPlayerName() : FString();
-		MainPC->PlayerRecord = PlayerDataRepository->LoadPlayerData(PlayerID);
-		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 세션 접속: %s - KillCount %d, DeathCount %d"), *PlayerID, MainPC->PlayerRecord.KillCount, MainPC->PlayerRecord.DeathCount);
-
-		// OnPossess()는 이 로드보다 먼저 실행돼서 그때는 배열이 0칸이었을 것 - 여기서
-		// 저장된 데이터를 실제로 채운 뒤 한 번 더 장착을 시도한다(리스폰 때는 이미
-		// 채워져 있어 무해함).
-		if (MainPC->InventoryComponent)
-		{
-			// 저장된 데이터를 배열로 되돌린다. 최초 접속(Inventory="[]")이면 빈 배열이 나온다.
-			DeserializeInventorySlots(MainPC->PlayerRecord.Inventory, MainPC->InventoryComponent->Slots);
-
-			// 방어적 처리: 저장된 배열 길이가 36과 다르면(최초 접속의 빈 배열 포함) 36칸으로
-			// 맞춘다 - 부족한 칸은 기본값(빈 슬롯)으로 채워지고, 넘치는 칸은 잘린다.
-			MainPC->InventoryComponent->Slots.SetNum(UMainInventoryComponent::InventorySlotCount);
-			MainPC->InventoryComponent->EquipItem(0);
-		}
+		return;
 	}
+
+	// 배열이 아직 0칸이면 이 컨트롤러로는 한 번도 초기화한 적이 없다는 뜻(완전히 최초 접속) -
+	// 리스폰 때는 이미 36칸으로 맞춰져 있어 이 블록을 건너뛴다.
+	// 로비에서 로드했던 걸 넘겨받는 게 아니라, 세션 서버가 같은 PlayerID로 독립적으로 다시 로드한다.
+	if (PC->InventoryComponent->Slots.Num() == 0 && PlayerDataRepository)
+	{
+		const FString PlayerID = PC->PlayerState ? PC->PlayerState->GetPlayerName() : FString();
+		PC->PlayerRecord = PlayerDataRepository->LoadPlayerData(PlayerID);
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 세션 접속: %s - KillCount %d, DeathCount %d"), *PlayerID, PC->PlayerRecord.KillCount, PC->PlayerRecord.DeathCount);
+
+		// 저장된 데이터를 배열로 되돌린다. 최초 접속(Inventory="[]")이면 빈 배열이 나온다.
+		DeserializeInventorySlots(PC->PlayerRecord.Inventory, PC->InventoryComponent->Slots);
+
+		// 방어적 처리: 저장된 배열 길이가 36과 다르면 36칸으로 맞춘다 - 부족한 칸은
+		// 기본값(빈 슬롯)으로 채워지고, 넘치는 칸은 잘린다.
+		PC->InventoryComponent->Slots.SetNum(UMainInventoryComponent::InventorySlotCount);
+	}
+
+	// 새 폰은 빈손이다. 사망 때 리셋되지 않고 남은 이전 슬롯 번호 때문에 AddItem이 보상을
+	// 자동 장착한 뒤 아래 EquipItem(0)이 한 번 더 도는 중복 장착과, 빈손에 대한 불필요한
+	// 해제 호출을 막는다.
+	PC->InventoryComponent->EquippedSlotIndex = -1;
+
+	// 스폰 보상은 최초 접속/리스폰 모두 지급한다. 첫 빈 슬롯(보통 0번)에 들어간다.
+	GrantGachaBoxReward(PC, SpawnRewardBoxId);
+
+	// 1번 슬롯(인덱스 0)을 선택하고 그 안의 것을 장착한다. 비어있으면 UNARMED.
+	PC->InventoryComponent->EquipItem(0);
 }
 
 void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Killer)
@@ -144,6 +160,9 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 	{
 		KillerController->PlayerRecord.KillCount += 1;
 		KillerController->KillStreak += 1;
+
+		// 피해자 인벤토리는 이미 위에서 비웠다(사망 페널티) - 킬 보상은 가해자에게만 별도로 지급.
+		GrantGachaBoxReward(KillerController, KillRewardBoxId);
 	}
 
 	// TODO: 재화/아이템 획득 로직이 생기면, 여기서 저장하기 전에
@@ -184,6 +203,33 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 
 	VictimController->Client_OnPlayerDied(VictimController->PlayerRecord, VictimController->KillStreak);
 	VictimController->KillStreak = 0;
+}
+
+void AMainGameMode::GrantGachaBoxReward(APlayerController* TargetController, FName BoxId)
+{
+	AMainPlayerController* MainPC = Cast<AMainPlayerController>(TargetController);
+	if (!MainPC || !MainPC->InventoryComponent)
+	{
+		return;
+	}
+
+	UGachaManager* GachaMgr = GetGameInstance() ? GetGameInstance()->GetSubsystem<UGachaManager>() : nullptr;
+	if (!GachaMgr)
+	{
+		return; // 서버에서도 데이터 로드 실패 등으로 없을 수 있음 - 조용히 무시
+	}
+
+	FName Category, ItemIndex, RarityId;
+	if (!GachaMgr->DrawFromBox(BoxId, Category, ItemIndex, RarityId))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW][Gacha] 추첨 실패: BoxId=%s, Target=%s"), *BoxId.ToString(), *TargetController->GetName());
+		return;
+	}
+
+	if (MainPC->InventoryComponent->AddItem(ItemIndex) == INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][Gacha] 인벤토리 가득 참 - 보상 유실: %s, Item=%s"), *TargetController->GetName(), *ItemIndex.ToString());
+	}
 }
 
 void AMainGameMode::HandleExtraction(APlayerController* Player)

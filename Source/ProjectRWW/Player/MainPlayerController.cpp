@@ -29,10 +29,32 @@ void AMainPlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	// 핫바 1번(슬롯 0)을 자동으로 든다. 비어있으면 EquipItem 내부에서 조용히 무시됨.
-	if (InventoryComponent)
+	// 원격 클라이언트는 폰 BeginPlay가 끝났다는 신호(Server_NotifyPawnReady)를 기다린다.
+	// 리슨 서버 호스트는 기다릴 클라이언트가 따로 없으므로 바로 실행한다.
+	// DB 로드/인벤토리 복원/스폰 보상/장착은 GameMode::HandlePlayerSpawned()가 처리한다.
+	bSpawnInitPending = true;
+	if (IsLocalController())
 	{
-		InventoryComponent->EquipItem(0);
+		bSpawnInitPending = false;
+		if (AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
+		{
+			GameMode->HandlePlayerSpawned(this);
+		}
+	}
+}
+
+void AMainPlayerController::Server_NotifyPawnReady_Implementation(APawn* ReadyPawn)
+{
+	// 클라이언트가 보낸 값은 믿지 않는다 - 대기 중이고 지금 빙의한 폰일 때만 처리한다.
+	if (!bSpawnInitPending || !ReadyPawn || ReadyPawn != GetPawn())
+	{
+		return;
+	}
+	bSpawnInitPending = false;
+
+	if (AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
+	{
+		GameMode->HandlePlayerSpawned(this);
 	}
 }
 

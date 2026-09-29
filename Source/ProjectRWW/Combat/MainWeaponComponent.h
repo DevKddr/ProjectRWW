@@ -109,6 +109,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	void EquipItemVisual(FName ItemIndex);
 
+	// AMainCharacter::BeginPlay 끝에서 호출된다. 폰이 BeginPlay 전이라 건너뛴 장착 BP 이벤트
+	// (ReceiveWeaponEquip/ReceiveItemEquip)를 지금 상태 기준으로 한 번 보낸다.
+	void SendCurrentEquipStateToBlueprint();
+
 	// MainInventoryComponent::EquipItem()/UnequipItem()(둘 다 서버 전용 확인됨)이 호출한다 -
 	// EquipWeapon()/UnequipWeapon()/EquipItemVisual() 자체는 서버+클라이언트 리플레이 겸용
 	// 함수라 여기 넣으면 안 된다. HasAuthority() 체크가 없는 이유도 같다 - 호출부가
@@ -252,6 +256,13 @@ protected:
 	// Stats의 각 필드를 로컬 멤버 변수에 그대로 반영한다. EquipWeapon()에서 실제 무기
 	// 데이터로, UnequipWeapon()에서는 빈 FWeaponStats()로 호출해서 초기화 용도로도 쓴다.
 	void ApplyWeaponStats(const FWeaponStats& Stats);
+
+	// ReceiveWeaponEquip/ReceiveItemEquip을 보낸다. 폰이 아직 BeginPlay 전이면 보내지 않는다 -
+	// 클라이언트는 폰의 첫 복제 데이터에 실려 온 장착 상태 때문에 OnRep_ReplicationSequence가
+	// 폰 BeginPlay보다 먼저 돌아서, BP가 아직 세팅하지 않은 컴포넌트를 장착 이벤트가 건드린다.
+	// 건너뛴 것은 BeginPlay 끝에서 SendCurrentEquipStateToBlueprint()가 대신 보낸다.
+	void NotifyEquipToBlueprint(bool bIsWeapon);
+	void SendEquipEventToBlueprint(bool bIsWeapon);
 
 	virtual void BeginPlay() override;
 
