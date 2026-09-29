@@ -3,6 +3,7 @@
 #include "MainWeaponComponent.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
 #include "GameFramework/Controller.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
@@ -27,6 +28,11 @@
 // 뒤로 밀지 않는다. 늦은 호출 시각으로 일정을 다시 고정하면 바로 다음 정상 호출이 "너무 이르다"로
 // 잘려서, 빠른 연사일수록 발사가 취소되는 문제가 있었다. 서버 검증과 클라 예측이 같이 쓴다.
 static constexpr float MaxFireBacklogSeconds = 0.15f;
+
+// 헤드샷 판정용. 뼈 충돌체(Physics Asset)를 가진 전신 메시 컴포넌트의 이름과, 그중 머리 뼈 이름.
+// BP_MainCharacter에서 컴포넌트 이름을 바꾸면 여기도 같이 바꿔야 한다.
+static const FName HitMeshComponentName(TEXT("FirstPersonMesh"));
+static const FName HeadBoneName(TEXT("head"));
 
 // 무기별 "원본 애니메이션에서 실제로 재장전이 끝나는 시점"(초, 고정값). weapons.json처럼
 // 밸런스 목적으로 바뀌면 안 되는 값이라 데이터 파일이 아니라 코드에 직접 둔다.
@@ -1016,17 +1022,77 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 		const FVector TraceEnd = TraceStart + PelletDirection * MaxRange;
 
 		FHitResult HitResult;
+		AActor* HitActor = nullptr;
+		bool bHit = false;
+		bool bHeadshot = false;
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(GetOwner());
 
-		const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Pawn, QueryParams) && HitResult.GetActor();
+		// 1차 판정은 캡슐(싸다)로 "어느 캐릭터가 맞았는지"만 찾고, 캐릭터가 맞았으면 2차로 그 전신 메시의
+		// 뼈 충돌체를 쏴서 정확한 부위를 판정한다. 캡슐에만 스치고 몸엔 안 맞았으면 그 캐릭터를 무시하고
+		// 같은 궤적으로 다시 쏴서 뒤의 벽/다른 캐릭터를 찾는다. 겹친 캐릭터가 많아도 무한히 돌지 않도록
+		// 횟수를 제한한다.
+		static constexpr int32 MaxPassThroughCount = 4;
+		for (int32 Attempt = 0; Attempt < MaxPassThroughCount; ++Attempt)
+		{
+			FHitResult CapsuleHit;
+			if (!GetWorld()->LineTraceSingleByChannel(CapsuleHit, TraceStart, TraceEnd, ECC_Pawn, QueryParams) || !CapsuleHit.GetActor())
+			{
+				break; // 아무것도 안 맞음
+			}
+
+			const ACharacter* HitCharacter = Cast<ACharacter>(CapsuleHit.GetActor());
+			if (!HitCharacter)
+			{
+				// 벽, 파괴물 등 - 그대로 맞은 것으로 본다.
+				HitResult = CapsuleHit;
+				HitActor = CapsuleHit.GetActor();
+				bHit = true;
+				break;
+			}
+
+			USkeletalMeshComponent* HitMesh = nullptr;
+			TArray<USkeletalMeshComponent*> CharacterMeshes;
+			HitCharacter->GetComponents<USkeletalMeshComponent>(CharacterMeshes);
+			for (USkeletalMeshComponent* MeshComp : CharacterMeshes)
+			{
+				if (MeshComp->GetFName() == HitMeshComponentName)
+				{
+					HitMesh = MeshComp;
+					break;
+				}
+			}
+
+			if (HitMesh)
+			{
+				// 전용 서버는 화면에 안 그려서 본 위치를 갱신하지 않으므로, 맞은 캐릭터만 이 순간에 갱신한다.
+				HitMesh->RefreshBoneTransforms();
+
+				FHitResult MeshHit;
+				if (HitMesh->LineTraceComponent(MeshHit, TraceStart, TraceEnd, QueryParams))
+				{
+					HitResult = MeshHit; // 이펙트가 캡슐 표면이 아니라 몸의 명중 지점에 찍히게 한다.
+					HitActor = CapsuleHit.GetActor();
+					bHeadshot = (MeshHit.BoneName == HeadBoneName);
+					bHit = true;
+					break;
+				}
+			}
+
+			// 몸에는 안 맞았다 - 이 캐릭터는 무시하고 같은 궤적으로 다시 쏜다.
+			QueryParams.AddIgnoredActor(CapsuleHit.GetActor());
+		}
+
 		if (bHit)
 		{
 			const float HitDistance = FVector::Dist(TraceStart, HitResult.ImpactPoint);
-			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s hit %s at distance %.1f (pellet %d/%d)"),
-				*GetNameSafe(GetOwner()), *GetNameSafe(HitResult.GetActor()), HitDistance, PelletIndex + 1, PelletCount);
+			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] %s hit %s at distance %.1f (pellet %d/%d)%s"),
+				*GetNameSafe(GetOwner()), *GetNameSafe(HitActor), HitDistance, PelletIndex + 1, PelletCount,
+				bHeadshot ? TEXT(" HEADSHOT") : TEXT(""));
 
-			UGameplayStatics::ApplyDamage(HitResult.GetActor(), Damage, InstigatorController, GetOwner(), UDamageType::StaticClass());
+			// 부위 정보(BoneName 등)를 함께 넘기는 ApplyPointDamage를 쓴다 - 기존 OnTakeAnyDamage 바인딩도 그대로 호출된다.
+			const float AppliedDamage = bHeadshot ? Damage * HeadshotMultiplier : Damage;
+			UGameplayStatics::ApplyPointDamage(HitActor, AppliedDamage, PelletDirection, HitResult, InstigatorController, GetOwner(), UDamageType::StaticClass());
 			bAnyHit = true;
 		}
 
