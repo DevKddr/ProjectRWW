@@ -20,6 +20,9 @@
 *.VC.db
 *.VC.opendb
 
+# Visual Studio 구성요소 목록(설치된 도구 버전이 컴퓨터마다 달라 계속 변경 표시가 뜸)
+.vsconfig
+
 # Generated project files
 *.xcodeproj
 *.xcworkspace
