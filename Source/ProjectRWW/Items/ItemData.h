@@ -53,6 +53,12 @@ struct FItemData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
 	FSoftObjectPath IconPath;
 
+	// HUD(우측 하단)에 그려질 2D 아이콘. 비어 있으면 IconPath를 대신 쓴다. items.json의
+	// "hudIconPath"와 이름을 맞춰야 JSON->구조체 변환기가 이 필드를 채워준다 - "Path"
+	// 접미사를 빼먹으면 조용히 매칭 실패해서 항상 빈 값으로 남는다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	FSoftObjectPath HudIconPath;
+
 	// 이 아이템을 장착했을 때 스폰할 Actor 클래스(무기는 BP_AK105, 비무기는 BP_HealKit 등).
 	// Category로 이미 무기/비무기가 구분되므로 필드를 따로 나눌 필요가 없다 - 무기든
 	// 아이템이든 "장착 시 스폰할 Actor" 하나로 통일. items.json의 "actorClassPath"와

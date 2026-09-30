@@ -75,6 +75,7 @@ def load_items(xlsx_path):
                 print(f"[WARN] [{sheet_name}] {row['Index']}: Category 값('{row['Category']}')이 "
                       f"시트 이름('{sheet_name}')과 다릅니다. 잘못된 시트에 들어있는 건 아닌지 확인하세요.")
             icon_path = row.get("IconPath") or ""
+            hud_icon_path = row.get("HudIconPath") or ""
             actor_class_path = row.get("ActorClassPath") or ""
             items.append({
                 "index": row["Index"],
@@ -83,6 +84,7 @@ def load_items(xlsx_path):
                 "description": localize(row["DescKey"]),
                 "rarityId": row["RarityId"],
                 "iconPath": icon_path,
+                "hudIconPath": hud_icon_path,
                 "actorClassPath": actor_class_path,
                 "equipTime": float(row["EquipTime"]),
                 "primarySkillCooldown": float(row["PrimarySkillCooldown"]),
