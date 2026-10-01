@@ -1012,6 +1012,7 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 
 	AController* InstigatorController = Cast<APawn>(GetOwner())->GetController();
 	bool bAnyHit = false;
+	TArray<FHitEffectData> HitEffects; // 펠릿마다의 명중 결과 - 루프가 끝난 뒤 멀티캐스트 한 번으로 보낸다.
 
 	// 2단계: 그 중심 방향을 기준으로 펠릿마다 PelletSpreadAngle만큼 추가로 흩뿌려서 쏜다.
 	// 일반 무기는 PelletCount=1, PelletSpreadAngle=0이라 루프가 한 번만 돌고 AimDirection
@@ -1025,8 +1026,10 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 		AActor* HitActor = nullptr;
 		bool bHit = false;
 		bool bHeadshot = false;
+		bool bHitCharacter = false;
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(GetOwner());
+		QueryParams.bReturnPhysicalMaterial = true; // 명중 효과가 표면 종류(흙/콘크리트 등)를 구분하려면 필요하다.
 
 		// 1차 판정은 캡슐(싸다)로 "어느 캐릭터가 맞았는지"만 찾고, 캐릭터가 맞았으면 2차로 그 전신 메시의
 		// 뼈 충돌체를 쏴서 정확한 부위를 판정한다. 캡슐에만 스치고 몸엔 안 맞았으면 그 캐릭터를 무시하고
@@ -1074,6 +1077,7 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 					HitResult = MeshHit; // 이펙트가 캡슐 표면이 아니라 몸의 명중 지점에 찍히게 한다.
 					HitActor = CapsuleHit.GetActor();
 					bHeadshot = (MeshHit.BoneName == HeadBoneName);
+					bHitCharacter = true;
 					bHit = true;
 					break;
 				}
@@ -1096,10 +1100,23 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 			bAnyHit = true;
 		}
 
-		// 펠릿마다 각자의 궤적을 그려야 샷건 특유의 흩어지는 모습이 보인다 — 마지막 한 번만
-		// 보내면 나머지 펠릿의 시각 효과가 전부 사라져 보인다.
-		MulticastPlayFireEffects(TraceStart, bHit ? HitResult.ImpactPoint : TraceEnd, bHit);
+		// 펠릿마다 각자의 궤적을 그려야 샷건 특유의 흩어지는 모습이 보인다 - 펠릿별 결과를 배열에 모아 두었다가
+		// 루프가 끝난 뒤 한 번에 보낸다.
+		FHitEffectData& Effect = HitEffects.AddDefaulted_GetRef();
+		Effect.TraceEnd = bHit ? HitResult.ImpactPoint : TraceEnd;
+		Effect.ImpactNormal = bHit ? HitResult.ImpactNormal : FVector::UpVector;
+		Effect.Direction = PelletDirection;
+		Effect.SurfaceType = UGameplayStatics::GetSurfaceType(HitResult);
+
+		// 캐릭터가 아닌 물체가 물리 시뮬레이션 중이면 표시한다(서버가 물리를 돌리므로 정확히 안다).
+		const UPrimitiveComponent* HitComponent = HitResult.GetComponent();
+		Effect.bHitSimulatingObject = bHit && !bHitCharacter && HitComponent && HitComponent->IsSimulatingPhysics();
+		Effect.bHit = bHit;
+		Effect.bHitCharacter = bHitCharacter;
+		Effect.bHeadshot = bHeadshot;
 	}
+
+	MulticastPlayFireEffects(TraceStart, HitEffects);
 
 	if (!bAnyHit)
 	{
@@ -1418,9 +1435,22 @@ float UMainWeaponComponent::GetReloadStartTime() const
 	return (CurrentAmmo == 0 && ReloadTime_Empty > 0.0f) ? ReloadTime_Empty : ReloadTime_Start;
 }
 
-void UMainWeaponComponent::MulticastPlayFireEffects_Implementation(const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& TraceEnd, bool bHit)
+void UMainWeaponComponent::MulticastPlayFireEffects_Implementation(const FVector_NetQuantize& TraceStart, const TArray<FHitEffectData>& Hits)
 {
-	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, bHit ? FColor::Green : FColor::Red, false, 20.0f, 0, 0.5f);
+	AMainCharacter* ShooterCharacter = Cast<AMainCharacter>(GetOwner());
+
+	for (const FHitEffectData& Hit : Hits)
+	{
+		DrawDebugLine(GetWorld(), TraceStart, Hit.TraceEnd, Hit.bHit ? FColor::Green : FColor::Red, false, 20.0f, 0, 0.5f);
+
+		// 명중 효과는 화면이 있는 쪽에서만 의미가 있다. 쏜 사람 본인 화면에도 나오도록 오너 여부는 따지지 않는다
+		// (발사 애니메이션과 달리 명중은 서버 판정 결과라 로컬 예측이 없다).
+		// IsRunningDedicatedServer()는 에디터 PIE의 서버 월드에서는 false라서, 월드의 넷모드로 판별한다.
+		if (Hit.bHit && ShooterCharacter && GetWorld() && GetWorld()->GetNetMode() != NM_DedicatedServer)
+		{
+			ShooterCharacter->ReceiveHitEffect(Hit.TraceEnd, Hit.ImpactNormal, Hit.Direction, Hit.SurfaceType, Hit.bHitCharacter, Hit.bHeadshot, Hit.bHitSimulatingObject);
+		}
+	}
 
 	// 본인은 RequestFire()에서 이미 로컬 예측으로 재생했으니 원격 클라이언트일 때만
 	// 재생한다. Single/Burst/FullAuto 전부 FireShot()을 거쳐 여기로 오므로, 실제

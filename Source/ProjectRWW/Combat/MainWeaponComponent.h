@@ -21,6 +21,44 @@ enum class EMainAbilityInputID : uint8
 	Secondary
 };
 
+// 총알 한 발(펠릿 하나)의 판정 결과를 클라이언트에 알리는 데이터. 샷건처럼 한 발에 펠릿이 여러 개일 때
+// 펠릿마다 멀티캐스트를 따로 보내면 엔진 한도(net.MaxRPCPerNetUpdate, 기본 2)를 넘는 것은 버려지므로,
+// 이 구조체를 배열로 모아서 발사당 한 번에 보낸다.
+USTRUCT()
+struct FHitEffectData
+{
+	GENERATED_BODY()
+
+	// 트레이스 끝 위치. 맞았으면 명중 지점, 빗나갔으면 사거리 끝.
+	UPROPERTY()
+	FVector_NetQuantize TraceEnd = FVector::ZeroVector;
+
+	UPROPERTY()
+	FVector_NetQuantizeNormal ImpactNormal = FVector::UpVector;
+
+	// 총알이 날아온 방향(단위 벡터). 명중 이펙트의 스파크/파편이 이 방향으로 튀도록 Niagara에 넘긴다.
+	UPROPERTY()
+	FVector_NetQuantizeNormal Direction = FVector::ForwardVector;
+
+	UPROPERTY()
+	TEnumAsByte<EPhysicalSurface> SurfaceType = SurfaceType_Default;
+
+	UPROPERTY()
+	bool bHit = false;
+
+	UPROPERTY()
+	bool bHitCharacter = false;
+
+	UPROPERTY()
+	bool bHeadshot = false;
+
+	// 맞은 것이 물리 시뮬레이션으로 움직이는 물체인지. 그런 물체는 월드 위치에 이펙트를 고정해 스폰하면
+	// 물체만 움직이고 이펙트가 허공에 남는다. 지금은 이 경우 이펙트를 내지 않고, 나중에 맞은 컴포넌트에
+	// 붙여서 스폰하는 처리를 BP에 추가할 수 있게 구분해서 알려 준다.
+	UPROPERTY()
+	bool bHitSimulatingObject = false;
+};
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class PROJECTRWW_API UMainWeaponComponent : public UActorComponent
 {
@@ -334,7 +372,7 @@ protected:
 
 	// 서버 -> 전체 클라이언트: 판정 결과에 따른 이펙트만 통보.
 	UFUNCTION(NetMulticast, Unreliable)
-	void MulticastPlayFireEffects(const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& TraceEnd, bool bHit);
+	void MulticastPlayFireEffects(const FVector_NetQuantize& TraceStart, const TArray<FHitEffectData>& Hits);
 
 	// 클라이언트 -> 서버 요청: 재장전.
 	UFUNCTION(Server, Reliable)

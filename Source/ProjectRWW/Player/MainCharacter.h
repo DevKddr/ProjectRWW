@@ -73,6 +73,15 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Animation")
 	void ReceiveWeaponFireStopped();
 
+	// 이 캐릭터가 쏜 총알이 뭔가에 맞았을 때, 그걸 볼 수 있는 모든 클라이언트(쏜 사람 본인 포함)에서 호출된다.
+	// 명중 지점의 파티클/탄흔/소리는 BP 구현부가 재생한다. Normal은 맞은 표면의 법선, Direction은 총알이 날아온
+	// 방향(단위 벡터)이다. SurfaceType은 맞은 표면의 물리 머티리얼에서 온 값(지정 안 됐으면 Default),
+	// bHitCharacter는 캐릭터에 맞았는지, bHeadshot은 머리에 맞았는지, bHitSimulatingObject는 맞은 것이
+	// 물리로 움직이는 물체인지다(그 경우 월드 위치 이펙트가 물체를 못 따라가므로 BP가 건너뛴다).
+	// 전용 서버에서는 호출되지 않는다 - 그릴 화면이 없기 때문.
+	UFUNCTION(BlueprintImplementableEvent, Category = "Combat")
+	void ReceiveHitEffect(FVector Location, FVector Normal, FVector Direction, EPhysicalSurface SurfaceType, bool bHitCharacter, bool bHeadshot, bool bHitSimulatingObject);
+
 	// 조준(ADS) 시작/종료 시 호출된다. 본인 클라이언트에서만 실행된다.
 	UFUNCTION(BlueprintImplementableEvent, Category = "Animation")
 	void ReceiveADSChange(bool bIsAiming);

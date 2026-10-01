@@ -26,7 +26,8 @@ public class ProjectRWW : ModuleRules
             "DeveloperSettings",
             "GameplayAbilities",
             "GameplayTags",
-            "GameplayTasks"
+            "GameplayTasks",
+            "PhysicsCore"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
