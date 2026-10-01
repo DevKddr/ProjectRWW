@@ -60,6 +60,10 @@ public:
 	UFUNCTION(Client, Unreliable)
 	void Client_OnDamaged(const FVector_NetQuantize& SourceLocation, float Damage, bool bHeadshot);
 
+	// 서버 -> 킬한 사람: "네가 죽였다". 화면 표시용이라 유실돼도 게임에 영향이 없어 Unreliable로 보낸다.
+	UFUNCTION(Client, Unreliable)
+	void Client_OnKillConfirmed();
+
 	UFUNCTION(Server, Reliable)
 	void Server_RequestRespawn();
 

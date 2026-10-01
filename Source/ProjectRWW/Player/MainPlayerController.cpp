@@ -157,6 +157,14 @@ void AMainPlayerController::Client_OnDamaged_Implementation(const FVector_NetQua
 	}
 }
 
+void AMainPlayerController::Client_OnKillConfirmed_Implementation()
+{
+	if (HUDWidgetInstance)
+	{
+		HUDWidgetInstance->ReceiveKillConfirmed();
+	}
+}
+
 void AMainPlayerController::Client_OnPlayerDied_Implementation(const FMainPlayerRecord& Record, int32 FinalKillStreak)
 {
 	// 사망 시엔 사망 UI만 남기고 다른 목적으로 열려있던 UI는 전부 닫는다.

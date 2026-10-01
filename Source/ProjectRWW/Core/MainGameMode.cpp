@@ -161,6 +161,9 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 		KillerController->PlayerRecord.KillCount += 1;
 		KillerController->KillStreak += 1;
 
+		// 킬 확인 마커/소리 - 총 외의 킬(스킬 등)도 사망 처리 한 곳에서 한 번에 보낸다.
+		KillerController->Client_OnKillConfirmed();
+
 		// 피해자 인벤토리는 이미 위에서 비웠다(사망 페널티) - 킬 보상은 가해자에게만 별도로 지급.
 		GrantGachaBoxReward(KillerController, KillRewardBoxId);
 	}

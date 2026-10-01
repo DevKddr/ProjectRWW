@@ -69,4 +69,10 @@ public:
 	// Damage는 이번 발사에서 맞은 피해 합계다. 피격 연출과 소리는 BP 구현부가 재생한다.
 	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
 	void ReceiveDamaged(FVector SourceLocation, float Damage, bool bHeadshot);
+
+	// [타격자] 내가 죽인 상대가 사망했을 때(킬 확인). 킬 마커와 소리는 BP 구현부가 재생한다.
+	// 같은 발사의 일반 히트마커(ReceiveHitConfirmed)보다 먼저 도착할 수 있으니, BP에서 킬 연출이 재생 중이면
+	// 일반 히트마커가 덮어쓰지 않게 막아 둔다.
+	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
+	void ReceiveKillConfirmed();
 };
