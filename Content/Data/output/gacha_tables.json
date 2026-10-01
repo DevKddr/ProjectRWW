@@ -10,18 +10,13 @@
     "en": "A basic random box featuring common, rare, and epic weapons."
    },
    "rarityWeights": {
-    "Common": 70.0,
-    "Rare": 25.0,
-    "Epic": 5.0
+    "Common": 7.0,
+    "Rare": 3.0,
+    "Epic": 1.0
    },
    "pools": {
     "Common": {
      "items": [
-      {
-       "category": "Weapon",
-       "index": "P_1",
-       "weight": 10.0
-      },
       {
        "category": "Weapon",
        "index": "AR_1",
@@ -29,7 +24,32 @@
       },
       {
        "category": "Weapon",
+       "index": "DMR_1",
+       "weight": 10.0
+      },
+      {
+       "category": "Weapon",
+       "index": "MG_1",
+       "weight": 10.0
+      },
+      {
+       "category": "Weapon",
+       "index": "P_1",
+       "weight": 10.0
+      },
+      {
+       "category": "Weapon",
+       "index": "P_2",
+       "weight": 10.0
+      },
+      {
+       "category": "Weapon",
        "index": "SMG_1",
+       "weight": 10.0
+      },
+      {
+       "category": "Weapon",
+       "index": "SMG_2",
        "weight": 10.0
       }
      ]
@@ -44,6 +64,11 @@
       {
        "category": "Weapon",
        "index": "SG_1",
+       "weight": 10.0
+      },
+      {
+       "category": "Weapon",
+       "index": "SG_2",
        "weight": 10.0
       }
      ]
