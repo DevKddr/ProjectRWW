@@ -141,6 +141,22 @@ void AMainPlayerController::CloseAllGameplayUI()
 	}
 }
 
+void AMainPlayerController::Client_OnHitConfirmed_Implementation(bool bHeadshot)
+{
+	if (HUDWidgetInstance)
+	{
+		HUDWidgetInstance->ReceiveHitConfirmed(bHeadshot);
+	}
+}
+
+void AMainPlayerController::Client_OnDamaged_Implementation(const FVector_NetQuantize& SourceLocation, float Damage, bool bHeadshot)
+{
+	if (HUDWidgetInstance)
+	{
+		HUDWidgetInstance->ReceiveDamaged(SourceLocation, Damage, bHeadshot);
+	}
+}
+
 void AMainPlayerController::Client_OnPlayerDied_Implementation(const FMainPlayerRecord& Record, int32 FinalKillStreak)
 {
 	// 사망 시엔 사망 UI만 남기고 다른 목적으로 열려있던 UI는 전부 닫는다.

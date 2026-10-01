@@ -17,6 +17,7 @@
 #include "Player/MainCharacter.h"
 #include "Player/PlayerMovementComponent.h"
 #include "Player/MainPlayerState.h"
+#include "Player/MainPlayerController.h"
 #include "GAS/GameplayEffects/GE_ManaCost.h"
 #include "GAS/MainAttributeSet.h"
 #include "GAS/MainGameplayTags.h"
@@ -1013,6 +1014,16 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 	AController* InstigatorController = Cast<APawn>(GetOwner())->GetController();
 	bool bAnyHit = false;
 	TArray<FHitEffectData> HitEffects; // 펠릿마다의 명중 결과 - 루프가 끝난 뒤 멀티캐스트 한 번으로 보낸다.
+	bool bAnyCharacterHit = false; // 이번 발사에서 캐릭터가 한 번이라도 맞았는지 - 타격 연출은 발사당 한 번만 보낸다.
+	bool bAnyHeadshot = false;
+
+	// 맞은 사람별 이번 발사의 총 피해량과 헤드샷 여부 - 샷건 펠릿이 여러 개 맞아도 피격 연출은 사람당 한 번만 보낸다.
+	struct FVictimHit
+	{
+		float Damage = 0.0f;
+		bool bHeadshot = false;
+	};
+	TMap<AMainPlayerController*, FVictimHit> VictimHits;
 
 	// 2단계: 그 중심 방향을 기준으로 펠릿마다 PelletSpreadAngle만큼 추가로 흩뿌려서 쏜다.
 	// 일반 무기는 PelletCount=1, PelletSpreadAngle=0이라 루프가 한 번만 돌고 AimDirection
@@ -1098,6 +1109,24 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 			const float AppliedDamage = bHeadshot ? Damage * HeadshotMultiplier : Damage;
 			UGameplayStatics::ApplyPointDamage(HitActor, AppliedDamage, PelletDirection, HitResult, InstigatorController, GetOwner(), UDamageType::StaticClass());
 			bAnyHit = true;
+
+			if (bHitCharacter)
+			{
+				bAnyCharacterHit = true;
+				bAnyHeadshot |= bHeadshot;
+
+				// 피해를 적용한 뒤에 컨트롤러를 얻는다 - 이 총알에 죽었다면 사망 처리가 컨트롤러를 폰에서 분리해서
+				// null이 되고, 죽은 사람에게는 피격 연출을 보내지 않으니 그대로 건너뛰면 된다(사망 UI가 화면을 가져간다).
+				if (const APawn* HitPawn = Cast<APawn>(HitActor))
+				{
+					if (AMainPlayerController* VictimController = Cast<AMainPlayerController>(HitPawn->GetController()))
+					{
+						FVictimHit& Entry = VictimHits.FindOrAdd(VictimController);
+						Entry.Damage += AppliedDamage;
+						Entry.bHeadshot |= bHeadshot;
+					}
+				}
+			}
 		}
 
 		// 펠릿마다 각자의 궤적을 그려야 샷건 특유의 흩어지는 모습이 보인다 - 펠릿별 결과를 배열에 모아 두었다가
@@ -1117,6 +1146,19 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 	}
 
 	MulticastPlayFireEffects(TraceStart, HitEffects);
+
+	// 쏜 사람에게는 타격 연출을, 맞은 사람들에게는 각자의 피격 연출을 보낸다(발사당 한 번씩).
+	if (bAnyCharacterHit)
+	{
+		if (AMainPlayerController* ShooterController = Cast<AMainPlayerController>(InstigatorController))
+		{
+			ShooterController->Client_OnHitConfirmed(bAnyHeadshot);
+		}
+	}
+	for (const TPair<AMainPlayerController*, FVictimHit>& Pair : VictimHits)
+	{
+		Pair.Key->Client_OnDamaged(GetOwner()->GetActorLocation(), Pair.Value.Damage, Pair.Value.bHeadshot);
+	}
 
 	if (!bAnyHit)
 	{

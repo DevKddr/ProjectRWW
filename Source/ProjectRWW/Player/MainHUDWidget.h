@@ -59,4 +59,14 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD")
 	float ExtractionStartTimeSeconds = 0.0f;
+
+	// [타격자] 내가 쏜 총알이 캐릭터에 맞았을 때(발사당 한 번). 크로스헤어 히트마커와 소리는 BP 구현부가 재생한다.
+	// bHeadshot이면 헤드샷용 이미지/소리를 쓴다.
+	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
+	void ReceiveHitConfirmed(bool bHeadshot);
+
+	// [피격자] 내가 맞았을 때(발사당 한 번). SourceLocation은 쏜 사람의 위치라 피격 방향 표시에 쓸 수 있고,
+	// Damage는 이번 발사에서 맞은 피해 합계다. 피격 연출과 소리는 BP 구현부가 재생한다.
+	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
+	void ReceiveDamaged(FVector SourceLocation, float Damage, bool bHeadshot);
 };

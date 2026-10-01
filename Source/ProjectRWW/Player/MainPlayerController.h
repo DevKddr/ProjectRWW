@@ -52,6 +52,14 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_OnPlayerDied(const FMainPlayerRecord& Record, int32 FinalKillStreak);
 
+	// 서버 -> 쏜 사람: "네 총알이 캐릭터에 맞았다". 화면 표시용이라 유실돼도 게임에 영향이 없어 Unreliable로 보낸다.
+	UFUNCTION(Client, Unreliable)
+	void Client_OnHitConfirmed(bool bHeadshot);
+
+	// 서버 -> 맞은 사람: "누가 어느 위치에서 이만큼 맞혔다".
+	UFUNCTION(Client, Unreliable)
+	void Client_OnDamaged(const FVector_NetQuantize& SourceLocation, float Damage, bool bHeadshot);
+
 	UFUNCTION(Server, Reliable)
 	void Server_RequestRespawn();
 
