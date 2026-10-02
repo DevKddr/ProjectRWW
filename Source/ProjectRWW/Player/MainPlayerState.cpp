@@ -14,6 +14,12 @@ AMainPlayerState::AMainPlayerState()
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
 	AttributeSet = CreateDefaultSubobject<UMainAttributeSet>(TEXT("AttributeSet"));
+
+	// APlayerState의 기본 복제 빈도는 초당 1회라서, 체력(AttributeSet)이 서버에서 바뀌어도 클라이언트 HUD에
+	// 최대 1초 늦게 반영된다. GAS의 ASC를 PlayerState에 두는 구조에서는 이 값을 올려 두는 것이 일반적이다.
+	// 값이 바뀐 속성만 전송되므로 빈도를 올려도 대역폭 부담은 크지 않다.
+	SetNetUpdateFrequency(100.f);
+	SetMinNetUpdateFrequency(33.f);
 }
 
 void AMainPlayerState::BeginPlay()

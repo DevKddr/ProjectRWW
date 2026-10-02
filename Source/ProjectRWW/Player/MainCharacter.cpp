@@ -308,6 +308,9 @@ void AMainCharacter::OnTakeAnyDamage_GAS(AActor* DamagedActor, float Damage, con
 	DamageSpec.Data->SetSetByCallerMagnitude(MainGameplayTags::Data_Damage.GetTag(), Damage);
 	ASC->ApplyGameplayEffectSpecToSelf(*DamageSpec.Data);
 
+	// 체력이 바뀐 이 프레임에 바로 클라이언트로 복제하도록 요청한다(복제 빈도 설정과 별개의 안전망).
+	MainPS->ForceNetUpdate();
+
 	// 회복 지연 태그 - HPRegenDelay초 뒤 자동 만료된다. 연속으로 맞으면 매번 새 인스턴스가
 	// 걸리는데(스택 안 함), 각자 독립적으로 만료되므로 결과적으로 "마지막 피격 후
 	// HPRegenDelay초"가 유지되는 것과 동일하다.
