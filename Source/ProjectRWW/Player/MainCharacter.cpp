@@ -35,13 +35,20 @@ void AMainCharacter::OnFire(const FInputActionValue& Value)
 {
 	if (WeaponComponent)
 	{
+		// 달리는 중에 발사를 누르면 스프린트를 풀고 바로 쏜다. 무기가 없을 때는 쏘지도 못하므로 스프린트를 유지한다.
+		if (WeaponComponent->HasWeaponEquipped() && IsSprinting())
+		{
+			CancelSprint();
+		}
 		WeaponComponent->StartFire();
 	}
 }
 
 void AMainCharacter::OnStopFire(const FInputActionValue& Value)
 {
-	if (WeaponComponent)
+	// 맨손/아이템 상태에서는 "발사 멈춤"을 로컬 연출로도, 서버(→원격 클라이언트 멀티캐스트)로도 보내지 않는다.
+	// 무기 교체 시점의 정리는 EquipWeapon()이 StopFire()로 직접 처리하므로 여기서 막아도 상태가 남지 않는다.
+	if (WeaponComponent && WeaponComponent->HasWeaponEquipped())
 	{
 		// bCancelBurst=false: 트리거를 놓았다는 사실(OnFireReleased 등) 자체는 발사모드와
 		// 무관하게 항상 Kinemation에 알려야 하지만, 진행 중인 버스트의 남은 발
@@ -67,13 +74,20 @@ void AMainCharacter::OnADSStart(const FInputActionValue& Value)
 {
 	if (WeaponComponent)
 	{
+		// 달리는 중에 조준을 누르면 스프린트를 풀고 바로 조준한다.
+		if (WeaponComponent->HasWeaponEquipped() && IsSprinting())
+		{
+			CancelSprint();
+		}
 		WeaponComponent->StartADS();
 	}
 }
 
 void AMainCharacter::OnADSStop(const FInputActionValue& Value)
 {
-	if (WeaponComponent)
+	// 맨손/아이템 상태에서는 조준 해제 연출(ReceiveADSChange(false))을 부르지 않는다.
+	// 무기 교체로 조준이 풀리는 경우는 EquipWeapon()이 직접 해제하므로 여기서 막아도 문제없다.
+	if (WeaponComponent && WeaponComponent->HasWeaponEquipped())
 	{
 		WeaponComponent->StopADS();
 	}
@@ -100,6 +114,11 @@ void AMainCharacter::OnSprintStart(const FInputActionValue& Value)
 }
 
 void AMainCharacter::OnSprintStop(const FInputActionValue& Value)
+{
+	CancelSprint();
+}
+
+void AMainCharacter::CancelSprint()
 {
 	if (UPlayerMovementComponent* Movement = GetPlayerMovement())
 	{

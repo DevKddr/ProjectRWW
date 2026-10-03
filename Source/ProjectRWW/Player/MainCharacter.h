@@ -176,6 +176,9 @@ protected:
 	void OnSprintStart(const FInputActionValue& Value);
 	void OnSprintStop(const FInputActionValue& Value);
 
+	// 스프린트 의도를 끄고 이동 연출을 걷기로 되돌린다. OnSprintStop과, 달리는 중 발사/조준 입력이 함께 쓴다.
+	void CancelSprint();
+
 	// 이동 입력이 끊겼을 때(IA_Move가 완전히 손을 뗀 순간) 호출된다.
 	void OnMoveStopped(const FInputActionValue& Value);
 

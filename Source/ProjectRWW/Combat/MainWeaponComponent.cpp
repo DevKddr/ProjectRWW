@@ -893,15 +893,9 @@ void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& 
 		return;
 	}
 
-	// 달리기 중에는 발사할 수 없다.
-	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
-	{
-		if (OwningCharacter->IsSprinting())
-		{
-			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][발사취소] 서버: 달리기 중 (%s)"), *GetNameSafe(GetOwner()));
-			return;
-		}
-	}
+	// 스프린트 여부는 서버에서 검사하지 않는다 - 서버의 IsSprinting()은 이동 패킷으로 오는 플래그라서
+	// 이 RPC보다 늦게 도착할 수 있다(스프린트를 풀자마자 쏘면 첫 발이 잘못 거부됨). 클라이언트의
+	// RequestFire()가 이미 스프린트 중이면 발사를 보내지 않는다.
 
 	const double Now = FPlatformTime::Seconds();
 	const float FireIntervalSeconds = FireRate_RPS > 0.0f ? (1.0f / FireRate_RPS) : 0.0f;
