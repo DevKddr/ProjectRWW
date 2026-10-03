@@ -670,59 +670,68 @@ void UMainWeaponComponent::RequestFire()
 	}
 }
 
+void UMainWeaponComponent::GetSpreadBounds(float& OutBase, float& OutMax) const
+{
+	const float ADSAlpha = GetADSAlpha();
+	OutBase = FMath::Lerp(SpreadHipfire, SpreadADS, ADSAlpha);
+	OutMax = FMath::Max(FMath::Lerp(MaxSpreadBloomHipfire, MaxSpreadBloomADS, ADSAlpha), OutBase);
+}
+
 float UMainWeaponComponent::UpdateSpread()
 {
 	const UWorld* World = GetWorld();
 	const double Now = World ? World->GetTimeSeconds() : 0.0;
 
-	const float ADSAlpha = GetADSAlpha();
-	const float BaseSpread = FMath::Lerp(SpreadHipfire, SpreadADS, ADSAlpha);
-	const float MaxBloom = FMath::Lerp(MaxSpreadBloomHipfire, MaxSpreadBloomADS, ADSAlpha);
+	float BaseSpread = 0.0f;
+	float MaxSpread = 0.0f;
+	GetSpreadBounds(BaseSpread, MaxSpread);
 
 	const double TimeSinceLastShot = Now - LastSpreadUpdateTimeSeconds;
 	if (TimeSinceLastShot > SpreadRecoveryDelay)
 	{
 		const float RecoveryAmount = static_cast<float>(TimeSinceLastShot - SpreadRecoveryDelay) * SpreadRecoveryRate;
-		CurrentSpreadDegrees = FMath::Max(CurrentSpreadDegrees - RecoveryAmount, 0.0f);
+		CurrentSpreadDegrees -= RecoveryAmount;
 	}
 	LastSpreadUpdateTimeSeconds = Now;
 
-	const float TotalSpreadDegrees = FMath::Clamp(BaseSpread + CurrentSpreadDegrees, 0.0f, BaseSpread + MaxBloom);
+	// 조준 전환 중에는 기본값/상한이 움직이므로 매번 범위 안으로 맞춘다.
+	// 장착 직후의 0도 여기서 기본값이 되고, 회복도 기본값 아래로는 내려가지 않는다.
+	CurrentSpreadDegrees = FMath::Clamp(CurrentSpreadDegrees, BaseSpread, MaxSpread);
+	const float ShotSpreadDegrees = CurrentSpreadDegrees;
 
-	CurrentSpreadDegrees = FMath::Min(CurrentSpreadDegrees + SpreadIncreasePerShot, MaxBloom);
+	// 이번 발은 올리기 전 값으로 쏘고, 다음 발부터 반영한다.
+	CurrentSpreadDegrees = FMath::Min(CurrentSpreadDegrees + SpreadIncreasePerShot, MaxSpread);
 
-	return TotalSpreadDegrees;
+	return ShotSpreadDegrees;
 }
 
 float UMainWeaponComponent::GetCurrentSpreadDegrees() const
 {
-	const float ADSAlpha = GetADSAlpha();
-	const float BaseSpread = FMath::Lerp(SpreadHipfire, SpreadADS, ADSAlpha);
-	const float MaxBloom = FMath::Lerp(MaxSpreadBloomHipfire, MaxSpreadBloomADS, ADSAlpha);
+	float BaseSpread = 0.0f;
+	float MaxSpread = 0.0f;
+	GetSpreadBounds(BaseSpread, MaxSpread);
 
-	// UpdateSpread()가 실제 탄 궤적에 쓰는 것과 동일한 회복 계산. BaseSpread를 더해야
-	// GetMaxSpreadDegrees()와 같은 기준(0 ~ BaseSpread+MaxBloom)이 되어 UI에서
-	// Current/Max 비율이 실제 산포와 일치한다.
-	float RecoveredBloom = CurrentSpreadDegrees;
+	// UpdateSpread()와 같은 회복 계산(상태는 바꾸지 않음) - UI의 Current/Max 비율이 실제 산포와 일치한다.
+	float RecoveredSpread = CurrentSpreadDegrees;
 	if (const UWorld* World = GetWorld())
 	{
 		const double TimeSinceLastShot = World->GetTimeSeconds() - LastSpreadUpdateTimeSeconds;
 		if (TimeSinceLastShot > SpreadRecoveryDelay)
 		{
 			const float RecoveryAmount = static_cast<float>(TimeSinceLastShot - SpreadRecoveryDelay) * SpreadRecoveryRate;
-			RecoveredBloom = FMath::Max(CurrentSpreadDegrees - RecoveryAmount, 0.0f);
+			RecoveredSpread -= RecoveryAmount;
 		}
 	}
 
-	return FMath::Clamp(BaseSpread + RecoveredBloom, 0.0f, BaseSpread + MaxBloom);
+	return FMath::Clamp(RecoveredSpread, BaseSpread, MaxSpread);
 }
 
 float UMainWeaponComponent::GetMaxSpreadDegrees() const
 {
-	const float ADSAlpha = GetADSAlpha();
-	const float BaseSpread = FMath::Lerp(SpreadHipfire, SpreadADS, ADSAlpha);
-	const float MaxBloom = FMath::Lerp(MaxSpreadBloomHipfire, MaxSpreadBloomADS, ADSAlpha);
-	return BaseSpread + MaxBloom;
+	float BaseSpread = 0.0f;
+	float MaxSpread = 0.0f;
+	GetSpreadBounds(BaseSpread, MaxSpread);
+	return MaxSpread;
 }
 
 void UMainWeaponComponent::RequestReload()

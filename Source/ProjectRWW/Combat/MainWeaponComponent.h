@@ -277,7 +277,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetCurrentSpreadDegrees() const;
 
-	// 지금 조준 여부 기준으로 낼 수 있는 최대 산포각(기준 산포 + 최대 블룸).
+	// 지금 조준 여부 기준으로 낼 수 있는 최대 산포각. MaxSpreadBloom*(총 산포의 상한, 절대값) 그대로다.
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetMaxSpreadDegrees() const;
 
@@ -290,6 +290,10 @@ protected:
 	// 이번 발의 산포각을 계산하고, 다음 발을 위해 블룸을 누적한다. 서버(FireShot)와
 	// 원격 클라이언트(RequestFire) 각자 자기 상태로 이 함수를 호출한다.
 	float UpdateSpread();
+
+	// 지금 조준 진행도 기준의 기본 산포와 총 산포 상한(도). 상한은 MaxSpreadBloom*(절대값)이고,
+	// 기본값보다 작게 적혀 있으면 기본값을 상한으로 본다.
+	void GetSpreadBounds(float& OutBase, float& OutMax) const;
 
 	// Stats의 각 필드를 로컬 멤버 변수에 그대로 반영한다. EquipWeapon()에서 실제 무기
 	// 데이터로, UnequipWeapon()에서는 빈 FWeaponStats()로 호출해서 초기화 용도로도 쓴다.
@@ -615,6 +619,8 @@ protected:
 	int32 PendingBurstShotsRemaining = 0;
 
 	// --- 산포(Spread) 런타임 상태 --- (서버/클라이언트 각자 로컬로 관리, 복제 안 함)
+	// 블룸이 더해진 "현재 총 산포"(도). 기본값 ~ 상한 사이에서 움직인다. 장착 직후의 0은
+	// UpdateSpread()/GetCurrentSpreadDegrees()가 범위(기본값~상한)로 맞추면서 기본값이 된다.
 	float CurrentSpreadDegrees = 0.0f;
 	double LastSpreadUpdateTimeSeconds = 0.0;
 
