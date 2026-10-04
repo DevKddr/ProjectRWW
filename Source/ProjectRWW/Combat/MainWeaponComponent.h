@@ -221,6 +221,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetADSSpeed() const { return ADSSpeed; }
 
+	// 현재 무기의 조준경 배율(weapons.json의 ScopeZoomLevel). 1.0 = 줌 없음. 무기를 안 들면 1.0이다.
+	// 시점 감도의 줌 보정(AMainCharacter::OnLook)과 ADS FOV 계산이 읽는다. 읽기 전용이라 서버/클라이언트
+	// 어디서 읽어도 되고, 값 자체는 복제된 WeaponIndex로 각자 채워진다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetScopeZoomLevel() const { return ScopeZoomLevel; }
+
 	// 탄창에 탄약이 남아있는 상태의 재장전 소요 시간(초). BP_TacticalShooterWeapon의
 	// OnReload가 ReloadTactical 몽타주 재생 속도를 여기 맞추는 데 쓴다.
 	UFUNCTION(BlueprintPure, Category = "Weapon")

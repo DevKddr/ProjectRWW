@@ -10,6 +10,7 @@
 #include "Player/PlayerMovementComponent.h"
 #include "Items/InteractionComponent.h"
 #include "Core/MainGameMode.h"
+#include "Core/MainGameInstance.h"
 #include "Net/UnrealNetwork.h"
 #include "Player/MainPlayerState.h"
 #include "Player/MainPlayerController.h"
@@ -473,15 +474,58 @@ void AMainCharacter::OnMove(const FInputActionValue& Value)
 	}
 }
 
+namespace
+{
+	// 플레이어가 설정한 시점 감도 배율을 계산한다. 이 값은 이 PC의 GameInstance에만 있는 로컬 입력 설정이며
+	// 서버 권위 대상이 아니다(서버는 감도가 적용된 "최종 컨트롤 회전"만 받는다).
+	//
+	//   배율 = LookSensitivity
+	//          x Lerp(1, 1/ScopeZoomLevel, ADSAlpha)            ... 줌 보정: 줌한 화면에서 같은 마우스 이동량이 비슷한 속도로 느껴지게
+	//          x Lerp(1, ADSSensitivityMultiplier, ADSAlpha)    ... 플레이어가 설정한 조준 감도 배율
+	//
+	// ADSAlpha(0~1)로 섞기 때문에 ADS 전환 중에도 감도가 부드럽게 변해 시점이 튀지 않는다.
+	// 무기를 안 들었거나 조준 중이 아니면(ADSAlpha = 0) LookSensitivity만 적용된다.
+	float ComputeLookSensitivityScale(const UGameInstance* GameInstance, const UMainWeaponComponent* Weapon)
+	{
+		const UMainGameInstance* Settings = Cast<UMainGameInstance>(GameInstance);
+		if (!Settings)
+		{
+			return 1.0f;
+		}
+
+		float Scale = Settings->GetLookSensitivity();
+
+		if (Weapon)
+		{
+			const float ADSAlpha = Weapon->GetADSAlpha();
+			if (ADSAlpha > 0.0f)
+			{
+				const float ZoomLevel = FMath::Max(1.0f, Weapon->GetScopeZoomLevel());
+				const float ZoomCorrection = FMath::Lerp(1.0f, 1.0f / ZoomLevel, ADSAlpha);
+				const float ADSMultiplier = FMath::Lerp(1.0f, Settings->GetADSSensitivityMultiplier(), ADSAlpha);
+				Scale *= ZoomCorrection * ADSMultiplier;
+			}
+		}
+
+		return Scale;
+	}
+}
+
 void AMainCharacter::OnLook(const FInputActionValue& Value)
 {
 	const FVector2D LookVector = Value.Get<FVector2D>();
 
 	if (Controller)
 	{
+		// 감도는 로컬 플레이어의 입력에만 적용한다. 다른 머신의 GameInstance 값을 읽는 일이 없도록
+		// 로컬 조종이 아니면 배율 1.0(보정 없음)으로 둔다.
+		const float Scale = IsLocallyControlled()
+			? ComputeLookSensitivityScale(GetGameInstance(), WeaponComponent)
+			: 1.0f;
+
 		// 컨트롤러 회전은 서버-클라이언트 간 자동 동기화된다.
-		AddControllerYawInput(LookVector.X);
-		AddControllerPitchInput(LookVector.Y);
+		AddControllerYawInput(LookVector.X * Scale);
+		AddControllerPitchInput(LookVector.Y * Scale);
 	}
 }
 
