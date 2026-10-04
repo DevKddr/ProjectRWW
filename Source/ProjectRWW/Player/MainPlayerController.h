@@ -91,6 +91,12 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_NotifyPawnReady(APawn* ReadyPawn);
 
+	// Esc 메뉴를 닫는다. 메뉴 위젯의 "닫기" 버튼이 BP에서 호출한다.
+	// RemoveFromParent만 하면 입력 모드/마우스 커서가 복구되지 않으므로 반드시 이 함수로 닫는다.
+	// 서버 권위 대상이 아닌 순수 로컬 UI 동작이다(RPC/복제 없음).
+	UFUNCTION(BlueprintCallable, Category = "Menu")
+	void CloseMenu();
+
 protected:
 	virtual void SetupInputComponent() override;
 
@@ -115,6 +121,9 @@ protected:
 	// (같은 슬롯 0~8이 두 군데(창+핫바)에 동시에 겹쳐 보이지 않게 하기 위함).
 	void OnToggleInventory(const struct FInputActionValue& Value);
 
+	// Esc 입력. 인벤토리/지도가 열려 있으면 그것부터 닫고, 아무것도 없을 때만 메뉴를 열고 닫는다.
+	void OnToggleMenu(const struct FInputActionValue& Value);
+
 	// 핫키가 눌리면 호출된다. SlotIndex는 SetupInputComponent에서 바인딩할 때 미리 정해둔 값.
 	void OnHotbarKeyPressed(int32 SlotIndex);
 
@@ -130,6 +139,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<class UInputAction> ToggleInventoryAction;
+
+	// Esc 메뉴 토글용 입력 액션(IA_Menu). 에디터에서 지정하고, IMC에 Escape 키를 매핑한다.
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<class UInputAction> ToggleMenuAction;
 
 	// 인덱스 0~8이 각각 1~9번 핫키에 대응한다. 에디터에서 IA_Hotbar1~9를 순서대로 채워야 함.
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
@@ -154,6 +167,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
 	TSubclassOf<class UMainSlotGridWidget> HotbarWidgetClass;
 
+	// Esc로 여는 메뉴 위젯 클래스. 처음엔 설정 위젯(WBP_Settings)을 지정하고,
+	// 나중에 일시정지 메뉴(계속하기/설정/나가기)로 교체할 수 있다.
+	UPROPERTY(EditDefaultsOnly, Category = "Menu")
+	TSubclassOf<class UUserWidget> MenuWidgetClass;
+
 private:
 	UPROPERTY()
 	TObjectPtr<UMainMapWidget> MapWidgetInstance;
@@ -172,4 +190,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<class UMainSlotGridWidget> HotbarWidgetInstance;
+
+	UPROPERTY()
+	TObjectPtr<class UUserWidget> MenuWidgetInstance;
 };

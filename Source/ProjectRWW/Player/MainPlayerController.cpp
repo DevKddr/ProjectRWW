@@ -139,6 +139,13 @@ void AMainPlayerController::CloseAllGameplayUI()
 	{
 		MapWidgetInstance->RemoveFromParent();
 	}
+
+	// 사망 등으로 UI를 정리할 때 Esc 메뉴가 남아 있으면 같이 닫는다.
+	// 입력 모드/커서는 호출한 쪽(사망 UI 등)이 직접 정하므로 여기서는 위젯만 제거한다.
+	if (MenuWidgetInstance && MenuWidgetInstance->IsInViewport())
+	{
+		MenuWidgetInstance->RemoveFromParent();
+	}
 }
 
 void AMainPlayerController::Client_OnHitConfirmed_Implementation(bool bHeadshot)
@@ -293,6 +300,11 @@ void AMainPlayerController::SetupInputComponent()
 			EnhancedInput->BindAction(ToggleInventoryAction, ETriggerEvent::Started, this, &AMainPlayerController::OnToggleInventory);
 		}
 
+		if (ToggleMenuAction)
+		{
+			EnhancedInput->BindAction(ToggleMenuAction, ETriggerEvent::Started, this, &AMainPlayerController::OnToggleMenu);
+		}
+
 		for (int32 i = 0; i < HotbarSlotActions.Num(); ++i)
 		{
 			if (HotbarSlotActions[i])
@@ -365,6 +377,63 @@ void AMainPlayerController::OnToggleInventory(const FInputActionValue& Value)
 	}
 	SetInputMode(FInputModeGameAndUI());
 	SetShowMouseCursor(true);
+}
+
+void AMainPlayerController::OnToggleMenu(const FInputActionValue& Value)
+{
+	// Esc 우선순위: 열려 있는 인벤토리/지도를 먼저 닫고(기존 닫기 경로를 그대로 재사용:
+	// 드래그 취소, 핫바 복구, 입력 모드/커서 복구가 모두 거기서 처리된다),
+	// 아무것도 열려 있지 않을 때만 메뉴를 토글한다.
+	if (InventoryWidgetInstance && InventoryWidgetInstance->IsInViewport())
+	{
+		OnToggleInventory(Value);
+		return;
+	}
+
+	if (MapWidgetInstance && MapWidgetInstance->IsInViewport())
+	{
+		OnToggleMap(Value);
+		return;
+	}
+
+	if (MenuWidgetInstance && MenuWidgetInstance->IsInViewport())
+	{
+		CloseMenu();
+		return;
+	}
+
+	if (!MenuWidgetClass)
+	{
+		return;
+	}
+
+	if (!MenuWidgetInstance)
+	{
+		MenuWidgetInstance = CreateWidget<UUserWidget>(this, MenuWidgetClass);
+	}
+
+	if (MenuWidgetInstance)
+	{
+		MenuWidgetInstance->AddToViewport();
+
+		// UIOnly로 하면 컨트롤러의 입력 바인딩이 동작하지 않아 Esc로 다시 닫을 수 없다.
+		// 지도/인벤토리와 같은 GameAndUI를 쓴다. 게임은 멈추지 않는다(멀티플레이에서 일시정지 금지).
+		SetInputMode(FInputModeGameAndUI());
+		SetShowMouseCursor(true);
+	}
+}
+
+void AMainPlayerController::CloseMenu()
+{
+	// 메뉴가 열려 있을 때만 동작한다 - 다른 UI(인벤토리 등)가 설정한 입력 모드를 건드리지 않기 위함.
+	if (!MenuWidgetInstance || !MenuWidgetInstance->IsInViewport())
+	{
+		return;
+	}
+
+	MenuWidgetInstance->RemoveFromParent();
+	SetInputMode(FInputModeGameOnly());
+	SetShowMouseCursor(false);
 }
 
 void AMainPlayerController::OnHotbarKeyPressed(int32 SlotIndex)
