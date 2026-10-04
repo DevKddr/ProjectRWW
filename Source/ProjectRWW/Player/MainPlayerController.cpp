@@ -146,6 +146,9 @@ void AMainPlayerController::CloseAllGameplayUI()
 	{
 		MenuWidgetInstance->RemoveFromParent();
 	}
+
+	// 위젯을 모두 직접 제거했으므로 "열린 패널" 상태도 비운다(리스폰 뒤 상태 불일치 방지).
+	ActivePanel = EMainUIPanel::None;
 }
 
 void AMainPlayerController::Client_OnHitConfirmed_Implementation(bool bHeadshot)
@@ -317,123 +320,212 @@ void AMainPlayerController::SetupInputComponent()
 
 void AMainPlayerController::OnToggleMap(const FInputActionValue& Value)
 {
-	if (!MapWidgetClass)
-	{
-		return;
-	}
-
-	if (MapWidgetInstance && MapWidgetInstance->IsInViewport())
-	{
-		MapWidgetInstance->RemoveFromParent();
-		SetInputMode(FInputModeGameOnly());
-		SetShowMouseCursor(false);
-		return;
-	}
-
-	if (!MapWidgetInstance)
-	{
-		MapWidgetInstance = CreateWidget<UMainMapWidget>(this, MapWidgetClass);
-	}
-
-	MapWidgetInstance->AddToViewport();
-	SetInputMode(FInputModeGameAndUI());
-	SetShowMouseCursor(true);
+	TogglePanel(EMainUIPanel::Map);
 }
 
 void AMainPlayerController::OnToggleInventory(const FInputActionValue& Value)
 {
-	if (!InventoryWidgetClass)
+	TogglePanel(EMainUIPanel::Inventory);
+}
+
+void AMainPlayerController::OnToggleMenu(const FInputActionValue& Value)
+{
+	TogglePanel(EMainUIPanel::Menu);
+}
+
+void AMainPlayerController::CloseMenu()
+{
+	ClosePanel(EMainUIPanel::Menu);
+}
+
+bool AMainPlayerController::HasPanelWidgetClass(EMainUIPanel Panel) const
+{
+	switch (Panel)
+	{
+	case EMainUIPanel::Inventory:
+		return InventoryWidgetClass.Get() != nullptr;
+	case EMainUIPanel::Map:
+		return MapWidgetClass.Get() != nullptr;
+	case EMainUIPanel::Menu:
+		return MenuWidgetClass.Get() != nullptr;
+	default:
+		return false;
+	}
+}
+
+void AMainPlayerController::TogglePanel(EMainUIPanel Panel)
+{
+	if (Panel != EMainUIPanel::None && ActivePanel == Panel)
+	{
+		ClosePanel(Panel);
+	}
+	else
+	{
+		OpenPanel(Panel);
+	}
+}
+
+void AMainPlayerController::OpenPanel(EMainUIPanel Panel)
+{
+	if (Panel == EMainUIPanel::None || ActivePanel == Panel)
 	{
 		return;
 	}
 
-	if (InventoryWidgetInstance && InventoryWidgetInstance->IsInViewport())
+	// 사망 UI가 떠 있는 동안에는 어떤 패널도 열지 않는다(사망 시 HUD를 포함한 모든 위젯이 닫히고 사망 위젯만 남는다).
+	if (DeathWidgetInstance && DeathWidgetInstance->IsInViewport())
 	{
+		return;
+	}
+
+	// 위젯 클래스가 지정되지 않은 패널은 열 수 없다. 다른 패널을 닫지도 않는다.
+	if (!HasPanelWidgetClass(Panel))
+	{
+		return;
+	}
+
+	// 메뉴는 인벤토리/지도보다 우선한다: 메뉴가 열려 있는 동안은 다른 패널을 열 수 없다.
+	if (ActivePanel == EMainUIPanel::Menu && Panel != EMainUIPanel::Menu)
+	{
+		return;
+	}
+
+	// 패널은 한 번에 하나만 열린다: 열려 있는 다른 패널은 먼저 닫는다(나중에 연 것이 우선).
+	if (ActivePanel != EMainUIPanel::None)
+	{
+		ClosePanelWidget(ActivePanel);
+		ActivePanel = EMainUIPanel::None;
+	}
+
+	if (OpenPanelWidget(Panel))
+	{
+		ActivePanel = Panel;
+	}
+
+	ApplyInputModeForActivePanel();
+}
+
+void AMainPlayerController::ClosePanel(EMainUIPanel Panel)
+{
+	// 지금 열려 있는 패널이 아니면 아무것도 하지 않는다 - 다른 패널이 설정한 입력 모드를 건드리지 않기 위함.
+	if (Panel == EMainUIPanel::None || ActivePanel != Panel)
+	{
+		return;
+	}
+
+	ClosePanelWidget(Panel);
+	ActivePanel = EMainUIPanel::None;
+	ApplyInputModeForActivePanel();
+}
+
+bool AMainPlayerController::OpenPanelWidget(EMainUIPanel Panel)
+{
+	switch (Panel)
+	{
+	case EMainUIPanel::Inventory:
+		if (!InventoryWidgetInstance)
+		{
+			InventoryWidgetInstance = CreateWidget<UMainInventoryScreenWidget>(this, InventoryWidgetClass);
+			if (InventoryWidgetInstance)
+			{
+				InventoryWidgetInstance->SetContainerComponent(InventoryComponent);
+			}
+		}
+		if (!InventoryWidgetInstance)
+		{
+			return false;
+		}
+		InventoryWidgetInstance->AddToViewport();
+		if (HotbarWidgetInstance)
+		{
+			HotbarWidgetInstance->RemoveFromParent();  // 인벤토리 열면 핫바 숨김 (같은 슬롯이 겹쳐 보이지 않게)
+		}
+		return true;
+
+	case EMainUIPanel::Map:
+		if (!MapWidgetInstance)
+		{
+			MapWidgetInstance = CreateWidget<UMainMapWidget>(this, MapWidgetClass);
+		}
+		if (!MapWidgetInstance)
+		{
+			return false;
+		}
+		MapWidgetInstance->AddToViewport();
+		return true;
+
+	case EMainUIPanel::Menu:
+		if (!MenuWidgetInstance)
+		{
+			MenuWidgetInstance = CreateWidget<UUserWidget>(this, MenuWidgetClass);
+		}
+		if (!MenuWidgetInstance)
+		{
+			return false;
+		}
+		MenuWidgetInstance->AddToViewport();
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+void AMainPlayerController::ClosePanelWidget(EMainUIPanel Panel)
+{
+	switch (Panel)
+	{
+	case EMainUIPanel::Inventory:
 		// 드래그 중에 인벤토리를 닫으면 입력 모드가 게임 전용으로 바뀌면서 Slate가
 		// 마우스 업 이벤트를 못 받아 드래그 오퍼레이션이 끝나지 못하고 유령 아이콘이
 		// 화면에 계속 남는다. 닫기 전에 진행 중인 드래그를 강제로 취소한다.
 		UWidgetBlueprintLibrary::CancelDragDrop();
 
-		InventoryWidgetInstance->RemoveFromParent();
-		if (HotbarWidgetInstance)
+		if (InventoryWidgetInstance && InventoryWidgetInstance->IsInViewport())
+		{
+			InventoryWidgetInstance->RemoveFromParent();
+		}
+		if (HotbarWidgetInstance && !HotbarWidgetInstance->IsInViewport())
 		{
 			HotbarWidgetInstance->AddToViewport();  // 인벤토리 닫으면 핫바 다시 보임
 		}
-		SetInputMode(FInputModeGameOnly());
-		SetShowMouseCursor(false);
-		return;
-	}
+		break;
 
-	if (!InventoryWidgetInstance)
-	{
-		InventoryWidgetInstance = CreateWidget<UMainInventoryScreenWidget>(this, InventoryWidgetClass);
-		InventoryWidgetInstance->SetContainerComponent(InventoryComponent);
-	}
+	case EMainUIPanel::Map:
+		if (MapWidgetInstance && MapWidgetInstance->IsInViewport())
+		{
+			MapWidgetInstance->RemoveFromParent();
+		}
+		break;
 
-	InventoryWidgetInstance->AddToViewport();
-	if (HotbarWidgetInstance)
-	{
-		HotbarWidgetInstance->RemoveFromParent();  // 인벤토리 열면 핫바 숨김 (같은 슬롯이 겹쳐 보이지 않게)
+	case EMainUIPanel::Menu:
+		if (MenuWidgetInstance && MenuWidgetInstance->IsInViewport())
+		{
+			MenuWidgetInstance->RemoveFromParent();
+		}
+		break;
+
+	default:
+		break;
 	}
-	SetInputMode(FInputModeGameAndUI());
-	SetShowMouseCursor(true);
 }
 
-void AMainPlayerController::OnToggleMenu(const FInputActionValue& Value)
+void AMainPlayerController::ApplyInputModeForActivePanel()
 {
-	// Esc 우선순위: 열려 있는 인벤토리/지도를 먼저 닫고(기존 닫기 경로를 그대로 재사용:
-	// 드래그 취소, 핫바 복구, 입력 모드/커서 복구가 모두 거기서 처리된다),
-	// 아무것도 열려 있지 않을 때만 메뉴를 토글한다.
-	if (InventoryWidgetInstance && InventoryWidgetInstance->IsInViewport())
+	// 입력 모드와 마우스 커서는 여기서만 정한다. 패널이 하나라도 열려 있으면 UI 조작이 가능해야 하고,
+	// 없으면 게임 입력으로 복귀한다.
+	// UIOnly로 하면 컨트롤러의 입력 바인딩이 동작하지 않아 키로 다시 닫을 수 없으므로 GameAndUI를 쓴다.
+	// 게임은 멈추지 않는다(멀티플레이에서 일시정지 금지). 서버/복제와 무관한 로컬 상태다.
+	if (ActivePanel == EMainUIPanel::None)
 	{
-		OnToggleInventory(Value);
-		return;
+		SetInputMode(FInputModeGameOnly());
+		SetShowMouseCursor(false);
 	}
-
-	if (MapWidgetInstance && MapWidgetInstance->IsInViewport())
+	else
 	{
-		OnToggleMap(Value);
-		return;
-	}
-
-	if (MenuWidgetInstance && MenuWidgetInstance->IsInViewport())
-	{
-		CloseMenu();
-		return;
-	}
-
-	if (!MenuWidgetClass)
-	{
-		return;
-	}
-
-	if (!MenuWidgetInstance)
-	{
-		MenuWidgetInstance = CreateWidget<UUserWidget>(this, MenuWidgetClass);
-	}
-
-	if (MenuWidgetInstance)
-	{
-		MenuWidgetInstance->AddToViewport();
-
-		// UIOnly로 하면 컨트롤러의 입력 바인딩이 동작하지 않아 Esc로 다시 닫을 수 없다.
-		// 지도/인벤토리와 같은 GameAndUI를 쓴다. 게임은 멈추지 않는다(멀티플레이에서 일시정지 금지).
 		SetInputMode(FInputModeGameAndUI());
 		SetShowMouseCursor(true);
 	}
-}
-
-void AMainPlayerController::CloseMenu()
-{
-	// 메뉴가 열려 있을 때만 동작한다 - 다른 UI(인벤토리 등)가 설정한 입력 모드를 건드리지 않기 위함.
-	if (!MenuWidgetInstance || !MenuWidgetInstance->IsInViewport())
-	{
-		return;
-	}
-
-	MenuWidgetInstance->RemoveFromParent();
-	SetInputMode(FInputModeGameOnly());
-	SetShowMouseCursor(false);
 }
 
 void AMainPlayerController::OnHotbarKeyPressed(int32 SlotIndex)

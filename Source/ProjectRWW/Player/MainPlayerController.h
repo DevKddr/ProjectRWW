@@ -7,6 +7,18 @@
 #include "Database/MainPlayerRecord.h"
 #include "MainPlayerController.generated.h"
 
+// 인게임에서 키로 여닫는 UI 패널 종류. 한 번에 하나만 열린다.
+// 새 패널(창고 등)이 생기면 여기에 값을 추가하고, .cpp의 HasPanelWidgetClass / OpenPanelWidget /
+// ClosePanelWidget에 case를 하나씩 추가한다. (입력 모드/커서/상호 배제는 공통 코드가 처리한다)
+UENUM()
+enum class EMainUIPanel : uint8
+{
+	None,
+	Inventory,
+	Map,
+	Menu
+};
+
 UCLASS()
 class PROJECTRWW_API AMainPlayerController : public APlayerController
 {
@@ -91,8 +103,8 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_NotifyPawnReady(APawn* ReadyPawn);
 
-	// Esc 메뉴를 닫는다. 메뉴 위젯의 "닫기" 버튼이 BP에서 호출한다.
-	// RemoveFromParent만 하면 입력 모드/마우스 커서가 복구되지 않으므로 반드시 이 함수로 닫는다.
+	// Esc 메뉴를 닫는다. 키로 닫는 것이 기본이고, 이 함수는 BP에서 메뉴를 닫아야 할 때를 위해 남겨 둔 것이다.
+	// RemoveFromParent만 하면 입력 모드/마우스 커서가 복구되지 않으므로 BP에서도 반드시 이 함수로 닫는다.
 	// 서버 권위 대상이 아닌 순수 로컬 UI 동작이다(RPC/복제 없음).
 	UFUNCTION(BlueprintCallable, Category = "Menu")
 	void CloseMenu();
@@ -121,8 +133,27 @@ protected:
 	// (같은 슬롯 0~8이 두 군데(창+핫바)에 동시에 겹쳐 보이지 않게 하기 위함).
 	void OnToggleInventory(const struct FInputActionValue& Value);
 
-	// Esc 입력. 인벤토리/지도가 열려 있으면 그것부터 닫고, 아무것도 없을 때만 메뉴를 열고 닫는다.
+	// 메뉴 키 입력. 메뉴를 열고 닫는다(열려 있는 인벤토리/지도는 자동으로 닫힌다).
 	void OnToggleMenu(const struct FInputActionValue& Value);
+
+	// --- 패널 관리 ---
+	// 모든 패널(인벤토리/지도/메뉴)의 열기·닫기는 아래 함수를 거친다. 이 함수들은 순수 로컬 UI 상태만
+	// 다루며 RPC/복제와 무관하다. 규칙:
+	//  - 패널은 한 번에 하나만 열린다. 새 패널을 열면 열려 있던 패널은 먼저 닫힌다(나중에 연 것이 우선).
+	//  - 메뉴는 항상 우선한다: 메뉴가 열려 있는 동안은 인벤토리/지도를 열 수 없다.
+	//  - 같은 패널의 키를 다시 누르면 닫힌다.
+	//  - 입력 모드와 마우스 커서는 ApplyInputModeForActivePanel()에서만 정한다.
+	void TogglePanel(EMainUIPanel Panel);
+	void OpenPanel(EMainUIPanel Panel);
+	void ClosePanel(EMainUIPanel Panel);
+
+	// 패널 종류별 실제 위젯 열기/닫기. 입력 모드는 건드리지 않는다. 새 패널은 여기에 case를 추가한다.
+	bool OpenPanelWidget(EMainUIPanel Panel);
+	void ClosePanelWidget(EMainUIPanel Panel);
+	bool HasPanelWidgetClass(EMainUIPanel Panel) const;
+
+	// ActivePanel에 맞춰 입력 모드(GameOnly / GameAndUI)와 마우스 커서를 한 곳에서 적용한다.
+	void ApplyInputModeForActivePanel();
 
 	// 핫키가 눌리면 호출된다. SlotIndex는 SetupInputComponent에서 바인딩할 때 미리 정해둔 값.
 	void OnHotbarKeyPressed(int32 SlotIndex);
@@ -193,4 +224,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<class UUserWidget> MenuWidgetInstance;
+
+	// 지금 열려 있는 패널. 로컬 UI 상태라 복제하지 않는다(서버와 무관).
+	EMainUIPanel ActivePanel = EMainUIPanel::None;
 };
