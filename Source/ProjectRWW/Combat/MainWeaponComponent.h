@@ -195,6 +195,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	FName GetWeaponIndex() const { return WeaponIndex; }
 
+	// weapons.json의 FireRate_RPS(초당 발사 수)를 반환한다. EquipWeapon()이 장착할 때 채우는 값이라
+	// 실제 발사 간격(1 / FireRate_RPS)과 항상 같다. 반동 애니메이션(Kinemation) 재생 시간을
+	// 실제 발사 간격에 맞출 때 BP가 읽는 용도다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetFireRateRPS() const { return FireRate_RPS; }
+
 	// weapons.json의 FireMode 값("Single"/"Burst"/"FullAuto")을 그대로 반환한다.
 	// GetFireMode()는 이 값을 E_FireMode(Kinemation 블루프린트 이넘)로 변환하는 역할을 한다.
 	UFUNCTION(BlueprintPure, Category = "Weapon")

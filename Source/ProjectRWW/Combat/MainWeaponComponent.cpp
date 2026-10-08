@@ -577,6 +577,10 @@ void UMainWeaponComponent::RequestFire()
 		const double Now = FPlatformTime::Seconds();
 		const float FireIntervalSeconds = FireRate_RPS > 0.0f ? (1.0f / FireRate_RPS) : 0.0f;
 
+		// 이번 호출에서 발사 간격 검사를 통과해 실제로 발사가 일어났는지. 간격이 안 찬 시도(예측 스킵)는
+		// 서버 요청만 나가고 발사는 일어나지 않으므로, 저격소총의 발사 후 조준 해제는 이 값이 true일 때만 한다.
+		bool bFiredThisCall = false;
+
 		// 서버가 허용하는 실제 발사 간격보다 빠른 클릭은 애니메이션도 재생하지 않는다 -
 		// 안 그러면 Semi에서 연타할 때 애니메이션만 매번 나오고 실제 발사(탄 소모/피격)는
 		// 서버 쪽 간격 제한에 걸려 뒤처지는 불일치가 생긴다. 다만 이건 순전히 로컬
@@ -591,6 +595,7 @@ void UMainWeaponComponent::RequestFire()
 			// 다시 쏘는 경우(트리거 첫 입력 포함)까지 밀린 발수만큼 몰아 쏘면 안 되므로
 			// Now보다 과거로는 안 잡는다.
 			NextAllowedPredictedFireTimeSeconds = FMath::Max(NextAllowedPredictedFireTimeSeconds, Now - MaxFireBacklogSeconds) + FireIntervalSeconds;
+			bFiredThisCall = true;
 
 			// 리슨 서버 호스트는 이 오브젝트가 곧 서버 권위 오브젝트이기도 해서 FireShot()에서
 			// 이미 UpdateSpread()를 호출한다. 여기서 또 부르면 이중 계산되므로, 권한이 없을 때만
@@ -644,6 +649,19 @@ void UMainWeaponComponent::RequestFire()
 		OwnerPawn->GetController()->GetPlayerViewPoint(ViewLocation, ViewRotation);
 
 		ServerFire(ViewLocation, ViewRotation.Vector());
+
+		// 저격소총(weapons.json의 WeaponType == SniperRifle)은 실제로 발사된 뒤 조준이 강제로 풀린다.
+		// 발사 간격이 안 찬 시도(bFiredThisCall == false)는 해제하지 않는다.
+		// 반드시 ServerFire 뒤에 해제해야 한다 - 서버가 탄 퍼짐을 ADS 상태(SpreadADS)로 계산한 다음에
+		// Server_SetAiming(false)가 처리되도록 RPC 순서를 보장한다. 홀드/토글 입력 모두 StartADS/StopADS를
+		// 거치므로 여기서 StopADS()만 부르면 된다 - 다시 조준하려면 입력을 새로 줘야 한다.
+		// 저격소총 발사 후 ADS 강제 해제 스위치. 끄려면 false로 바꾼다.
+		constexpr bool bReleaseADSAfterSniperShot = true;
+		static const FName SniperRifleType(TEXT("SniperRifle"));
+		if (bReleaseADSAfterSniperShot && bFiredThisCall && bIsAiming && WeaponType == SniperRifleType)
+		{
+			StopADS();
+		}
 	}
 	else if (bJustCancelledSingleReload)
 	{
@@ -812,6 +830,17 @@ void UMainWeaponComponent::StartADS()
 	// 장착 시간이 아직 안 지났으면 조준 예측도 하지 않는다 - 서버(Server_SetAiming_Implementation)가
 	// 어차피 거부한다.
 	if (FPlatformTime::Seconds() - EquippedTimeSeconds < EquipTime)
+	{
+		return;
+	}
+
+	// 저격소총(WeaponType == SniperRifle)은 사격 애니메이션이 재생되는 동안 조준할 수 없다.
+	// 사격 애니메이션 길이는 발사 간격(1 / FireRate_RPS)에 맞춰져 있어서(BP의 CalcFireMontageRate),
+	// 다음 발사가 허용되는 시각(NextAllowedPredictedFireTimeSeconds) 전까지가 곧 애니메이션 구간이다.
+	// 서버 쪽 Server_SetAiming은 막지 않는다 - 클라이언트가 막으면 서버로 요청이 가지 않고, 서버 시계와의
+	// 미세한 차이로 클라이언트만 조준하고 서버는 거부하는 불일치를 피하기 위해서다.
+	static const FName SniperRifleTypeForADS(TEXT("SniperRifle"));
+	if (WeaponType == SniperRifleTypeForADS && FPlatformTime::Seconds() < NextAllowedPredictedFireTimeSeconds)
 	{
 		return;
 	}

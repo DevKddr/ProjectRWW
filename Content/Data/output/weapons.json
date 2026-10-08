@@ -234,7 +234,7 @@
       "VerticalRecoilMax": -10.0,
       "HorizontalRecoilMin": -0.2,
       "HorizontalRecoilMax": 0.2,
-      "ADSSpeed": 0.55,
+      "ADSSpeed": 0.25,
       "ADSMoveSpeedMultiplier": 0.5,
       "MoveSpeedMultiplier": 0.85
     }
