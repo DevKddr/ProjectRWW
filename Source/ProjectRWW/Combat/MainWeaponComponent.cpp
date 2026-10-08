@@ -1025,6 +1025,18 @@ void UMainWeaponComponent::PlayClientBurstShot()
 
 	--ClientBurstShotsRemaining;
 
+	// 버스트의 2번째 발부터는 RequestFire()를 거치지 않아서, 원격 클라이언트의 퍼짐(크로스헤어) 예측이
+	// 첫 발에서만 늘어났다. 서버는 FireBurstShot() → FireShot()에서 매 발마다 UpdateSpread()를 부르므로,
+	// 클라이언트도 같은 시점에 한 번씩 예측해서 맞춘다. 리슨 서버 호스트는 이 오브젝트가 곧 서버 권위
+	// 오브젝트라 FireShot()이 이미 부르므로 중복 계산하지 않도록 권한이 없을 때만 부른다(RequestFire와 같은 규칙).
+	if (const APawn* BurstOwnerPawn = Cast<APawn>(GetOwner()))
+	{
+		if (!BurstOwnerPawn->HasAuthority())
+		{
+			UpdateSpread();
+		}
+	}
+
 	if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
 	{
 		OwningCharacter->ReceiveWeaponFire();
