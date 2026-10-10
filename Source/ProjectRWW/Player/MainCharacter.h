@@ -82,6 +82,26 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Combat")
 	void ReceiveHitEffect(FVector Location, FVector Normal, FVector Direction, EPhysicalSurface SurfaceType, bool bHitCharacter, bool bHeadshot, bool bHitSimulatingObject);
 
+	// [BulletTracer] begin
+	// 이 캐릭터가 쏜 총알 한 발의 궤적(Start -> End)을 그릴 수 있게, 볼 수 있는 모든 클라이언트(쏜 사람 본인 포함)에서
+	// 탄마다 한 번씩 호출된다. ReceiveHitEffect와 달리 맞았는지와 상관없이 빗나간 탄도 호출된다(End는 맞았으면 명중
+	// 지점, 빗나갔으면 사거리 끝). 샷건은 펠릿마다 호출된다. Start는 서버가 보낸 트레이스 시작점(보통 카메라 위치)이라,
+	// 총구에서 나가는 모습으로 보이게 하려면 BP에서 총구 소켓 위치로 바꿔서 쓴다. 전용 서버에서는 호출되지 않는다.
+	//
+	// [총기별 트레일 설정 - BP 구현 메모]
+	// BP_MainCharacter가 이 이벤트에서 현재 든 무기(BP_TacticalShooterWeapon)의 TracerSystem / TracerTravelTime /
+	// TracerTrailDuration을 캐릭터의 BulletTracerSystem / TravelTime / TrailDuration에 복사한 뒤 BP_BulletTracer를 스폰한다.
+	// 무기 BP의 Class Defaults에서 무기마다 값을 바꾼다 (TracerSystem이 비면 NS_BulletTracer 기본 시스템 사용).
+	// 제한 사항:
+	//  - 커스텀 Niagara 시스템은 NS_BulletTracer와 같은 유저 파라미터(Hit, InitialSpeed, SpawnPosition, TrailDuration)가
+	//    있어야 한다. 없으면 해당 값은 무시된다. NS_BulletTracer를 복제해서 만들 것.
+	//  - 무기 캐스트가 실패(비무기 아이템 등)하면 캐릭터의 트레이서 값이 초기화되지 않아 이전 무기의 값이 남을 수 있다.
+	//  - 트레일은 움직이는 액터(BP_BulletTracer)에 붙어야 보인다. 제자리에 Niagara만 스폰하면 리본이 그려지지 않는다.
+	//  - 발사 궤적 디버그 선(DrawDebugLine)은 콘솔 변수 rww.DebugFireLines 1 로만 켜진다 (기본 꺼짐).
+	UFUNCTION(BlueprintImplementableEvent, Category = "Combat")
+	void ReceiveBulletTracer(FVector Start, FVector End);
+	// [BulletTracer] end
+
 	// 조준(ADS) 시작/종료 시 호출된다. 본인 클라이언트에서만 실행된다.
 	UFUNCTION(BlueprintImplementableEvent, Category = "Animation")
 	void ReceiveADSChange(bool bIsAiming);

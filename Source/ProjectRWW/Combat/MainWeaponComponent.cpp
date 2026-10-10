@@ -25,6 +25,12 @@
 #include "Abilities/GameplayAbility.h"
 #include "GAS/Abilities/MainGameplayAbility.h"
 
+// 발사 궤적 디버그 선(명중 초록 / 빗나감 빨강) 표시 여부. 기본 꺼짐. 콘솔에서 rww.DebugFireLines 1 로 켠다.
+static TAutoConsoleVariable<int32> CVarDebugFireLines(
+	TEXT("rww.DebugFireLines"), 0,
+	TEXT("1이면 발사 궤적 디버그 선을 그린다 (기본 0)."),
+	ECVF_Default);
+
 // 프레임/네트워크 지터로 발사 호출이 늦어져도, 그 지연이 이 한도 이하면 다음 발의 허용 시각을
 // 뒤로 밀지 않는다. 늦은 호출 시각으로 일정을 다시 고정하면 바로 다음 정상 호출이 "너무 이르다"로
 // 잘려서, 빠른 연사일수록 발사가 취소되는 문제가 있었다. 서버 검증과 클라 예측이 같이 쓴다.
@@ -1527,7 +1533,19 @@ void UMainWeaponComponent::MulticastPlayFireEffects_Implementation(const FVector
 
 	for (const FHitEffectData& Hit : Hits)
 	{
-		DrawDebugLine(GetWorld(), TraceStart, Hit.TraceEnd, Hit.bHit ? FColor::Green : FColor::Red, false, 20.0f, 0, 0.5f);
+		if (CVarDebugFireLines.GetValueOnGameThread() != 0)
+		{
+			DrawDebugLine(GetWorld(), TraceStart, Hit.TraceEnd, Hit.bHit ? FColor::Green : FColor::Red, false, 20.0f, 0, 0.5f);
+		}
+
+		// [BulletTracer] begin
+		// 탄도 궤적(Trail)은 맞았든 빗나갔든 탄마다 그려야 하므로 명중 여부와 상관없이 호출한다.
+		// 전용 서버에는 화면이 없어서 건너뛴다(아래 명중 효과와 같은 판별).
+		if (ShooterCharacter && GetWorld() && GetWorld()->GetNetMode() != NM_DedicatedServer)
+		{
+			ShooterCharacter->ReceiveBulletTracer(TraceStart, Hit.TraceEnd);
+		}
+		// [BulletTracer] end
 
 		// 명중 효과는 화면이 있는 쪽에서만 의미가 있다. 쏜 사람 본인 화면에도 나오도록 오너 여부는 따지지 않는다
 		// (발사 애니메이션과 달리 명중은 서버 판정 결과라 로컬 예측이 없다).
