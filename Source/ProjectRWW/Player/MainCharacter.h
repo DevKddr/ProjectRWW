@@ -157,6 +157,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Item")
 	AActor* GetMainItem() const;
 
+	// [FirstPersonRender] begin
+	// 본인(로컬 조종) 클라이언트에서만 FirstPersonMesh와 그 자손(무기/부착물/이펙트)을 엔진의 First Person 렌더링으로
+	// 그린다. 카메라의 FirstPersonScale만큼 카메라 쪽으로 축소해서 그려, 총과 몸이 벽을 뚫고 보이는 것을 막는다.
+	// 원격 클라이언트/서버에서는 아무것도 바꾸지 않는다(First Person 타입은 장면 전체에 적용되므로 남의 캐릭터에 켜면 안 된다).
+	// 무기를 새로 붙인 뒤에도 불러서 새 컴포넌트에 적용해야 한다(MainWeaponComponent::EquipVisual).
+	// 끄는 법: 콘솔에서 rww.FirstPersonRendering 0 (바로 반영), 또는 이 함수 호출부를 모두 제거.
+	void ApplyFirstPersonRendering();
+
+	// First Person 렌더링에 쓸 카메라 FirstPersonScale (0.001~1.0). 작을수록 벽에서 더 멀리 떨어져 보인다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FirstPersonRender", meta = (ClampMin = "0.1", ClampMax = "1.0"))
+	float FirstPersonRenderScale = 0.5f;
+	// [FirstPersonRender] end
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
@@ -204,6 +217,9 @@ protected:
 
 	// 지금 이동 입력이 들어오고 있는지. OnMove/OnMoveStopped가 관리한다.
 	bool bIsMoving = false;
+
+	// [FirstPersonRender] 마지막으로 적용한 상태. rww.FirstPersonRendering 변경을 Tick에서 감지하는 데 쓴다.
+	bool bFirstPersonRenderApplied = false;
 
 	// MovementStatus가 리플리케이트되어 도착하면 호출된다. 본인은 이미 로컬 예측으로
 	// 재생했으니 원격 클라이언트일 때만 ReceiveMovementChange()를 호출한다

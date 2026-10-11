@@ -20,6 +20,16 @@
 #include "GAS/GameplayEffects/GE_DamagedTag.h"
 #include "GAS/MainGameplayTags.h"
 #include "PlayerBaseStat/PlayerStatManager.h"
+#include "Camera/CameraComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "HAL/IConsoleManager.h"
+
+// [FirstPersonRender] 본인 화면에서 총/몸이 벽을 뚫고 보이지 않게 하는 First Person 렌더링 사용 여부.
+// 1이면 켜짐(기본), 0이면 원래 렌더링. 값을 바꾸면 Tick에서 감지해 바로 반영한다.
+static TAutoConsoleVariable<int32> CVarFirstPersonRendering(
+	TEXT("rww.FirstPersonRendering"), 1,
+	TEXT("1이면 로컬 플레이어의 FirstPersonMesh와 무기를 First Person 렌더링으로 그린다 (기본 1)."),
+	ECVF_Default);
 
 AMainCharacter::AMainCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UPlayerMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -142,6 +152,12 @@ void AMainCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	// [FirstPersonRender] 콘솔 변수가 바뀌었으면 다시 적용한다. 로컬 조종 캐릭터만 대상이라 비용이 거의 없다.
+	if (IsLocallyControlled() && (CVarFirstPersonRendering.GetValueOnGameThread() != 0) != bFirstPersonRenderApplied)
+	{
+		ApplyFirstPersonRendering();
+	}
+
 	if (!HasAuthority())
 	{
 		return;
@@ -172,9 +188,67 @@ void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(AMainCharacter, MovementStatus);
 }
 
+// [FirstPersonRender] begin
+void AMainCharacter::ApplyFirstPersonRendering()
+{
+	// 로컬 조종 캐릭터에서만 켠다. Controller가 아직 없는 클라이언트 초기에는 네트워크 역할(자율 프록시)로도 판별한다.
+	const bool bIsLocalView = IsLocallyControlled() || GetLocalRole() == ROLE_AutonomousProxy;
+	const bool bEnable = bIsLocalView && CVarFirstPersonRendering.GetValueOnGameThread() != 0;
+
+	// FirstPersonMesh는 BP에서 만든 컴포넌트라 이름으로 찾는다(MainWeaponComponent의 HitMeshComponentName과 같은 이름).
+	USkeletalMeshComponent* FirstPersonMesh = nullptr;
+	TArray<USkeletalMeshComponent*> SkeletalMeshes;
+	GetComponents<USkeletalMeshComponent>(SkeletalMeshes);
+	for (USkeletalMeshComponent* SkelMesh : SkeletalMeshes)
+	{
+		if (SkelMesh && SkelMesh->GetFName() == TEXT("FirstPersonMesh"))
+		{
+			FirstPersonMesh = SkelMesh;
+			break;
+		}
+	}
+	if (!FirstPersonMesh)
+	{
+		return;
+	}
+
+	// 카메라: 스케일만 켠다. FirstPersonFieldOfView는 켜지 않아서 ADS 줌 등 카메라 FOV 변화를 그대로 따라간다.
+	if (UCameraComponent* Camera = FindComponentByClass<UCameraComponent>())
+	{
+		Camera->SetEnableFirstPersonScale(bEnable);
+		if (bEnable)
+		{
+			Camera->SetFirstPersonScale(FirstPersonRenderScale);
+		}
+	}
+
+	const EFirstPersonPrimitiveType Type = bEnable ? EFirstPersonPrimitiveType::FirstPerson : EFirstPersonPrimitiveType::None;
+
+	FirstPersonMesh->SetFirstPersonPrimitiveType(Type);
+
+	// 손에 붙은 무기 액터와 그 부착물/이펙트는 FirstPersonMesh의 자손 컴포넌트다.
+	TArray<USceneComponent*> Descendants;
+	FirstPersonMesh->GetChildrenComponents(true, Descendants);
+	for (USceneComponent* Child : Descendants)
+	{
+		if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Child))
+		{
+			if (Primitive->FirstPersonPrimitiveType != Type)
+			{
+				Primitive->SetFirstPersonPrimitiveType(Type);
+			}
+		}
+	}
+
+	bFirstPersonRenderApplied = bEnable;
+}
+// [FirstPersonRender] end
+
 void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ApplyFirstPersonRendering(); // [FirstPersonRender]
 
 	// 폰 BeginPlay 전에 도착해 건너뛴 장착 BP 이벤트를 지금 보낸다 - BP BeginPlay는 방금 끝났다.
 	// 전용 서버처럼 장착이 BeginPlay 이후에 오는 폰은 아직 장착 상태가 없어 아무것도 보내지 않는다.
@@ -219,6 +293,7 @@ void AMainCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	InitAbilitySystem();
+	ApplyFirstPersonRendering(); // [FirstPersonRender]
 }
 
 void AMainCharacter::OnRep_PlayerState()

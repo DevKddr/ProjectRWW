@@ -112,6 +112,12 @@ void UMainWeaponComponent::EquipVisual(UClass* ActorClass, TObjectPtr<AActor>& O
 				NewActor->AttachToComponent(AttachTarget, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
 				NewActor->AddActorLocalOffset(OffsetLocation);
 				NewActor->AddActorLocalRotation(OffsetRotation);
+
+				// [FirstPersonRender] 새로 붙은 무기/아이템 컴포넌트에도 First Person 렌더링을 적용한다(로컬 플레이어만).
+				if (AMainCharacter* OwnerCharacter = Cast<AMainCharacter>(GetOwner()))
+				{
+					OwnerCharacter->ApplyFirstPersonRendering();
+				}
 			}
 
 			if (OutActiveActor)
