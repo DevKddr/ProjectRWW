@@ -221,6 +221,13 @@ protected:
 	// [FirstPersonRender] 마지막으로 적용한 상태. rww.FirstPersonRendering 변경을 Tick에서 감지하는 데 쓴다.
 	bool bFirstPersonRenderApplied = false;
 
+	// [ScopeAfterADS] 스코프(PIP) 캡처는 ADS가 완료된 뒤에만 켠다. 손에 든 무기에 달린 SceneCapture2D를
+	// ApplyFirstPersonRendering()이 무기 장착 때마다 다시 모아 두고, Tick에서 로컬 플레이어만 켜고 끈다.
+	// 끌 때는 렌더 타깃을 검게 비워서 마지막 프레임이 렌즈에 남지 않게 한다. rww.ScopeAfterADS 0 이면 끈다(원래대로 항상 캡처).
+	void UpdateScopeCapture();
+	TArray<TWeakObjectPtr<class USceneCaptureComponent2D>> ScopeCaptures;
+	bool bScopeCaptureOn = true;
+
 	// MovementStatus가 리플리케이트되어 도착하면 호출된다. 본인은 이미 로컬 예측으로
 	// 재생했으니 원격 클라이언트일 때만 ReceiveMovementChange()를 호출한다
 	// (OnRep_IsReloading과 같은 패턴).

@@ -23,6 +23,16 @@
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/IConsoleManager.h"
+#include "Components/SceneCaptureComponent2D.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "Kismet/KismetRenderingLibrary.h"
+
+// [ScopeAfterADS] 1이면 스코프 PIP 캡처를 ADS가 완료된 뒤에만 켠다(기본 1). 0이면 항상 캡처(원래 동작).
+static TAutoConsoleVariable<int32> CVarScopeAfterADS(
+	TEXT("rww.ScopeAfterADS"), 1,
+	TEXT("1이면 스코프 캡처를 ADS 완료 후에만 켠다 (기본 1)."),
+	ECVF_Default);
 
 // [FirstPersonRender] 본인 화면에서 총/몸이 벽을 뚫고 보이지 않게 하는 First Person 렌더링 사용 여부.
 // 1이면 켜짐(기본), 0이면 원래 렌더링. 값을 바꾸면 Tick에서 감지해 바로 반영한다.
@@ -158,6 +168,11 @@ void AMainCharacter::Tick(float DeltaSeconds)
 		ApplyFirstPersonRendering();
 	}
 
+	if (IsLocallyControlled())
+	{
+		UpdateScopeCapture(); // [ScopeAfterADS]
+	}
+
 	if (!HasAuthority())
 	{
 		return;
@@ -240,9 +255,77 @@ void AMainCharacter::ApplyFirstPersonRendering()
 		}
 	}
 
+	// [ScopeAfterADS] 손에 든 무기에 달린 스코프 캡처를 다시 모은다.
+	ScopeCaptures.Reset();
+	for (USceneComponent* Child : Descendants)
+	{
+		if (USceneCaptureComponent2D* Capture = Cast<USceneCaptureComponent2D>(Child))
+		{
+			ScopeCaptures.Add(Capture);
+		}
+	}
+
 	bFirstPersonRenderApplied = bEnable;
 }
 // [FirstPersonRender] end
+
+// [ScopeAfterADS] begin
+void AMainCharacter::UpdateScopeCapture()
+{
+	if (ScopeCaptures.Num() == 0)
+	{
+		return;
+	}
+
+	// 켜는 조건: ADS 중이고 ADS 진행도가 1(완료)에 도달했을 때. 이 기능을 끄면(0) 항상 켠다.
+	const bool bReady = CVarScopeAfterADS.GetValueOnGameThread() == 0
+		|| (WeaponComponent && WeaponComponent->IsAiming() && WeaponComponent->GetADSAlpha() >= 1.0f);
+
+	for (const TWeakObjectPtr<USceneCaptureComponent2D>& Weak : ScopeCaptures)
+	{
+		if (USceneCaptureComponent2D* Capture = Weak.Get())
+		{
+			if (Capture->bCaptureEveryFrame != bReady)
+			{
+				Capture->bCaptureEveryFrame = bReady;
+				Capture->bCaptureOnMovement = bReady;
+			}
+
+			// ADS 완료 전에는 렌즈 면(Reticle)과 십자선(ScopeCross)을 숨겨서 스코프가 투명한 유리처럼 보이게 한다.
+			// 이미 같은 상태면 SetVisibility가 아무것도 하지 않는다. 새로 장착한 스코프에도 매 프레임 맞춰진다.
+			if (const AActor* ScopeActor = Capture->GetOwner())
+			{
+				TArray<UStaticMeshComponent*> LensMeshes;
+				ScopeActor->GetComponents<UStaticMeshComponent>(LensMeshes);
+				for (UStaticMeshComponent* LensMesh : LensMeshes)
+				{
+					const FName LensName = LensMesh->GetFName();
+					if (LensName == TEXT("Reticle") || LensName == TEXT("ScopeCross"))
+					{
+						LensMesh->SetVisibility(bReady);
+					}
+				}
+			}
+		}
+	}
+
+	// 켜진 상태에서 꺼질 때 한 번만 렌더 타깃을 비운다(공유 타깃이라 매 프레임 비우면 안 된다).
+	if (bScopeCaptureOn && !bReady)
+	{
+		for (const TWeakObjectPtr<USceneCaptureComponent2D>& Weak : ScopeCaptures)
+		{
+			if (const USceneCaptureComponent2D* Capture = Weak.Get())
+			{
+				if (Capture->TextureTarget)
+				{
+					UKismetRenderingLibrary::ClearRenderTarget2D(this, Capture->TextureTarget, FLinearColor::Black);
+				}
+			}
+		}
+	}
+	bScopeCaptureOn = bReady;
+}
+// [ScopeAfterADS] end
 
 void AMainCharacter::BeginPlay()
 {
