@@ -25,6 +25,7 @@
 #include "HAL/IConsoleManager.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
 
@@ -277,9 +278,12 @@ void AMainCharacter::UpdateScopeCapture()
 		return;
 	}
 
-	// 켜는 조건: ADS 중이고 ADS 진행도가 1(완료)에 도달했을 때. 이 기능을 끄면(0) 항상 켠다.
-	const bool bReady = CVarScopeAfterADS.GetValueOnGameThread() == 0
-		|| (WeaponComponent && WeaponComponent->IsAiming() && WeaponComponent->GetADSAlpha() >= 1.0f);
+	// 렌즈의 페이드 값 = ADS 진행도(0~1). ADS를 시작하면 0에서 1로 올라가며 서서히 나타나고, 풀면 1에서 0으로
+	// 내려가며 서서히 사라진다. 진행도가 0보다 큰 동안에만 캡처를 켠다. 이 기능을 끄면(0) 항상 켠다(페이드 1).
+	const float Fade = CVarScopeAfterADS.GetValueOnGameThread() == 0
+		? 1.0f
+		: (WeaponComponent ? FMath::Clamp(WeaponComponent->GetADSAlpha(), 0.0f, 1.0f) : 0.0f);
+	const bool bReady = Fade > KINDA_SMALL_NUMBER;
 
 	for (const TWeakObjectPtr<USceneCaptureComponent2D>& Weak : ScopeCaptures)
 	{
@@ -291,8 +295,9 @@ void AMainCharacter::UpdateScopeCapture()
 				Capture->bCaptureOnMovement = bReady;
 			}
 
-			// ADS 완료 전에는 렌즈 면(Reticle)과 십자선(ScopeCross)을 숨겨서 스코프가 투명한 유리처럼 보이게 한다.
-			// 이미 같은 상태면 SetVisibility가 아무것도 하지 않는다. 새로 장착한 스코프에도 매 프레임 맞춰진다.
+			// 렌즈 면(Reticle)과 십자선(ScopeCross)은 머티리얼의 ScopeFade 파라미터(0~1)를 ADS 진행도로 올려서
+			// 페이드 인/아웃한다. 진행도가 0이면 아예 숨긴다. 머티리얼에 ScopeFade 파라미터가 없으면 아무 일도 없고
+			// 숨김/표시만 바뀐다. 새로 장착한 스코프에도 매 프레임 맞춰진다.
 			if (const AActor* ScopeActor = Capture->GetOwner())
 			{
 				TArray<UStaticMeshComponent*> LensMeshes;
@@ -303,6 +308,18 @@ void AMainCharacter::UpdateScopeCapture()
 					if (LensName == TEXT("Reticle") || LensName == TEXT("ScopeCross"))
 					{
 						LensMesh->SetVisibility(bReady);
+						if (bReady)
+						{
+							UMaterialInstanceDynamic* LensMaterial = Cast<UMaterialInstanceDynamic>(LensMesh->GetMaterial(0));
+							if (!LensMaterial)
+							{
+								LensMaterial = LensMesh->CreateAndSetMaterialInstanceDynamic(0);
+							}
+							if (LensMaterial)
+							{
+								LensMaterial->SetScalarParameterValue(TEXT("ScopeFade"), Fade);
+							}
+						}
 					}
 				}
 			}
