@@ -8,6 +8,10 @@
 // 프로젝트 폴더 구조에 맞춰 조정: Content/Data/output/items.json
 const FString UItemDataManager::ItemsJsonRelativePath = TEXT("Data/output/items.json");
 
+// StringTable 에셋 경로. FText::FromStringTable()이 에셋 경로 ID를 받으면 필요할 때 에셋을 로드해서 쓴다.
+// 주의: /Game/Localization 폴더에 두면 안 된다(Dashboard가 수집에서 자동 제외). Dashboard 에셋 수집 경로(Content/Core/*, Content/UI/*)에 포함된 폴더여야 한다.
+const FName UItemDataManager::ItemStringTableId = TEXT("/Game/Core/Text/ST_Items.ST_Items");
+
 void UItemDataManager::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -62,4 +66,26 @@ bool UItemDataManager::GetItemData(FName Index, FItemData& OutData) const
 		return true;
 	}
 	return false;
+}
+
+FText UItemDataManager::GetItemNameText(FName Index) const
+{
+	const FItemData* Found = ItemMap.Find(Index);
+	if (!Found || Found->NameKey.IsNone())
+	{
+		return FText::GetEmpty();
+	}
+	// FindOrFullyLoad: 기본 정책은 StringTable 에셋을 비동기로 로드하고 그 전엔 "<MISSING STRING TABLE ENTRY>"를
+	// 돌려준다. UI가 매 프레임 새 FText를 만들어도 처음부터 올바른 문장이 나오도록 동기 로드한다.
+	return FText::FromStringTable(ItemStringTableId, Found->NameKey.ToString(), EStringTableLoadingPolicy::FindOrFullyLoad);
+}
+
+FText UItemDataManager::GetItemDescriptionText(FName Index) const
+{
+	const FItemData* Found = ItemMap.Find(Index);
+	if (!Found || Found->DescriptionKey.IsNone())
+	{
+		return FText::GetEmpty();
+	}
+	return FText::FromStringTable(ItemStringTableId, Found->DescriptionKey.ToString(), EStringTableLoadingPolicy::FindOrFullyLoad);
 }

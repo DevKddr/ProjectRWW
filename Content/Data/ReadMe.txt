@@ -35,3 +35,15 @@ Content/Data/
 
 엑셀 파일을 수정한 뒤에는 반드시 해당 폴더의 .bat을 다시 실행해서
 output 폴더의 JSON을 갱신해야 게임에 반영됩니다.
+
+Localization (아이템 이름/설명)
+------------------------------
+아이템 이름/설명은 Localization Dashboard 방식입니다. 소스 언어는 ko(한국어).
+- items.xlsx 의 "Localization" 시트(Key/ko)가 원문(ko)의 원본입니다. 번역문(en 등)은 엑셀에 없고
+  Localization Dashboard 에서만 관리합니다.
+- ItemDataConverter.bat 을 실행하면 output 폴더에 아래 2개가 생성됩니다.
+    items.json       : 이름/설명 대신 키(nameKey/descriptionKey)만 들어갑니다.
+    ST_Items.csv     : StringTable 원문(ko). 언리얼 /Game/Core/Text/ST_Items 에 임포트합니다.
+- 문장을 바꾸거나 키를 추가했다면: 컨버터 실행 -> ST_Items.csv 를 ST_Items 에 다시 임포트
+  -> Localization Dashboard 에서 Gather -> 번역(en) 입력/확인 -> Compile.
+- 게임 코드는 UItemDataManager::GetItemNameText / GetItemDescriptionText 로 현재 언어의 FText 를 얻습니다.

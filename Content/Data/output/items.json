@@ -2,14 +2,8 @@
   {
     "index": "P_1",
     "category": "Weapon",
-    "name": {
-      "ko": "사이드암 Mk1",
-      "en": "Sidearm Mk1"
-    },
-    "description": {
-      "ko": "빠른 발도와 안정적인 명중률을 갖춘 기본 보조무기.",
-      "en": "A basic sidearm with a fast draw and reliable accuracy."
-    },
+    "nameKey": "P_1_NAME",
+    "descriptionKey": "P_1_DESC",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_P_1.T_Icon_P_1",
     "hudIconPath": "/Game/UI/HUD/Icons/P_1.P_1",
@@ -25,14 +19,8 @@
   {
     "index": "AR_1",
     "category": "Weapon",
-    "name": {
-      "ko": "돌격소총 1",
-      "en": "Assault Rifle 1"
-    },
-    "description": {
-      "ko": "범용성이 뛰어난 기본 돌격소총.",
-      "en": "A versatile standard-issue assault rifle."
-    },
+    "nameKey": "AR_1_NAME",
+    "descriptionKey": "AR_1_DESC",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_AR_1.T_Icon_AR_1",
     "hudIconPath": "/Game/UI/HUD/Icons/AR_1.AR_1",
@@ -48,14 +36,8 @@
   {
     "index": "AR_2",
     "category": "Weapon",
-    "name": {
-      "ko": "돌격소총 2",
-      "en": "Assault Rifle 2"
-    },
-    "description": {
-      "ko": "상급 돌격소총.",
-      "en": "An advanced assault rifle."
-    },
+    "nameKey": "AR_2_NAME",
+    "descriptionKey": "AR_2_DESC",
     "rarityId": "Rare",
     "iconPath": "/Game/UI/Icons/T_Icon_AR_2.T_Icon_AR_2",
     "hudIconPath": "/Game/UI/HUD/Icons/AR_2.AR_2",
@@ -71,14 +53,8 @@
   {
     "index": "SR_1",
     "category": "Weapon",
-    "name": {
-      "ko": "저격소총",
-      "en": "Sniper Rifle"
-    },
-    "description": {
-      "ko": "장거리 교전에 특화된 저격소총.",
-      "en": "A sniper rifle specialized for long-range engagements."
-    },
+    "nameKey": "SR_1_NAME",
+    "descriptionKey": "SR_1_DESC",
     "rarityId": "Epic",
     "iconPath": "/Game/UI/Icons/T_Icon_SR_1.T_Icon_SR_1",
     "hudIconPath": "/Game/UI/HUD/Icons/SR_1.SR_1",
@@ -94,14 +70,8 @@
   {
     "index": "SMG_1",
     "category": "Weapon",
-    "name": {
-      "ko": "기관단총",
-      "en": "Submachine Gun"
-    },
-    "description": {
-      "ko": "근거리 연사에 강한 기관단총.",
-      "en": "A submachine gun strong in close-range rapid fire."
-    },
+    "nameKey": "SMG_1_NAME",
+    "descriptionKey": "SMG_1_DESC",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_SMG_1.T_Icon_SMG_1",
     "hudIconPath": "/Game/UI/HUD/Icons/SMG_1.SMG_1",
@@ -117,14 +87,8 @@
   {
     "index": "SG_1",
     "category": "Weapon",
-    "name": {
-      "ko": "샷건",
-      "en": "Shotgun"
-    },
-    "description": {
-      "ko": "근거리에서 강력한 산탄을 발사하는 샷건.",
-      "en": "A shotgun that fires powerful buckshot at close range."
-    },
+    "nameKey": "SG_1_NAME",
+    "descriptionKey": "SG_1_DESC",
     "rarityId": "Rare",
     "iconPath": "/Game/UI/Icons/T_Icon_SG_1.T_Icon_SG_1",
     "hudIconPath": "/Game/UI/HUD/Icons/SG_1.SG_1",
@@ -140,14 +104,8 @@
   {
     "index": "DMR_1",
     "category": "Weapon",
-    "name": {
-      "ko": "지정사수소총 1",
-      "en": "Designated Marksman Rifle 1"
-    },
-    "description": {
-      "ko": "지정사수소총 1",
-      "en": "(description needed)"
-    },
+    "nameKey": "DMR_1_NAME",
+    "descriptionKey": "DMR_1_DESC",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_SR_2.T_Icon_SR_2",
     "hudIconPath": "/Game/UI/HUD/Icons/DMR_1.DMR_1",
@@ -163,14 +121,8 @@
   {
     "index": "SMG_2",
     "category": "Weapon",
-    "name": {
-      "ko": "기관단총 2",
-      "en": "Submachine Gun 2"
-    },
-    "description": {
-      "ko": "연사력이 빠른 기관단총",
-      "en": "(description needed)"
-    },
+    "nameKey": "SMG_2_NAME",
+    "descriptionKey": "SMG_2_DESC",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_SMG_2.T_Icon_SMG_2",
     "hudIconPath": "/Game/UI/HUD/Icons/SMG_1.SMG_1",
@@ -186,14 +138,8 @@
   {
     "index": "MG_1",
     "category": "Weapon",
-    "name": {
-      "ko": "기관총 1",
-      "en": "Machine Gun 1"
-    },
-    "description": {
-      "ko": "많은 양의 탄창을 가진 기관총",
-      "en": "(description needed)"
-    },
+    "nameKey": "MG_1_NAME",
+    "descriptionKey": "MG_1_DESC",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_AR_3.T_Icon_AR_3",
     "hudIconPath": "/Game/UI/HUD/Icons/MG_1.MG_1",
@@ -209,14 +155,8 @@
   {
     "index": "P_2",
     "category": "Weapon",
-    "name": {
-      "ko": "권총 2",
-      "en": "Pistol 2"
-    },
-    "description": {
-      "ko": "6발의 리볼버",
-      "en": "(description needed)"
-    },
+    "nameKey": "P_2_NAME",
+    "descriptionKey": "P_2_DESC",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_P_2.T_Icon_P_2",
     "hudIconPath": "/Game/UI/HUD/Icons/P_2.P_2",
@@ -232,14 +172,8 @@
   {
     "index": "SG_2",
     "category": "Weapon",
-    "name": {
-      "ko": "샷건",
-      "en": "Shotgun"
-    },
-    "description": {
-      "ko": "근거리에서 강력한 산탄을 발사하는 샷건.",
-      "en": "A shotgun that fires powerful buckshot at close range."
-    },
+    "nameKey": "SG_2_NAME",
+    "descriptionKey": "SG_2_DESC",
     "rarityId": "Rare",
     "iconPath": "/Game/UI/Icons/T_Icon_SG_1.T_Icon_SG_1",
     "hudIconPath": "/Game/UI/HUD/Icons/SG_2.SG_2",
@@ -255,14 +189,8 @@
   {
     "index": "UNARMED",
     "category": "Item",
-    "name": {
-      "ko": "맨손",
-      "en": "Unarmed"
-    },
-    "description": {
-      "ko": "아무것도 장착하지 않은 상태.",
-      "en": "No weapon or item equipped."
-    },
+    "nameKey": "UNARMED_NAME",
+    "descriptionKey": "UNARMED_DESC",
     "rarityId": "Common",
     "iconPath": "",
     "hudIconPath": "",
@@ -278,14 +206,8 @@
   {
     "index": "I_1",
     "category": "Item",
-    "name": {
-      "ko": "더미 아이템 1",
-      "en": "Dummy Item 1"
-    },
-    "description": {
-      "ko": "인벤토리 테스트용 더미 아이템.",
-      "en": "A dummy item for inventory testing."
-    },
+    "nameKey": "I_1_NAME",
+    "descriptionKey": "I_1_DESC",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_I_1.T_Icon_I_1",
     "hudIconPath": "",
@@ -301,14 +223,8 @@
   {
     "index": "I_2",
     "category": "Item",
-    "name": {
-      "ko": "더미 아이템 2",
-      "en": "Dummy Item 2"
-    },
-    "description": {
-      "ko": "인벤토리 테스트용 더미 아이템.",
-      "en": "A dummy item for inventory testing."
-    },
+    "nameKey": "I_2_NAME",
+    "descriptionKey": "I_2_DESC",
     "rarityId": "Common",
     "iconPath": "/Game/UI/Icons/T_Icon_I_2.T_Icon_I_2",
     "hudIconPath": "",

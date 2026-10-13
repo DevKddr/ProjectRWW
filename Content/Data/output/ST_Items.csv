@@ -1,0 +1,29 @@
+Key,SourceString
+P_1_NAME,사이드암 Mk1
+P_1_DESC,빠른 발도와 안정적인 명중률을 갖춘 기본 보조무기.
+AR_1_NAME,돌격소총 1
+AR_1_DESC,범용성이 뛰어난 기본 돌격소총.
+AR_2_NAME,돌격소총 2
+AR_2_DESC,상급 돌격소총.
+SR_1_NAME,저격소총
+SR_1_DESC,장거리 교전에 특화된 저격소총.
+SMG_1_NAME,기관단총
+SMG_1_DESC,근거리 연사에 강한 기관단총.
+SG_1_NAME,샷건
+SG_1_DESC,근거리에서 강력한 산탄을 발사하는 샷건.
+DMR_1_NAME,지정사수소총 1
+DMR_1_DESC,지정사수소총 1
+SMG_2_NAME,기관단총 2
+SMG_2_DESC,연사력이 빠른 기관단총
+MG_1_NAME,기관총 1
+MG_1_DESC,많은 양의 탄창을 가진 기관총
+P_2_NAME,권총 2
+P_2_DESC,6발의 리볼버
+SG_2_NAME,샷건
+SG_2_DESC,근거리에서 강력한 산탄을 발사하는 샷건.
+UNARMED_NAME,맨손
+UNARMED_DESC,아무것도 장착하지 않은 상태.
+I_1_NAME,더미 아이템 1
+I_1_DESC,인벤토리 테스트용 더미 아이템.
+I_2_NAME,더미 아이템 2
+I_2_DESC,인벤토리 테스트용 더미 아이템.

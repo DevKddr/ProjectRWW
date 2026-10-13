@@ -26,6 +26,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ItemData")
 	bool IsDataLoaded() const { return bDataLoaded; }
 
+	// 아이템 이름/설명을 "현재 언어(culture)" 기준 FText로 돌려준다. 문장은 StringTable(ST_Items)에서 읽고 번역은
+	// Localization Dashboard가 관리하므로, UI는 이 함수만 호출하면 언어를 바꿀 때 자동으로 따라간다.
+	// 아이템이 없거나 키가 비어 있으면 빈 텍스트를 돌려준다.
+	UFUNCTION(BlueprintPure, Category = "ItemData")
+	FText GetItemNameText(FName Index) const;
+
+	UFUNCTION(BlueprintPure, Category = "ItemData")
+	FText GetItemDescriptionText(FName Index) const;
+
 private:
 	bool LoadItems();
 
@@ -35,4 +44,7 @@ private:
 	TMap<FName, FItemData> ItemMap;
 
 	static const FString ItemsJsonRelativePath;
+
+	// 아이템 이름/설명 문장이 들어 있는 StringTable 에셋 경로(ST_Items.csv를 임포트해서 만든다).
+	static const FName ItemStringTableId;
 };

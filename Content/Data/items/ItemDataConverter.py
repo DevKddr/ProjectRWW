@@ -7,15 +7,18 @@ WeaponDataConverter.py와 같은 패턴을 쓴다:
     "Localization"/"Legend"가 아니면 전부 아이템 카테고리 시트로 취급해서 읽는다.
     (엑셀에서는 카테고리별로 나뉘어 있지만, Category 컬럼 값 자체는 각 행에 그대로
     남아있다 - 시트 이름과 항상 일치해야 한다.)
-  - "Localization" 시트: 1행=헤더(Key/ko/en), 2행부터 데이터 (타입행 없음).
-    NameKey/DescKey는 이 시트에서 실제 {ko,en} 값으로 치환되어 JSON에 들어가고,
-    NameKey/DescKey라는 키 자체는 출력물에 남지 않는다.
+  - "Localization" 시트: 1행=헤더(Key/ko), 2행부터 데이터 (타입행 없음).
+    언리얼 Localization Dashboard 방식으로 바뀌어서, 이 시트의 문장은 더 이상 items.json에
+    들어가지 않는다. items.json에는 키(nameKey/descriptionKey)만 들어가고, 실제 문장은
+    아래 StringTable CSV로 나간다.
+    - 소스 언어(원문)는 ko. 영어 등 번역문은 이 시트에 두지 않고 Localization Dashboard에서만
+      관리한다(엑셀에는 Key와 ko만 있다).
 
-출력은 지금까지와 똑같이 items.json 하나(JSON 배열)이며, 엑셀이 몇 개의 시트로
-나뉘어 있든 그 결과물의 형태(필드 구성)는 전혀 바뀌지 않는다. 언리얼에서
-FJsonObjectConverter::JsonArrayStringToUStruct로 그대로 파싱 가능한 형태다.
-FItemData.Name/Description이 FLocalizedPair({Ko,En}) 타입이어야 이 출력물이
-정상적으로 파싱된다 - FString 타입인 채로 이 스크립트를 쓰면 파싱이 깨진다.
+출력 (output_dir 안):
+    items.json        : JSON 배열. name/description 대신 nameKey/descriptionKey(키 문자열).
+                        FJsonObjectConverter::JsonArrayStringToUStruct로 파싱 가능한 형태.
+    ST_Items.csv      : StringTable 임포트용(Key,SourceString). 소스 언어(ko) 문장.
+                        언리얼에서 /Game/Core/Text/ST_Items 에 임포트한다.
 
 사용법:
     python ItemDataConverter.py items.xlsx ./output
@@ -57,14 +60,17 @@ def load_items(xlsx_path):
 
     localization = {}
     for row in sheet_rows(wb["Localization"], has_type_row=False):
-        localization[row["Key"]] = {"ko": row["ko"], "en": row["en"]}
+        localization[row["Key"]] = row["ko"]
 
-    def localize(key):
-        entry = localization.get(key)
-        if entry is None:
-            print(f"[WARN] Localization 시트에 없는 키: {key} (ko/en 자리에 키 값이 그대로 들어감)")
-            return {"ko": key, "en": key}
-        return entry
+    used_keys = []
+
+    def use_key(key):
+        """키를 그대로 JSON에 넣고, 사용된 키를 기록한다. 시트에 없는 키는 경고만 한다."""
+        if key not in localization:
+            print(f"[WARN] Localization 시트에 없는 키: {key} (StringTable에도 들어가지 않는다)")
+        elif key not in used_keys:
+            used_keys.append(key)
+        return key
 
     items = []
     for sheet_name in wb.sheetnames:
@@ -80,8 +86,8 @@ def load_items(xlsx_path):
             items.append({
                 "index": row["Index"],
                 "category": row["Category"],
-                "name": localize(row["NameKey"]),
-                "description": localize(row["DescKey"]),
+                "nameKey": use_key(row["NameKey"]),
+                "descriptionKey": use_key(row["DescKey"]),
                 "rarityId": row["RarityId"],
                 "iconPath": icon_path,
                 "hudIconPath": hud_icon_path,
@@ -94,7 +100,20 @@ def load_items(xlsx_path):
                 "secondarySkillManaCost": float(row["SecondarySkillManaCost"]),
                 "secondarySkillCastTime": float(row["SecondarySkillCastTime"]),
             })
-    return items
+
+    # 사용된 키만, 시트 순서대로 StringTable용 문장 목록을 만든다.
+    strings = [(key, localization[key]) for key in used_keys]
+    return items, strings
+
+
+def write_string_table_csv(path, rows):
+    """언리얼 StringTable CSV 형식(Key,SourceString). UTF-8 BOM은 붙이지 않는다."""
+    import csv
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["Key", "SourceString"])
+        for key, text in rows:
+            writer.writerow([key, text])
 
 
 def main():
@@ -106,13 +125,17 @@ def main():
     out_dir = Path(sys.argv[2])
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    items = load_items(xlsx_path)
+    items, strings = load_items(xlsx_path)
 
     out_path = out_dir / "items.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, indent=2)
 
+    ko_path = out_dir / "ST_Items.csv"
+    write_string_table_csv(ko_path, strings)
+
     print(f"[OK] {out_path}  (아이템 {len(items)}개)")
+    print(f"[OK] {ko_path}  (소스 문장 {len(strings)}개)")
 
 
 if __name__ == "__main__":

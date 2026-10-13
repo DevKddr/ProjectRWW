@@ -6,9 +6,9 @@
 #include "Engine/DataTable.h"
 #include "ItemData.generated.h"
 
-// items.json의 "name"/"description" ({"ko":.., "en":..}) 과 1:1 대응.
-// 원래 Weapons/WeaponData.h에 있었으나, 이제 이 타입을 쓰는 곳이 FItemData뿐이라
-// (weapons.json에서는 Rarity/Name/Description이 전부 items.json 쪽으로 이전됨) 이리로 옮겼다.
+// {"ko":.., "en":..} 언어쌍. 아이템은 Localization Dashboard(StringTable 키) 방식으로 바뀌어서 더 이상 쓰지
+// 않는다(FItemData는 NameKey/DescriptionKey). 아직 이 방식을 쓰는 랜덤박스(GachaTablesData.h)가 남아 있어서
+// 구조체 정의만 유지한다.
 USTRUCT(BlueprintType)
 struct FLocalizedPair
 {
@@ -36,14 +36,16 @@ struct FItemData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
 	FName Category;
 
-	// 언어 설정(ko/en)에 따라 다르게 보여줘야 하므로 문자열이 아니라 언어쌍으로 저장한다.
-	// 실제로 어떤 언어를 보여줄지 고르는 로직은 여기 없다 - 그건 언어 설정 UI를 만들 때
-	// 추가할 별도 매니저(예: LocalizationManager)의 책임이다.
+	// 이름/설명 문장 자체는 여기 없다. 언리얼 Localization Dashboard 방식으로 바뀌어서, 문장은
+	// StringTable(/Game/Core/Text/ST_Items)에 소스 언어(ko)로 들어 있고 번역은 Dashboard가 관리한다.
+	// 여기엔 StringTable 키만 둔다(items.json의 nameKey/descriptionKey). 화면에 보여줄 FText는
+	// UItemDataManager::GetItemNameText()/GetItemDescriptionText()로 얻는다 - 현재 언어(culture)에 맞는
+	// 문장이 나온다. 키를 직접 StringTable에서 찾지 말고 반드시 그 함수를 쓸 것.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
-	FLocalizedPair Name;
+	FName NameKey;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
-	FLocalizedPair Description;
+	FName DescriptionKey;
 
 	// RarityDataManager 조회용 키.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
