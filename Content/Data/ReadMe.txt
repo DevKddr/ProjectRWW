@@ -47,3 +47,23 @@ Localization (아이템 이름/설명)
 - 문장을 바꾸거나 키를 추가했다면: 컨버터 실행 -> ST_Items.csv 를 ST_Items 에 다시 임포트
   -> Localization Dashboard 에서 Gather -> 번역(en) 입력/확인 -> Compile.
 - 게임 코드는 UItemDataManager::GetItemNameText / GetItemDescriptionText 로 현재 언어의 FText 를 얻습니다.
+
+Loot (지역별 아이템 스폰)
+-------------------------
+레벨의 스폰 포인트마다 아이템을 뽑아 바닥 픽업(AItemPickupActor)으로 스폰합니다. 서버에서 레이드 시작 시 1회.
+- 레벨 디자이너가 하는 일: ALootRegion(박스 볼륨, RegionId 입력)과 ALootSpawnPoint(바닥 위치)를 배치.
+  * 포인트는 자기가 들어 있는 지역의 RegionId를 따릅니다. 테이블을 포인트에 직접 지정하지 않습니다.
+  * RegionId를 비웠거나, 어느 지역에도 안 들어 있거나, loot_tables.json 에 없는 RegionId 면 "Default" 를 씁니다.
+  * 지역이 겹치면 Priority 가 큰 쪽, 같으면 부피가 작은 쪽이 이깁니다.
+  * 예외적으로 포인트 하나만 다른 테이블을 쓰려면 ALootSpawnPoint.TableOverride 에 TableId 를 적습니다.
+- output/loot_tables.json (현재 엑셀 컨버터 없이 직접 편집):
+    tables  : TableId -> rarityWeights(등급) / categoryWeights(카테고리) / itemWeights(아이템 배수, 0=제외) /
+              excludedItems / parent(상속: 적은 키만 덮어씀)
+    regions : RegionId -> table(TableId), spawnChance(포인트 하나가 실제로 스폰될 확률 0~1)
+    "Default" 지역과 그 테이블은 반드시 있어야 합니다.
+  추첨: 등급 -> 카테고리 -> 아이템 3단계 가중치. 후보는 items.json 의 등급(rarityId)/카테고리에서 자동으로 가져옵니다.
+- 아이템이 어떤 픽업 BP 로 놓일지는 Project Settings > ProjectRWW Loot Settings 의 PickupClassByItem
+  (아이템 Index -> BP_Pickup_xxx)에서 정합니다. 매핑이 없으면 DefaultPickupClass, 그것도 없으면 스폰하지 않고 경고합니다.
+- World Partition 맵: ALootRegion/ALootSpawnPoint 는 항상 로드되도록(Is Spatially Loaded = false) 기본값을 꺼 두었습니다.
+  서버가 플레이어 없이 레이드 시작 시점에 스폰하기 때문입니다. 이 값을 켜면 스폰이 0개가 됩니다.
+- 디버그 콘솔: rww.Loot.Respawn (다시 스폰), rww.Loot.Dump (지역별 포인트/스폰 수 로그)

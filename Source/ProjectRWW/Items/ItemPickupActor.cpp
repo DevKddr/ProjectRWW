@@ -7,11 +7,16 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
+#include "Net/UnrealNetwork.h"
 
 AItemPickupActor::AItemPickupActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
+	// 바닥에 놓인 뒤로 바뀌는 값이 없어서 갱신 검사를 자주 할 필요가 없다. 서버가 레이드 시작 시
+	// 픽업을 수십~수백 개 스폰하므로 네트워크 갱신 비용을 최소로 둔다.
+	SetNetUpdateFrequency(1.0f);
+	SetMinNetUpdateFrequency(0.5f);
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
@@ -30,6 +35,12 @@ AItemPickupActor::AItemPickupActor()
 	PickupSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	PickupSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	PickupSphere->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+}
+
+void AItemPickupActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION(AItemPickupActor, ItemIndex, COND_InitialOnly);
 }
 
 void AItemPickupActor::BeginPlay()

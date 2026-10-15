@@ -26,6 +26,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ItemData")
 	bool IsDataLoaded() const { return bDataLoaded; }
 
+	// 로드된 모든 아이템을 복사해 돌려준다(순서 없음). 루트 테이블 추첨처럼 "후보 전체"가 필요할 때 쓴다.
+	void GetAllItems(TArray<FItemData>& OutItems) const;
+
 	// 아이템 이름/설명을 "현재 언어(culture)" 기준 FText로 돌려준다. 문장은 StringTable(ST_Items)에서 읽고 번역은
 	// Localization Dashboard가 관리하므로, UI는 이 함수만 호출하면 언어를 바꿀 때 자동으로 따라간다.
 	// 아이템이 없거나 키가 비어 있으면 빈 텍스트를 돌려준다.

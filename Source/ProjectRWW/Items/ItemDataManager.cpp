@@ -68,6 +68,11 @@ bool UItemDataManager::GetItemData(FName Index, FItemData& OutData) const
 	return false;
 }
 
+void UItemDataManager::GetAllItems(TArray<FItemData>& OutItems) const
+{
+	ItemMap.GenerateValueArray(OutItems);
+}
+
 FText UItemDataManager::GetItemNameText(FName Index) const
 {
 	const FItemData* Found = ItemMap.Find(Index);

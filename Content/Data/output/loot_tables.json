@@ -1,0 +1,23 @@
+{
+  "tables": {
+    "Default": {
+      "rarityWeights": { "Common": 70, "Rare": 25, "Epic": 5 },
+      "categoryWeights": { "Weapon": 1, "Item": 1 },
+      "excludedItems": ["UNARMED", "I_1", "I_2"]
+    },
+    "Military": {
+      "parent": "Default",
+      "rarityWeights": { "Common": 30, "Rare": 45, "Epic": 25 },
+      "categoryWeights": { "Weapon": 3, "Item": 1 }
+    },
+    "Supply": {
+      "parent": "Default",
+      "categoryWeights": { "Weapon": 1, "Item": 3 }
+    }
+  },
+  "regions": {
+    "Default": { "table": "Default", "spawnChance": 1.0 },
+    "Military": { "table": "Military", "spawnChance": 0.8 },
+    "Supply": { "table": "Supply", "spawnChance": 0.8 }
+  }
+}

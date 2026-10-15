@@ -21,10 +21,11 @@ class PROJECTRWW_API AItemPickupActor : public AActor
 public:
 	AItemPickupActor();
 
-	// 이 픽업을 주웠을 때 인벤토리에 들어갈 아이템의 Index. 리플리케이트하지 않는다 -
-	// 클래스(BP) 자체가 모든 머신에 같은 기본값을 갖고 있고, 줍기 판정은 서버가 이
-	// 값으로 하기 때문이다.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Pickup")
+	// 이 픽업을 주웠을 때 인벤토리에 들어갈 아이템의 Index. 레벨에 손으로 놓은 픽업은 BP/인스턴스에
+	// 값을 적고, 루트 스폰 시스템(ULootSpawnSubsystem)이 만든 픽업은 스폰 시 서버가 채운다.
+	// 스폰 후에는 바뀌지 않으므로 최초 리플리케이션 때만 보낸다(COND_InitialOnly) - 런타임에 스폰된
+	// 픽업은 클라이언트가 BP 기본값을 모르기 때문에 이 값이 필요하다(HUD 마커 등).
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Pickup")
 	FName ItemIndex;
 
 	// 이 픽업에 든 현재 탄약. -1이면 "한 번도 장착 안 한 새것"이라는 뜻으로, 인벤토리에
@@ -41,6 +42,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// 메시와 PickupSphere의 공통 부모. 둘을 형제로 두어 서로의 스케일/위치가 영향을 주지
 	// 않게 하고, 액터 원점(레벨에 놓는 기준점)을 어느 쪽에도 묶이지 않게 한다.
