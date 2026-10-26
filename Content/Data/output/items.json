@@ -14,7 +14,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "AR_1",
@@ -31,7 +35,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "AR_2",
@@ -48,7 +56,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "SR_1",
@@ -65,7 +77,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "SMG_1",
@@ -82,7 +98,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "SG_1",
@@ -99,7 +119,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "DMR_1",
@@ -116,7 +140,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "SMG_2",
@@ -133,7 +161,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "MG_1",
@@ -150,7 +182,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "P_2",
@@ -167,7 +203,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "SG_2",
@@ -184,7 +224,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "UNARMED",
@@ -201,7 +245,11 @@
     "primarySkillCastTime": 0.0,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   },
   {
     "index": "I_1",
@@ -218,7 +266,11 @@
     "primarySkillCastTime": 0.7,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 0.0,
+    "secondarySkillHoldTime": 0.0,
+    "primarySkillTickInterval": 0.0,
+    "secondarySkillTickInterval": 0.0
   },
   {
     "index": "I_2",
@@ -235,6 +287,91 @@
     "primarySkillCastTime": 1.2,
     "secondarySkillCooldown": 0.0,
     "secondarySkillManaCost": 0.0,
-    "secondarySkillCastTime": 0.0
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 0.0,
+    "secondarySkillHoldTime": 0.0,
+    "primarySkillTickInterval": 0.0,
+    "secondarySkillTickInterval": 0.0
+  },
+  {
+    "index": "I_3",
+    "category": "Item",
+    "name": {
+      "ko": "더미 아이템 3",
+      "en": "Dummy Item 3"
+    },
+    "description": {
+      "ko": "인벤토리 테스트용 더미 아이템.",
+      "en": "A dummy item for inventory testing."
+    },
+    "rarityId": "Common",
+    "iconPath": "/Game/UI/Icons/T_Icon_I_3.T_Icon_I_3",
+    "hudIconPath": "",
+    "actorClassPath": "/Game/Items/I_3/BP_I_3.BP_I_3_C",
+    "equipTime": 0.5,
+    "primarySkillCooldown": 5.0,
+    "primarySkillManaCost": 20.0,
+    "primarySkillCastTime": 0.3,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
+  },
+  {
+    "index": "I_4",
+    "category": "Item",
+    "name": {
+      "ko": "더미 아이템 4",
+      "en": "Dummy Item 4"
+    },
+    "description": {
+      "ko": "인벤토리 테스트용 더미 아이템.",
+      "en": "A dummy item for inventory testing."
+    },
+    "rarityId": "Common",
+    "iconPath": "/Game/UI/Icons/T_Icon_I_4.T_Icon_I_4",
+    "hudIconPath": "",
+    "actorClassPath": "/Game/Items/I_4/BP_I_4.BP_I_4_C",
+    "equipTime": 0.5,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
+  },
+  {
+    "index": "I_5",
+    "category": "Item",
+    "name": {
+      "ko": "더미 아이템 5",
+      "en": "Dummy Item 5"
+    },
+    "description": {
+      "ko": "인벤토리 테스트용 더미 아이템.",
+      "en": "A dummy item for inventory testing."
+    },
+    "rarityId": "Common",
+    "iconPath": "/Game/UI/Icons/T_Icon_I_5.T_Icon_I_5",
+    "hudIconPath": "",
+    "actorClassPath": "/Game/Items/I_5/BP_I_5.BP_I_5_C",
+    "equipTime": 0.5,
+    "primarySkillCooldown": 0.0,
+    "primarySkillManaCost": 0.0,
+    "primarySkillCastTime": 0.0,
+    "secondarySkillCooldown": 0.0,
+    "secondarySkillManaCost": 0.0,
+    "secondarySkillCastTime": 0.0,
+    "primarySkillHoldTime": 3.0,
+    "secondarySkillHoldTime": 3.0,
+    "primarySkillTickInterval": 0.1,
+    "secondarySkillTickInterval": 0.1
   }
 ]

@@ -34,4 +34,9 @@ namespace MainGameplayTags
 	// GetOwnerItemData()와 같은 원리) - 아이템마다 새 태그/클래스를 안 만들어도 됨.
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_ItemSkill_Primary, "GameplayCue.ItemSkill.Primary");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_ItemSkill_Secondary, "GameplayCue.ItemSkill.Secondary");
+
+	// 홀드형 스킬 연출 큐 - 시작은 AddGameplayCue, 종료는 RemoveGameplayCue로 알린다. 즉시형(위 두 태그)은
+	// ExecuteGameplayCue로 한 번 터뜨리지만 홀드는 길이가 정해져 있지 않아서 Add/Remove(상태형)를 쓴다.
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_ItemSkill_Hold_Primary, "GameplayCue.ItemSkill.Hold.Primary");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_ItemSkill_Hold_Secondary, "GameplayCue.ItemSkill.Hold.Secondary");
 }

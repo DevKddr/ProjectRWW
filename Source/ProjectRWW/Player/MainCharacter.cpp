@@ -572,10 +572,15 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		if (ItemSkillPrimaryAction)
 		{
 			EnhancedInput->BindAction(ItemSkillPrimaryAction, ETriggerEvent::Started, this, &AMainCharacter::OnItemSkillPrimary);
+			// Completed는 정상적으로 뗐을 때, Canceled는 Hold/Tap 같은 트리거가 중간에 취소됐을 때. 둘 다 "뗌"으로 처리한다.
+			EnhancedInput->BindAction(ItemSkillPrimaryAction, ETriggerEvent::Completed, this, &AMainCharacter::OnItemSkillPrimaryReleased);
+			EnhancedInput->BindAction(ItemSkillPrimaryAction, ETriggerEvent::Canceled, this, &AMainCharacter::OnItemSkillPrimaryReleased);
 		}
 		if (ItemSkillSecondaryAction)
 		{
 			EnhancedInput->BindAction(ItemSkillSecondaryAction, ETriggerEvent::Started, this, &AMainCharacter::OnItemSkillSecondary);
+			EnhancedInput->BindAction(ItemSkillSecondaryAction, ETriggerEvent::Completed, this, &AMainCharacter::OnItemSkillSecondaryReleased);
+			EnhancedInput->BindAction(ItemSkillSecondaryAction, ETriggerEvent::Canceled, this, &AMainCharacter::OnItemSkillSecondaryReleased);
 		}
 		if (InteractAction)
 		{
@@ -616,6 +621,24 @@ void AMainCharacter::OnItemSkillSecondary(const FInputActionValue& Value)
 	{
 		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][진단] OnItemSkillSecondary 입력 수신"));
 		ASC->AbilityLocalInputPressed(static_cast<int32>(EMainAbilityInputID::Secondary));
+	}
+}
+
+void AMainCharacter::OnItemSkillPrimaryReleased(const FInputActionValue& Value)
+{
+	AMainPlayerState* MainPS = GetPlayerState<AMainPlayerState>();
+	if (UAbilitySystemComponent* ASC = MainPS ? MainPS->GetAbilitySystemComponent() : nullptr)
+	{
+		ASC->AbilityLocalInputReleased(static_cast<int32>(EMainAbilityInputID::Primary));
+	}
+}
+
+void AMainCharacter::OnItemSkillSecondaryReleased(const FInputActionValue& Value)
+{
+	AMainPlayerState* MainPS = GetPlayerState<AMainPlayerState>();
+	if (UAbilitySystemComponent* ASC = MainPS ? MainPS->GetAbilitySystemComponent() : nullptr)
+	{
+		ASC->AbilityLocalInputReleased(static_cast<int32>(EMainAbilityInputID::Secondary));
 	}
 }
 

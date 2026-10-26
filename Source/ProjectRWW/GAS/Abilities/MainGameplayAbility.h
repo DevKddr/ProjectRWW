@@ -59,6 +59,12 @@ protected:
 	float GetCurrentSkillCooldownDuration(const FGameplayAbilityActorInfo* ActorInfo) const;
 	float GetCurrentSkillManaCost(const FGameplayAbilityActorInfo* ActorInfo) const;
 
+	// 스킬 사용이 끝난 뒤 다른 스킬을 막는 시간(castTime), 홀드형 스킬의 최대 유지/충전 시간(holdTime),
+	// 홀드형 스킬의 틱 간격(tickInterval). 위 두 함수와 같은 방식으로 지금 장착된 아이템의 슬롯 값을 조회한다.
+	float GetCurrentSkillCastTime(const FGameplayAbilityActorInfo* ActorInfo) const;
+	float GetCurrentSkillHoldTime(const FGameplayAbilityActorInfo* ActorInfo) const;
+	float GetCurrentSkillTickInterval(const FGameplayAbilityActorInfo* ActorInfo) const;
+
 	// 소비하지 않고 확인만 한다 - 쿨다운 커밋 전에 먼저 불러서, 마나 부족이면 쿨다운을
 	// 아예 걸지 않고 취소할 수 있게 한다.
 	bool HasEnoughMana(const FGameplayAbilityActorInfo* ActorInfo) const;

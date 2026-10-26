@@ -249,6 +249,11 @@ protected:
 
 	void OnItemSkillPrimary(const FInputActionValue& Value);
 	void OnItemSkillSecondary(const FInputActionValue& Value);
+
+	// 키를 뗐을 때(또는 입력이 중단됐을 때) ASC에 뗌을 알린다. 즉시 발동 스킬은 이 신호를 쓰지 않아 무시되고,
+	// 홀드/차지 같은 스킬이 이 신호로 종료/발동을 판단한다.
+	void OnItemSkillPrimaryReleased(const FInputActionValue& Value);
+	void OnItemSkillSecondaryReleased(const FInputActionValue& Value);
 	void OnInteract(const FInputActionValue& Value);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")

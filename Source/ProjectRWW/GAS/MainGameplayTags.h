@@ -22,4 +22,9 @@ namespace MainGameplayTags
 	// UMainGameplayAbility::TryCommitSkillActivation() 참고.
 	PROJECTRWW_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_ItemSkill_Primary);
 	PROJECTRWW_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_ItemSkill_Secondary);
+
+	// 홀드형 스킬(누르고 있는 동안 이어지는 스킬)의 연출 큐. Add/Remove로 시작/종료를 알린다.
+	// UMainHoldGameplayAbility와 AGCN_ItemSkillHold 참고.
+	PROJECTRWW_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_ItemSkill_Hold_Primary);
+	PROJECTRWW_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_ItemSkill_Hold_Secondary);
 }

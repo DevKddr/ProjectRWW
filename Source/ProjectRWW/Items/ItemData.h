@@ -98,4 +98,19 @@ struct FItemData : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
 	float SecondarySkillCastTime = 0.0f;
+
+	// 홀드형 스킬(Hold/Charge/Cast)에서 쓴다. 즉시형 스킬은 무시한다. 슬롯별로 따로 관리한다.
+	// Hold는 최대 유지 시간(지나면 자동 종료), Charge는 풀 충전까지의 시간, Cast는 발동까지 눌러야 하는 시간.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float PrimarySkillHoldTime = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float SecondarySkillHoldTime = 0.0f;
+
+	// Hold 스킬이 효과를 반복하는 간격(초). 0이면 틱 없이 시작/종료만 동작한다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float PrimarySkillTickInterval = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	float SecondarySkillTickInterval = 0.0f;
 };

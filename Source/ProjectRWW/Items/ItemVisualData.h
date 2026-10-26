@@ -47,6 +47,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Visual")
 	TSoftObjectPtr<UAnimMontage> EquipMontage;
 
+	// 스킬 사용 모션. 즉시형 스킬은 이 몽타주를 통째로 한 번 재생한다(castTime에 맞춰 속도 조절).
+	// 홀드형 스킬(Hold/Charge/Cast)은 이 몽타주 하나에 "Start", "Loop", "End" 섹션을 이름 그대로 만들어 쓴다 -
+	// Start는 끝나면 Loop로, Loop는 자기 자신으로(반복), 정상 종료 때 코드가 다음 섹션을 End로 바꾸고,
+	// 아이템 교체/사망 같은 강제 종료에선 End 없이 바로 멈춘다. 각 섹션의 시작 시각은 몽타주 에셋 안에서 정하고
+	// 코드는 섹션 이름만 안다. 한 아이템의 한 슬롯에는 즉시형과 홀드형 중 하나만 있다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Visual")
 	TSoftObjectPtr<UAnimMontage> UsePrimaryMontage;
 

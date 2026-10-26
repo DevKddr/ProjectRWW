@@ -97,6 +97,36 @@ float UMainGameplayAbility::GetCurrentSkillManaCost(const FGameplayAbilityActorI
 	return SkillSlot == EMainAbilityInputID::Primary ? ItemData.PrimarySkillManaCost : ItemData.SecondarySkillManaCost;
 }
 
+float UMainGameplayAbility::GetCurrentSkillCastTime(const FGameplayAbilityActorInfo* ActorInfo) const
+{
+	FItemData ItemData;
+	if (!GetOwnerItemData(ActorInfo, ItemData))
+	{
+		return 0.0f;
+	}
+	return SkillSlot == EMainAbilityInputID::Primary ? ItemData.PrimarySkillCastTime : ItemData.SecondarySkillCastTime;
+}
+
+float UMainGameplayAbility::GetCurrentSkillHoldTime(const FGameplayAbilityActorInfo* ActorInfo) const
+{
+	FItemData ItemData;
+	if (!GetOwnerItemData(ActorInfo, ItemData))
+	{
+		return 0.0f;
+	}
+	return SkillSlot == EMainAbilityInputID::Primary ? ItemData.PrimarySkillHoldTime : ItemData.SecondarySkillHoldTime;
+}
+
+float UMainGameplayAbility::GetCurrentSkillTickInterval(const FGameplayAbilityActorInfo* ActorInfo) const
+{
+	FItemData ItemData;
+	if (!GetOwnerItemData(ActorInfo, ItemData))
+	{
+		return 0.0f;
+	}
+	return SkillSlot == EMainAbilityInputID::Primary ? ItemData.PrimarySkillTickInterval : ItemData.SecondarySkillTickInterval;
+}
+
 bool UMainGameplayAbility::HasEnoughMana(const FGameplayAbilityActorInfo* ActorInfo) const
 {
 	const float ManaCost = GetCurrentSkillManaCost(ActorInfo);
@@ -190,17 +220,10 @@ bool UMainGameplayAbility::TryCommitSkillActivation(const FGameplayAbilitySpecHa
 	// CastTime은 캐스트 종료 시각 기록(SetSkillCastEndTimeSeconds)이랑 GameplayCue로
 	// 넘겨줄 값(RawMagnitude) 둘 다에 필요해서, 여기서 한 번만 조회해 공유한다.
 	AMainCharacter* Character = ActorInfo ? Cast<AMainCharacter>(ActorInfo->AvatarActor.Get()) : nullptr;
-	float CastTime = 0.0f;
+	const float CastTime = GetCurrentSkillCastTime(ActorInfo);
 	if (Character && Character->WeaponComponent)
 	{
-		FItemData ItemData;
-		if (GetOwnerItemData(ActorInfo, ItemData))
-		{
-			CastTime = SkillSlot == EMainAbilityInputID::Primary
-				? ItemData.PrimarySkillCastTime
-				: ItemData.SecondarySkillCastTime;
-			Character->WeaponComponent->SetSkillCastEndTimeSeconds(FPlatformTime::Seconds() + CastTime);
-		}
+		Character->WeaponComponent->SetSkillCastEndTimeSeconds(FPlatformTime::Seconds() + CastTime);
 	}
 
 	// 스킬 발동을 모든 클라이언트(오너 포함 리모트 전부)에게 알리는 코스메틱 신호 -

@@ -76,8 +76,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	void UseSecondary(float CastTime);
 
+	// 홀드형 스킬 연출. DA의 UsePrimaryMontage/UseSecondaryMontage 하나에 Start/Loop/End 섹션이 있다고 가정한다.
+	// PlayHoldStart는 몽타주를 재생해 Start→Loop로 이어지게 하고, StopHold는 다음 섹션을 End로 바꿔 정상 종료시킨다.
+	// 강제 종료(아이템 교체/사망)는 이 액터가 파괴될 때 EndPlay가 몽타주를 바로 멈춘다.
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	void PlayHoldStart(bool bPrimary, float PlayRate = 1.0f);
+
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	void StopHold();
+
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// 아이템 3D 모델. RootComponent로 사용한다.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item")
@@ -92,4 +102,12 @@ private:
 	// (에셋 미설정) 조용히 무시한다. DesiredDuration이 0 이하면(비정상 값) 기본 속도(1.0)로
 	// 재생한다.
 	void PlayTimedMontage(UAnimMontage* Montage, float DesiredDuration) const;
+
+	// 위쪽 몸 애니메이션 인스턴스("UpperBody" 태그로 링크된 것). PlayTimedMontage와 같은 경로로 얻는다.
+	UAnimInstance* GetUpperBodyAnimInstance() const;
+
+	// 지금 재생 중인 홀드 몽타주와 그것이 재생되는 인스턴스. StopHold 뒤에도 유지해서, 그 직후 액터가 파괴되면
+	// EndPlay가 End 재생 중인 몽타주를 바로 멈출 수 있게 한다.
+	TWeakObjectPtr<UAnimMontage> ActiveHoldMontage;
+	TWeakObjectPtr<UAnimInstance> ActiveHoldInstance;
 };
