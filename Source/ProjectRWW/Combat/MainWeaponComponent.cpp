@@ -654,6 +654,16 @@ void UMainWeaponComponent::RequestFire()
 					World->GetTimerManager().SetTimer(ClientBurstTimerHandle, this, &UMainWeaponComponent::PlayClientBurstShot, Interval, true);
 				}
 			}
+
+			// Single(및 1점사 Burst)는 이 한 발로 사이클이 끝난다. 방아쇠를 계속 누르고 있어도
+			// 더 이상 ReceiveWeaponFire()가 오지 않으므로, 여기서 Stop을 보내지 않으면 BP 반동
+			// 컴포넌트의 IsFiring이 true로 남아 버튼을 뗄 때까지 반동이 회복되지 않는다.
+			// Burst(2발 이상)는 PlayClientBurstShot()의 마지막 발에서 보낸다.
+			const bool bMultiShotBurst = FireMode == TEXT("Burst") && BurstCount > 1;
+			if (OwningCharacter && FireMode != TEXT("FullAuto") && !bMultiShotBurst)
+			{
+				OwningCharacter->ReceiveWeaponFireStopped();
+			}
 		}
 		else
 		{
@@ -1067,6 +1077,13 @@ void UMainWeaponComponent::PlayClientBurstShot()
 	if (ClientBurstShotsRemaining <= 0)
 	{
 		World->GetTimerManager().ClearTimer(ClientBurstTimerHandle);
+
+		// 점사 한 사이클이 끝났다. 버튼을 계속 누르고 있어도 반동이 회복되도록 Stop을 보낸다
+		// (RequestFire()의 Single 처리와 같은 이유).
+		if (AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner()))
+		{
+			OwningCharacter->ReceiveWeaponFireStopped();
+		}
 	}
 }
 
