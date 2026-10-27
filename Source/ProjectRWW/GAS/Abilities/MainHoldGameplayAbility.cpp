@@ -4,6 +4,7 @@
 #include "AbilitySystemComponent.h"
 #include "GAS/MainGameplayTags.h"
 #include "Player/MainCharacter.h"
+#include "Player/MainPlayerController.h"
 
 FGameplayTag UMainHoldGameplayAbility::GetHoldCueTag() const
 {
@@ -38,6 +39,18 @@ void UMainHoldGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle 
 
 	bHoldStarted = true;
 	bEndedNormally = false;
+
+	// 본인 화면에만 남은 유지 시간 링을 띄운다(표시용이라 서버/다른 클라이언트는 필요 없다).
+	// holdTime이 0(무제한)이면 링이 차오를 기준이 없어 띄우지 않는다.
+	const float RingDuration = GetCurrentSkillHoldTime(ActorInfo);
+	const AMainCharacter* AvatarCharacter = ActorInfo ? Cast<AMainCharacter>(ActorInfo->AvatarActor.Get()) : nullptr;
+	if (RingDuration > 0.0f && AvatarCharacter && AvatarCharacter->IsLocallyControlled())
+	{
+		if (AMainPlayerController* PC = Cast<AMainPlayerController>(AvatarCharacter->GetController()))
+		{
+			PC->ShowSkillProgress(RingDuration);
+		}
+	}
 
 	// 뗌 감지는 클라이언트/서버 모두 한다. 클라이언트가 뗐을 때 서버로 전달되는 것은 2단계 테스트로 확인했다.
 	// bTestAlreadyReleased=true: 활성화 전에 이미 뗐다면 바로 뗌으로 처리한다.
@@ -146,6 +159,16 @@ void UMainHoldGameplayAbility::EndAbility(const FGameplayAbilitySpecHandle Handl
 			ActorInfo->AbilitySystemComponent->RemoveGameplayCue(GetHoldCueTag());
 		}
 
+		// 진행도 링 끄기(본인 클라이언트). 아래 castTime 잠금에서도 같은 캐릭터를 쓴다.
+		AMainCharacter* Character = ActorInfo ? Cast<AMainCharacter>(ActorInfo->AvatarActor.Get()) : nullptr;
+		if (Character && Character->IsLocallyControlled())
+		{
+			if (AMainPlayerController* PC = Cast<AMainPlayerController>(Character->GetController()))
+			{
+				PC->HideSkillProgress();
+			}
+		}
+
 		// 서버에서만: 서브클래스 정리 훅(상태 효과 제거 등)과 쿨다운. 쿨다운은 뗌/시간 경과/마나 부족/
 		// 아이템 교체/사망 어느 경로로 끝나든 적용한다 - 안 걸면 홀드 중 교체했다 다시 들어 쿨다운 없이 재사용하는 꼼수가 생긴다.
 		if (ActorInfo && ActorInfo->IsNetAuthority())
@@ -156,7 +179,6 @@ void UMainHoldGameplayAbility::EndAbility(const FGameplayAbilitySpecHandle Handl
 
 		// castTime 잠금은 끝나는 순간부터 건다(서버/클라이언트 각자 로컬 값). 위에서 쓰는 아이템 데이터는
 		// 교체 경로에서도 아직 유효하다(UnequipWeapon이 ActiveItemIndex를 바꾸지 않는다).
-		AMainCharacter* Character = ActorInfo ? Cast<AMainCharacter>(ActorInfo->AvatarActor.Get()) : nullptr;
 		if (Character && Character->WeaponComponent)
 		{
 			Character->WeaponComponent->SetSkillCastEndTimeSeconds(FPlatformTime::Seconds() + GetCurrentSkillCastTime(ActorInfo));

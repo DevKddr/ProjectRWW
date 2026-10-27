@@ -10,6 +10,14 @@ void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
+	if (bSkillProgressActive && GetWorld())
+	{
+		const double Elapsed = GetWorld()->GetTimeSeconds() - SkillProgressStartTimeSeconds;
+		const float Ratio = SkillProgressDuration > 0.0f
+			? FMath::Clamp(static_cast<float>(Elapsed) / SkillProgressDuration, 0.0f, 1.0f) : 1.0f;
+		ReceiveSkillProgressChanged(Ratio);
+	}
+
 	const AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwningPlayerPawn());
 	if (!OwningCharacter)
 	{
@@ -42,4 +50,23 @@ void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		ExtractionDuration = PC->ExtractionDuration;
 		ExtractionStartTimeSeconds = PC->ExtractionStartTimeSeconds;
 	}
+}
+
+void UMainHUDWidget::ShowSkillProgress(float DurationSeconds)
+{
+	bSkillProgressActive = true;
+	SkillProgressDuration = DurationSeconds;
+	SkillProgressStartTimeSeconds = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	ReceiveSkillProgressShown();
+	ReceiveSkillProgressChanged(0.0f);
+}
+
+void UMainHUDWidget::HideSkillProgress()
+{
+	if (!bSkillProgressActive)
+	{
+		return;
+	}
+	bSkillProgressActive = false;
+	ReceiveSkillProgressHidden();
 }

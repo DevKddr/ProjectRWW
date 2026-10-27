@@ -76,6 +76,10 @@ public:
 	UFUNCTION(Client, Unreliable)
 	void Client_OnKillConfirmed();
 
+	// 본인 클라이언트에서만 부른다(서버 RPC가 아님). 충전/시전 스킬이 시작/종료될 때 HUD 진행도 링을 켜고 끈다.
+	void ShowSkillProgress(float DurationSeconds);
+	void HideSkillProgress();
+
 	UFUNCTION(Server, Reliable)
 	void Server_RequestRespawn();
 
@@ -93,6 +97,19 @@ public:
 	// 디버그용: "RWW_AddItem AR_1"처럼 아이템 Index를 받아서 인벤토리에 넣는다.
 	UFUNCTION(Exec)
 	void RWW_AddItem(const FString& ItemIndex);
+
+	// 디버그용: F9로 지금 선택된 동작을 실행하고 F10으로 다음 동작으로 넘긴다. 출시 빌드에서는 동작하지 않는다.
+	// 동작 번호: 0 = 자신에게 데미지 50, 1 = 자신 즉시 사망, 2 = 체력/마나 가득 채우기.
+	// 새 용도가 생기면 Server_RunDebugAction의 switch에 case를 추가하고 DebugActionCount와 OnDebugNextKey의 이름 목록을 늘리면 된다.
+	UFUNCTION(Server, Reliable)
+	void Server_RunDebugAction(int32 ActionIndex);
+
+	void OnDebugRunKey();
+	void OnDebugNextKey();
+
+	// 선택된 디버그 동작 번호(로컬 값, 복제 안 함).
+	int32 DebugActionIndex = 0;
+	static constexpr int32 DebugActionCount = 3;
 
 	UFUNCTION()
 	void OnRep_IsExtracting();

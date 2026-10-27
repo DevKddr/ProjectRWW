@@ -75,4 +75,24 @@ public:
 	// 일반 히트마커가 덮어쓰지 않게 막아 둔다.
 	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
 	void ReceiveKillConfirmed();
+
+	// [본인] 충전/시전 스킬 진행도 링. Show하면 DurationSeconds 동안 0→1로 차오르고 1에서 멈춰 있다가 Hide하면 사라진다.
+	// 링을 보이고 숨기고 채우는 연출은 BP 구현부가 한다.
+	void ShowSkillProgress(float DurationSeconds);
+	void HideSkillProgress();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
+	void ReceiveSkillProgressShown();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
+	void ReceiveSkillProgressHidden();
+
+	// 진행도가 켜져 있는 동안 매 프레임 호출된다. Ratio: 0~1.
+	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
+	void ReceiveSkillProgressChanged(float Ratio);
+
+private:
+	bool bSkillProgressActive = false;
+	float SkillProgressDuration = 0.0f;
+	double SkillProgressStartTimeSeconds = 0.0;
 };

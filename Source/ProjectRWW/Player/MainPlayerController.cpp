@@ -19,6 +19,10 @@
 #include "Items/MainInventoryScreenWidget.h"
 #include "Items/MainSlotGridWidget.h"
 #include "Net/UnrealNetwork.h"
+#include "InputCoreTypes.h"
+#include "Engine/Engine.h"
+#include "GameFramework/DamageType.h"
+#include "MainPlayerState.h"
 
 AMainPlayerController::AMainPlayerController()
 {
@@ -117,6 +121,8 @@ void AMainPlayerController::CloseAllGameplayUI()
 
 	if (HUDWidgetInstance)
 	{
+		// 충전 중에 사망 등으로 HUD가 떨어지면 진행도 링이 켜진 채 남을 수 있어 먼저 끈다.
+		HUDWidgetInstance->HideSkillProgress();
 		HUDWidgetInstance->RemoveFromParent();
 	}
 
@@ -172,6 +178,22 @@ void AMainPlayerController::Client_OnKillConfirmed_Implementation()
 	if (HUDWidgetInstance)
 	{
 		HUDWidgetInstance->ReceiveKillConfirmed();
+	}
+}
+
+void AMainPlayerController::ShowSkillProgress(float DurationSeconds)
+{
+	if (HUDWidgetInstance)
+	{
+		HUDWidgetInstance->ShowSkillProgress(DurationSeconds);
+	}
+}
+
+void AMainPlayerController::HideSkillProgress()
+{
+	if (HUDWidgetInstance)
+	{
+		HUDWidgetInstance->HideSkillProgress();
 	}
 }
 
@@ -279,6 +301,58 @@ void AMainPlayerController::RWW_AddItem(const FString& ItemIndex)
 	}
 }
 
+void AMainPlayerController::OnDebugRunKey()
+{
+	Server_RunDebugAction(DebugActionIndex);
+}
+
+void AMainPlayerController::OnDebugNextKey()
+{
+	DebugActionIndex = (DebugActionIndex + 1) % DebugActionCount;
+
+	static const TCHAR* ActionNames[DebugActionCount] = { TEXT("자신에게 데미지 50"), TEXT("자신 즉시 사망"), TEXT("체력/마나 가득 채우기") };
+	const FString Message = FString::Printf(TEXT("[디버그] F9 동작 %d: %s"), DebugActionIndex, ActionNames[DebugActionIndex]);
+	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW]%s"), *Message);
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 3.0f, FColor::Yellow, Message);
+	}
+}
+
+void AMainPlayerController::Server_RunDebugAction_Implementation(int32 ActionIndex)
+{
+#if !UE_BUILD_SHIPPING
+	// 서버에서만 실행된다. 대상은 항상 이 컨트롤러의 폰(자기 자신)이다.
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn)
+	{
+		return;
+	}
+
+	switch (ActionIndex)
+	{
+	case 0: // 자신에게 데미지 50 - 실제 피격과 같은 경로(TakeAnyDamage → OnTakeAnyDamage_GAS)를 탄다.
+		UGameplayStatics::ApplyDamage(ControlledPawn, 50.0f, this, ControlledPawn, UDamageType::StaticClass());
+		break;
+
+	case 1: // 자신 즉시 사망 - 충분히 큰 데미지로 사망 경로(HandlePlayerDeath)를 그대로 태운다.
+		UGameplayStatics::ApplyDamage(ControlledPawn, 100000.0f, this, ControlledPawn, UDamageType::StaticClass());
+		break;
+
+	case 2: // 체력/마나 가득 채우기
+		if (AMainPlayerState* MainPS = GetPlayerState<AMainPlayerState>())
+		{
+			MainPS->ResetStatsToFull();
+			MainPS->ForceNetUpdate();
+		}
+		break;
+
+	default:
+		break;
+	}
+#endif
+}
+
 void AMainPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
@@ -316,6 +390,15 @@ void AMainPlayerController::SetupInputComponent()
 			}
 		}
 	}
+
+#if !UE_BUILD_SHIPPING
+	// 디버그 키. Enhanced Input 에셋 없이 키를 직접 묶는다(출시 빌드에는 포함되지 않음).
+	if (InputComponent)
+	{
+		InputComponent->BindKey(EKeys::F9, IE_Pressed, this, &AMainPlayerController::OnDebugRunKey);
+		InputComponent->BindKey(EKeys::F10, IE_Pressed, this, &AMainPlayerController::OnDebugNextKey);
+	}
+#endif
 }
 
 void AMainPlayerController::OnToggleMap(const FInputActionValue& Value)

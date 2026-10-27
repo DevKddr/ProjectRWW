@@ -302,6 +302,16 @@ void UMainWeaponComponent::ApplyWeaponStats(const FWeaponStats& Stats)
 
 void UMainWeaponComponent::UnequipWeapon()
 {
+	// "손에 든 것이 없으면 아이템 스킬 어빌리티도 없다"는 규칙을 여기 한 곳에 둔다 - 아이템 교체, 사망, 탈출 어느
+	// 경로로 치우든 자동으로 적용된다. ASC는 PlayerState에 있어서 폰이 파괴돼도 살아남으므로, 홀드형 스킬이 실행 중이면
+	// 회수하지 않을 때 죽은 뒤에도 틱하거나 연출을 붙들고 있게 된다. 회수하면 실행 중인 인스턴스가 EndAbility로 끝나면서
+	// 정리된다. 아래 EquipWeapon(NAME_None)보다 먼저 불러야 EndAbility가 지금 아이템의 데이터를 읽을 수 있다.
+	// ClearAbility는 서버에서만 동작하므로 서버일 때만 부른다.
+	if (GetOwner() && GetOwner()->HasAuthority())
+	{
+		RevokeItemSkillAbilities();
+	}
+
 	// 타이머 정리 + WeaponType/스탯/메쉬 리셋을 EquipWeapon()의 조회 실패(else) 분기에
 	// 그대로 위임한다 - 여기서 중복으로 다시 안 써도 됨. -2라 CurrentAmmo만 안 건드리므로
 	// 그건 아래에서 직접 처리한다.

@@ -31,12 +31,6 @@ protected:
 };
 
 UCLASS()
-class PROJECTRWW_API UGA_ItemSkill_I_4_Primary : public UGA_ItemSkillTestBase
-{
-	GENERATED_BODY()
-};
-
-UCLASS()
 class PROJECTRWW_API UGA_ItemSkill_I_5_Primary : public UGA_ItemSkillTestBase
 {
 	GENERATED_BODY()
