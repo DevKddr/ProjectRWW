@@ -134,6 +134,37 @@ void UMainWeaponComponent::EquipVisual(UClass* ActorClass, TObjectPtr<AActor>& O
 	}
 }
 
+void UMainWeaponComponent::ReleaseAimingForEquipChange()
+{
+	// 무기(또는 아이템)가 바뀌면 조준은 항상 풀린다.
+	// 이 함수는 서버·오너 클라이언트·원격 클라이언트 모두에서 돌기 때문에 실행 주체별로 나눈다.
+	//  - 서버/오너: SetAiming(false)를 직접 한다(서버 값은 복제된다).
+	//  - 원격 클라이언트: 로컬로 바꾸지 않는다 - 서버 복제가 OnRep_IsAiming을 발동시켜야
+	//    ReceiveADSChange(false) 연출이 나온다(값이 이미 같으면 OnRep이 안 돈다).
+	//  - 오너: 서버가 먼저 풀어 복제된 경우는 OnRep_IsAiming이 ReceiveADSChange(false)를 부르고,
+	//    아직 조준 중이면 여기서 직접 부른다.
+	if (!bIsAiming)
+	{
+		return;
+	}
+
+	AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner());
+	const bool bLocallyControlled = OwningCharacter && OwningCharacter->IsLocallyControlled();
+
+	if (GetOwner()->HasAuthority() || bLocallyControlled)
+	{
+		SetAiming(false);
+	}
+	if (bLocallyControlled)
+	{
+		if (UPlayerMovementComponent* Movement = OwningCharacter->GetPlayerMovement())
+		{
+			Movement->SetWantsToAim(false);
+		}
+		OwningCharacter->ReceiveADSChange(false);
+	}
+}
+
 void UMainWeaponComponent::EquipWeapon(FName NewWeaponIndex, int32 SavedAmmo, int32 SlotIndex)
 {
 	// 원격 클라이언트에게 "장착이 다시 일어났다"는 걸 반드시 알리기 위한 트리거 -
@@ -144,31 +175,8 @@ void UMainWeaponComponent::EquipWeapon(FName NewWeaponIndex, int32 SavedAmmo, in
 	// 안 하면 새 무기 스탯으로 이전 무기의 남은 발사가 뒤섞여 나갈 수 있다.
 	StopFire();
 
-	// 무기(또는 아이템)가 바뀌면 조준은 항상 풀린다. ApplyWeaponStats()가 ADSSpeed를 바꾸기 전에
-	// 해제해야 ADSAlphaAtChange가 이전 무기 기준으로 계산된다.
-	// 이 함수는 서버·오너 클라이언트·원격 클라이언트 모두에서 돌기 때문에 실행 주체별로 나눈다.
-	//  - 서버/오너: SetAiming(false)를 직접 한다(서버 값은 복제된다).
-	//  - 원격 클라이언트: 로컬로 바꾸지 않는다 - 서버 복제가 OnRep_IsAiming을 발동시켜야
-	//    ReceiveADSChange(false) 연출이 나온다(값이 이미 같으면 OnRep이 안 돈다).
-	//  - 오너: OnRep_IsAiming이 ReceiveADSChange를 부르지 않으므로 직접 호출한다.
-	if (bIsAiming)
-	{
-		AMainCharacter* OwningCharacter = Cast<AMainCharacter>(GetOwner());
-		const bool bLocallyControlled = OwningCharacter && OwningCharacter->IsLocallyControlled();
-
-		if (GetOwner()->HasAuthority() || bLocallyControlled)
-		{
-			SetAiming(false);
-		}
-		if (bLocallyControlled)
-		{
-			if (UPlayerMovementComponent* Movement = OwningCharacter->GetPlayerMovement())
-			{
-				Movement->SetWantsToAim(false);
-			}
-			OwningCharacter->ReceiveADSChange(false);
-		}
-	}
+	// ApplyWeaponStats()가 ADSSpeed를 바꾸기 전에 해제해야 ADSAlphaAtChange가 이전 무기 기준으로 계산된다.
+	ReleaseAimingForEquipChange();
 
 	if (UWorld* World = GetWorld())
 	{
@@ -344,6 +352,9 @@ void UMainWeaponComponent::EquipItemVisual(FName ItemIndex)
 	++ReplicationSequence;
 
 	ActiveItemIndex = ItemIndex;
+
+	// 무기에서 아이템(맨손 포함)으로 바꿀 때도 조준을 풀어야 한다(EquipWeapon()과 같은 처리).
+	ReleaseAimingForEquipChange();
 
 	// 무기가 아닌 아이템(맨손 포함)을 들면 이동 배율은 항상 1.0이다. 서버는 UnequipWeapon()이 스탯을 리셋하지만
 	// 클라이언트는 이 함수(EquipItemVisual)만 타서 옛 무기의 배율이 남으므로, 여기서 직접 맞춘다.
@@ -1634,11 +1645,14 @@ void UMainWeaponComponent::OnRep_IsAiming()
 		}
 		else if (!bIsAiming)
 		{
-			// 서버가 강제로 조준을 풀었을 때(재장전 시작 등) 오너도 의도 플래그를 꺼야 다음 이동 패킷이 "조준 아님"을 싣는다.
+			// 서버가 강제로 조준을 풀었을 때(재장전 시작, 무기/아이템 교체 등) 오너도 의도 플래그를 꺼야 다음 이동 패킷이 "조준 아님"을 싣는다.
 			if (UPlayerMovementComponent* Movement = OwningCharacter->GetPlayerMovement())
 			{
 				Movement->SetWantsToAim(false);
 			}
+			// 오너 본인이 StopADS()로 푼 경우는 서버 값과 로컬 값이 같아 OnRep이 오지 않으므로, 여기까지 왔다면
+			// 서버가 강제로 푼 것이다. 이때 시점(ADS 연출)도 같이 풀지 않으면 우클릭을 뗄 때까지 ADS가 남는다.
+			OwningCharacter->ReceiveADSChange(false);
 		}
 	}
 }

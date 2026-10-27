@@ -409,6 +409,9 @@ protected:
 	// bIsAiming을 바꾸는 유일한 경로 - 바뀌는 순간의 진행도와 시각을 기록한다.
 	void SetAiming(bool bNewAiming);
 
+	// 무기/아이템이 바뀔 때 조준을 강제로 푼다(EquipWeapon, EquipItemVisual 공용).
+	void ReleaseAimingForEquipChange();
+
 	// 주어진 조준 상태를 기준으로 지금 진행도를 계산한다. OnRep_IsAiming에서는 이미 새 값으로
 	// 덮어써져 있어서 "이전 상태" 기준 계산이 필요하다.
 	float CalcADSAlpha(bool bAimingState) const;
