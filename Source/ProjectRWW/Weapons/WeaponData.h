@@ -148,10 +148,6 @@ struct FWeaponStats
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float MoveSpeedMultiplier = 1.f;
-
-	// ShotGun 전용 (그 외 무기는 0)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|ShotGun")
-	float PelletSpreadAngle = 0.f;
 };
 
 // weapons.json 배열의 각 항목과 1:1 대응.

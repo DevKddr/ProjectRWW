@@ -589,9 +589,6 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UAnimMontage> CurrentItemActionMontage = nullptr;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	float PelletSpreadAngle = 0.0f;
-
 	// --- 런타임 상태 ---
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentAmmo, VisibleAnywhere, Category = "Weapon")
 	int32 CurrentAmmo = 0;

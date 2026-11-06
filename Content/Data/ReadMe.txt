@@ -36,6 +36,19 @@ Content/Data/
 엑셀 파일을 수정한 뒤에는 반드시 해당 폴더의 .bat을 다시 실행해서
 output 폴더의 JSON을 갱신해야 게임에 반영됩니다.
 
+WeaponData.xlsx 구조 (총기)
+---------------------------
+- 시트는 발사 방식(FireMode)별: Single / Burst / FullAuto. (Legend 는 컬럼 설명용이라 변환하지 않음)
+- 한 시트 안에 총기 종류(WeaponType)별 독립 테이블이 세로로 쌓여 있습니다. 테이블 모양:
+    [Pistol]                   <- 제목 행 (첫 칸이 "[종류]")
+    Index | WeaponType | ...   <- 헤더 행
+    string | enum | ...        <- 타입 행
+    P_1 | Pistol | ...         <- 데이터 행들
+    (빈 행 1줄로 다음 테이블과 구분)
+- 새 총기 추가: 맞는 시트의 해당 종류 테이블 마지막 행 아래에 추가하거나, 새 종류면 빈 행 뒤에 새 테이블을 만듭니다.
+- 컨버터가 검사하는 것: 행의 FireMode 가 시트 이름과 같은지, 행의 WeaponType 이 테이블 제목과 같은지, Index 중복.
+  어긋나면 에러로 멈춥니다.
+
 Localization (아이템 이름/설명)
 ------------------------------
 아이템 이름/설명은 Localization Dashboard 방식입니다. 소스 언어는 ko(한국어).

@@ -305,7 +305,6 @@ void UMainWeaponComponent::ApplyWeaponStats(const FWeaponStats& Stats)
 	ADSSpeed = Stats.ADSSpeed;
 	ADSMoveSpeedMultiplier = Stats.ADSMoveSpeedMultiplier;
 	MoveSpeedMultiplier = Stats.MoveSpeedMultiplier;
-	PelletSpreadAngle = Stats.PelletSpreadAngle;
 }
 
 void UMainWeaponComponent::UnequipWeapon()
@@ -1100,10 +1099,9 @@ void UMainWeaponComponent::PlayClientBurstShot()
 
 void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
 {
-	// 1단계: 무기 전체의 정확도(반동/블룸)로 "이번 발의 중심 방향"을 정한다. 한 발(트리거 한 번)당
-	// 딱 한 번만 계산해야 한다 — 펠릿마다 다시 계산하면 블룸이 펠릿 수만큼 잘못 누적된다.
+	// 이번 발의 산포각을 정한다. 한 발(트리거 한 번)당 딱 한 번만 계산해야 한다 — 펠릿마다 다시
+	// 계산하면 블룸이 펠릿 수만큼 잘못 누적된다. 펠릿은 모두 이 산포각 안에서 각자 방향을 뽑는다.
 	const float SpreadDegrees = UpdateSpread();
-	const FVector AimDirection = FMath::VRandCone(TraceDirection, FMath::DegreesToRadians(SpreadDegrees));
 
 	AController* InstigatorController = Cast<APawn>(GetOwner())->GetController();
 	bool bAnyHit = false;
@@ -1119,12 +1117,11 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 	};
 	TMap<AMainPlayerController*, FVictimHit> VictimHits;
 
-	// 2단계: 그 중심 방향을 기준으로 펠릿마다 PelletSpreadAngle만큼 추가로 흩뿌려서 쏜다.
-	// 일반 무기는 PelletCount=1, PelletSpreadAngle=0이라 루프가 한 번만 돌고 AimDirection
-	// 그대로 나가므로, 기존 단발 무기 동작과 완전히 동일하게 자연스럽게 처리된다.
+	// 펠릿마다 공용 산포각 안에서 독립적으로 방향을 뽑아 쏜다. 일반 무기는 PelletCount=1이라
+	// 루프가 한 번만 돌고, 샷건은 같은 루프가 여러 번 돌 뿐 별도 필드나 경로가 없다.
 	for (int32 PelletIndex = 0; PelletIndex < PelletCount; ++PelletIndex)
 	{
-		const FVector PelletDirection = FMath::VRandCone(AimDirection, FMath::DegreesToRadians(PelletSpreadAngle));
+		const FVector PelletDirection = FMath::VRandCone(TraceDirection, FMath::DegreesToRadians(SpreadDegrees));
 		const FVector TraceEnd = TraceStart + PelletDirection * MaxRange;
 
 		FHitResult HitResult;

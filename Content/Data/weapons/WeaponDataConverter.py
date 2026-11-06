@@ -22,8 +22,10 @@ import json
 from pathlib import Path
 import openpyxl
 
-WEAPON_SHEETS = ["Pistol", "AssaultRifle", "SniperRifle", "SubMachineGun", "ShotGun",
-                  "DesignatedMarksmanRifle", "MachineGun"]
+# 발사 방식(FireMode)별 시트. 한 시트 안에 총기 종류(WeaponType)별 독립 테이블이 세로로 쌓여 있다.
+# 시트 이름 = 그 시트에 들어갈 수 있는 FireMode 값이다(각 행의 FireMode 컬럼과 어긋나면 에러).
+# 이 목록에 없는 시트(Legend 등)는 읽지 않는다.
+WEAPON_SHEETS = ["Single", "Burst", "FullAuto"]
 
 
 def _normalize_value(v):
@@ -34,20 +36,32 @@ def _normalize_value(v):
     return v
 
 
-def sheet_rows(ws, has_type_row=True):
-    """1행=헤더, (있다면) 2행=타입, 그 다음부터 데이터. 헤더:값 dict 리스트로 반환."""
+def sheet_tables(ws):
+    """시트 하나에서 테이블들을 읽는다. 테이블 한 개의 모양:
+         [제목]   <- 첫 칸이 "[...]" 형태인 행 (표시용. 총기 종류 이름)
+         헤더 행  <- 첫 칸이 "Index"
+         타입 행  <- 건너뜀
+         데이터 행들 (첫 칸이 비면 테이블 끝)
+    테이블 사이는 빈 행으로 구분한다. (제목, [헤더:값 dict 리스트]) 튜플 리스트를 반환."""
     rows = list(ws.iter_rows(values_only=True))
-    min_rows = 3 if has_type_row else 2
-    if len(rows) < min_rows:
-        return []
-    headers = rows[0]
-    data_start = 2 if has_type_row else 1
-    out = []
-    for row in rows[data_start:]:
-        if row[0] is None:
-            continue
-        out.append({h: _normalize_value(v) for h, v in zip(headers, row)})
-    return out
+    tables = []
+    i = 0
+    while i < len(rows):
+        first = rows[i][0]
+        if isinstance(first, str) and first.startswith("[") and first.endswith("]"):
+            title = first[1:-1]
+            if i + 2 >= len(rows) or rows[i + 1][0] != "Index":
+                raise ValueError(f"{ws.title}!{i + 1}행: 제목 '{first}' 다음 행이 헤더(Index)가 아닙니다.")
+            headers = rows[i + 1]
+            i += 3  # 제목, 헤더, 타입 행
+            data = []
+            while i < len(rows) and rows[i][0] is not None:
+                data.append({h: _normalize_value(v) for h, v in zip(headers, rows[i]) if h is not None})
+                i += 1
+            tables.append((title, data))
+        else:
+            i += 1
+    return tables
 
 
 # ---------------------------------------------------------------------------
@@ -65,14 +79,21 @@ def load_weapon_category(xlsx_path):
     for sheet_name in WEAPON_SHEETS:
         if sheet_name not in wb.sheetnames:
             continue
-        for row in sheet_rows(wb[sheet_name]):
-            index = row["Index"]
-            stats = {k: v for k, v in row.items() if k not in ("Index",)}
-            items[index] = {
-                "index": index,
-                "weaponType": row["WeaponType"],
-                "stats": stats,
-            }
+        for title, rows in sheet_tables(wb[sheet_name]):
+            for row in rows:
+                index = row["Index"]
+                if row.get("FireMode") != sheet_name:
+                    raise ValueError(f"{sheet_name}/[{title}] {index}: FireMode='{row.get('FireMode')}' 가 시트 이름과 다릅니다.")
+                if row.get("WeaponType") != title:
+                    raise ValueError(f"{sheet_name}/[{title}] {index}: WeaponType='{row.get('WeaponType')}' 가 테이블 제목과 다릅니다.")
+                if index in items:
+                    raise ValueError(f"Index '{index}' 가 중복됩니다.")
+                stats = {k: v for k, v in row.items() if k not in ("Index",)}
+                items[index] = {
+                    "index": index,
+                    "weaponType": row["WeaponType"],
+                    "stats": stats,
+                }
     return items
 
 
