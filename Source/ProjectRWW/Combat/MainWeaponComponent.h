@@ -283,13 +283,20 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetReloadProgress() const;
 
-	// 지금 이 순간 기준으로 예상되는 산포각(도 단위). 실제 상태(CurrentSpreadDegrees)는
+	// 지금 이 순간 기준으로 예상되는 산포각(도 단위, X = 좌우 / Y = 상하). 실제 상태(CurrentSpreadDegrees)는
 	// 발사할 때만 갱신되므로, 이 함수는 그 사이 시간에 대한 회복분을 매번 다시 계산해서
 	// 보여준다(크로스헤어가 쏘지 않는 동안에도 서서히 좁아지는 것처럼 보이게 하기 위함).
 	UFUNCTION(BlueprintPure, Category = "Weapon")
+	FVector2D GetCurrentSpreadDegreesXY() const;
+
+	// 지금 조준 여부 기준으로 낼 수 있는 최대 산포각(X, Y). MaxSpreadBloom*(총 산포의 상한, 절대값) 그대로다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	FVector2D GetMaxSpreadDegreesXY() const;
+
+	// 기존 단일 값 버전(BP 호환용) - X, Y 중 큰 쪽을 돌려준다.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetCurrentSpreadDegrees() const;
 
-	// 지금 조준 여부 기준으로 낼 수 있는 최대 산포각. MaxSpreadBloom*(총 산포의 상한, 절대값) 그대로다.
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetMaxSpreadDegrees() const;
 
@@ -299,13 +306,17 @@ protected:
 	FGameplayAbilitySpecHandle GrantedPrimarySkillHandle;
 	FGameplayAbilitySpecHandle GrantedSecondarySkillHandle;
 
-	// 이번 발의 산포각을 계산하고, 다음 발을 위해 블룸을 누적한다. 서버(FireShot)와
+	// 이번 발의 산포각(X = 좌우 / Y = 상하, 도)을 계산하고, 다음 발을 위해 블룸을 누적한다. 서버(FireShot)와
 	// 원격 클라이언트(RequestFire) 각자 자기 상태로 이 함수를 호출한다.
-	float UpdateSpread();
+	FVector2D UpdateSpread();
 
-	// 지금 조준 진행도 기준의 기본 산포와 총 산포 상한(도). 상한은 MaxSpreadBloom*(절대값)이고,
+	// 지금 조준 진행도 기준의 기본 산포와 총 산포 상한(도, 축별). 상한은 MaxSpreadBloom*(절대값)이고,
 	// 기본값보다 작게 적혀 있으면 기본값을 상한으로 본다.
-	void GetSpreadBounds(float& OutBase, float& OutMax) const;
+	void GetSpreadBounds(FVector2D& OutBase, FVector2D& OutMax) const;
+
+	// 시선 방향 주위에서 타원(X = 좌우 / Y = 상하 반각) 안의 한 점을 균등하게 뽑아 만든 방향을 돌려준다.
+	// X == Y면 원형이라 기존 원뿔 산포와 거의 같다. 화면(접평면) 위의 타원을 그대로 쏘므로 크로스헤어 모양과 일치한다.
+	static FVector SampleSpreadDirection(const FVector& AimDirection, const FVector2D& SpreadDegrees);
 
 	// Stats의 각 필드를 로컬 멤버 변수에 그대로 반영한다. EquipWeapon()에서 실제 무기
 	// 데이터로, UnequipWeapon()에서는 빈 FWeaponStats()로 호출해서 초기화 용도로도 쓴다.
@@ -553,26 +564,27 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	float ScopeZoomLevel = 1.0f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	float SpreadHipfire = 0.0f;
+	// 산포 스탯. 각 값은 (X = 좌우, Y = 상하) 반각(도)이다. X == Y면 원형, 다르면 타원형이다.
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Spread")
+	FVector2D SpreadHipfire = FVector2D::ZeroVector;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	float SpreadADS = 0.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Spread")
+	FVector2D SpreadADS = FVector2D::ZeroVector;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	float SpreadIncreasePerShot = 0.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Spread")
+	FVector2D SpreadIncreasePerShot = FVector2D::ZeroVector;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	float MaxSpreadBloomHipfire = 0.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Spread")
+	FVector2D MaxSpreadBloomHipfire = FVector2D::ZeroVector;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	float MaxSpreadBloomADS = 0.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Spread")
+	FVector2D MaxSpreadBloomADS = FVector2D::ZeroVector;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Spread")
 	float SpreadRecoveryDelay = 0.0f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	float SpreadRecoveryRate = 0.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Spread")
+	FVector2D SpreadRecoveryRate = FVector2D::ZeroVector;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	float ADSSpeed = 0.0f;
@@ -631,9 +643,9 @@ protected:
 	int32 PendingBurstShotsRemaining = 0;
 
 	// --- 산포(Spread) 런타임 상태 --- (서버/클라이언트 각자 로컬로 관리, 복제 안 함)
-	// 블룸이 더해진 "현재 총 산포"(도). 기본값 ~ 상한 사이에서 움직인다. 장착 직후의 0은
-	// UpdateSpread()/GetCurrentSpreadDegrees()가 범위(기본값~상한)로 맞추면서 기본값이 된다.
-	float CurrentSpreadDegrees = 0.0f;
+	// 블룸이 더해진 "현재 총 산포"(도, X = 좌우 / Y = 상하). 축마다 기본값 ~ 상한 사이에서 움직인다.
+	// 장착 직후의 0은 UpdateSpread()/GetCurrentSpreadDegreesXY()가 범위(기본값~상한)로 맞추면서 기본값이 된다.
+	FVector2D CurrentSpreadDegrees = FVector2D::ZeroVector;
 	double LastSpreadUpdateTimeSeconds = 0.0;
 
 	// 조준 중인지. 서버 권위 값이며, 리플리케이트되어 다른 클라이언트의 조준 애니메이션에도

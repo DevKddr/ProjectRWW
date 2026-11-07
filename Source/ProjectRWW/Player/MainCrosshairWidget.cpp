@@ -18,6 +18,8 @@ void UMainCrosshairWidget::NativeTick(const FGeometry& MyGeometry, float InDelta
 
 	if (const UMainWeaponComponent* WeaponComp = OwningCharacter->WeaponComponent)
 	{
+		CurrentSpreadDegreesXY = WeaponComp->GetCurrentSpreadDegreesXY();
+		MaxSpreadDegreesXY = WeaponComp->GetMaxSpreadDegreesXY();
 		CurrentSpreadDegrees = WeaponComp->GetCurrentSpreadDegrees();
 		MaxSpreadDegrees = WeaponComp->GetMaxSpreadDegrees();
 		bIsAiming = WeaponComp->IsAiming();
@@ -42,8 +44,10 @@ void UMainCrosshairWidget::NativeTick(const FGeometry& MyGeometry, float InDelta
 	const float VerticalFOVRad = 2.0f * FMath::Atan(FMath::Tan(HorizontalFOVRad * 0.5f) / AspectRatio);
 
 	// tan(산포각) / tan(FOV의 절반)은 "화면 절반 크기 대비 얼마나 벗어났는지"의 비율이다.
-	// CurrentSpreadDegrees는 이미 BaseSpread가 포함된 실제 산포각이므로 별도 정규화 없이 바로 쓴다.
-	const float SpreadRad = FMath::DegreesToRadians(CurrentSpreadDegrees);
-	OffsetX = FMath::Tan(SpreadRad) / FMath::Tan(HorizontalFOVRad * 0.5f) * (ViewportSize.X * 0.5f);
-	OffsetY = FMath::Tan(SpreadRad) / FMath::Tan(VerticalFOVRad * 0.5f) * (ViewportSize.Y * 0.5f);
+	// CurrentSpreadDegreesXY는 이미 BaseSpread가 포함된 실제 산포각이므로 별도 정규화 없이 바로 쓴다.
+	// 좌우(X)는 가로 FOV, 상하(Y)는 세로 FOV 기준으로 각자 변환해서 타원 산포가 크로스헤어에도 타원으로 나온다.
+	const float SpreadRadX = FMath::DegreesToRadians(static_cast<float>(CurrentSpreadDegreesXY.X));
+	const float SpreadRadY = FMath::DegreesToRadians(static_cast<float>(CurrentSpreadDegreesXY.Y));
+	OffsetX = FMath::Tan(SpreadRadX) / FMath::Tan(HorizontalFOVRad * 0.5f) * (ViewportSize.X * 0.5f);
+	OffsetY = FMath::Tan(SpreadRadY) / FMath::Tan(VerticalFOVRad * 0.5f) * (ViewportSize.Y * 0.5f);
 }

@@ -104,26 +104,46 @@ struct FWeaponStats
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
 	float ScopeZoomLevel = 1.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	float SpreadHipfire = 0.f;
+	// 산포는 X(좌우)와 Y(상하) 반각(도)으로 따로 관리한다. X == Y면 원형, 다르면 타원형 산포다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float SpreadHipfireX = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	float SpreadADS = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float SpreadHipfireY = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	float SpreadIncreasePerShot = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float SpreadADSX = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	float MaxSpreadBloomHipfire = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float SpreadADSY = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	float MaxSpreadBloomADS = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float SpreadIncreasePerShotX = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float SpreadIncreasePerShotY = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float MaxSpreadBloomHipfireX = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float MaxSpreadBloomHipfireY = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float MaxSpreadBloomADSX = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float MaxSpreadBloomADSY = 0.f;
+
+	// 마지막 발사 후 회복이 시작되기까지의 대기 시간(초). X/Y 공용.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
 	float SpreadRecoveryDelay = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	float SpreadRecoveryRate = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float SpreadRecoveryRateX = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats|Spread")
+	float SpreadRecoveryRateY = 0.f;
 
 	// 사격 1회당 수직/수평 반동을 [Min, Max] 범위에서 랜덤하게 뽑아 적용한다.
 	// 이전엔 RecoilVertical/RecoilHorizontal 단일값(미사용)이었으나, 사격마다 편차를

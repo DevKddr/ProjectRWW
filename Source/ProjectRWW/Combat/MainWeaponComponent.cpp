@@ -295,13 +295,13 @@ void UMainWeaponComponent::ApplyWeaponStats(const FWeaponStats& Stats)
 	ProjectileSpeed = Stats.ProjectileSpeed;
 	CanADS = Stats.CanADS;
 	ScopeZoomLevel = Stats.ScopeZoomLevel;
-	SpreadHipfire = Stats.SpreadHipfire;
-	SpreadADS = Stats.SpreadADS;
-	SpreadIncreasePerShot = Stats.SpreadIncreasePerShot;
-	MaxSpreadBloomHipfire = Stats.MaxSpreadBloomHipfire;
-	MaxSpreadBloomADS = Stats.MaxSpreadBloomADS;
+	SpreadHipfire = FVector2D(Stats.SpreadHipfireX, Stats.SpreadHipfireY);
+	SpreadADS = FVector2D(Stats.SpreadADSX, Stats.SpreadADSY);
+	SpreadIncreasePerShot = FVector2D(Stats.SpreadIncreasePerShotX, Stats.SpreadIncreasePerShotY);
+	MaxSpreadBloomHipfire = FVector2D(Stats.MaxSpreadBloomHipfireX, Stats.MaxSpreadBloomHipfireY);
+	MaxSpreadBloomADS = FVector2D(Stats.MaxSpreadBloomADSX, Stats.MaxSpreadBloomADSY);
 	SpreadRecoveryDelay = Stats.SpreadRecoveryDelay;
-	SpreadRecoveryRate = Stats.SpreadRecoveryRate;
+	SpreadRecoveryRate = FVector2D(Stats.SpreadRecoveryRateX, Stats.SpreadRecoveryRateY);
 	ADSSpeed = Stats.ADSSpeed;
 	ADSMoveSpeedMultiplier = Stats.ADSMoveSpeedMultiplier;
 	MoveSpeedMultiplier = Stats.MoveSpeedMultiplier;
@@ -324,7 +324,7 @@ void UMainWeaponComponent::UnequipWeapon()
 	// 그건 아래에서 직접 처리한다.
 	EquipWeapon(NAME_None, -2);
 	CurrentAmmo = 0;
-	CurrentSpreadDegrees = 0.0f;
+	CurrentSpreadDegrees = FVector2D::ZeroVector;
 }
 
 void UMainWeaponComponent::OnRep_ReplicationSequence()
@@ -730,68 +730,106 @@ void UMainWeaponComponent::RequestFire()
 	}
 }
 
-void UMainWeaponComponent::GetSpreadBounds(float& OutBase, float& OutMax) const
+void UMainWeaponComponent::GetSpreadBounds(FVector2D& OutBase, FVector2D& OutMax) const
 {
-	const float ADSAlpha = GetADSAlpha();
-	OutBase = FMath::Lerp(SpreadHipfire, SpreadADS, ADSAlpha);
-	OutMax = FMath::Max(FMath::Lerp(MaxSpreadBloomHipfire, MaxSpreadBloomADS, ADSAlpha), OutBase);
+	const double ADSAlpha = GetADSAlpha();
+	OutBase.X = FMath::Lerp(SpreadHipfire.X, SpreadADS.X, ADSAlpha);
+	OutBase.Y = FMath::Lerp(SpreadHipfire.Y, SpreadADS.Y, ADSAlpha);
+	OutMax.X = FMath::Max(FMath::Lerp(MaxSpreadBloomHipfire.X, MaxSpreadBloomADS.X, ADSAlpha), OutBase.X);
+	OutMax.Y = FMath::Max(FMath::Lerp(MaxSpreadBloomHipfire.Y, MaxSpreadBloomADS.Y, ADSAlpha), OutBase.Y);
 }
 
-float UMainWeaponComponent::UpdateSpread()
+FVector2D UMainWeaponComponent::UpdateSpread()
 {
 	const UWorld* World = GetWorld();
 	const double Now = World ? World->GetTimeSeconds() : 0.0;
 
-	float BaseSpread = 0.0f;
-	float MaxSpread = 0.0f;
+	FVector2D BaseSpread = FVector2D::ZeroVector;
+	FVector2D MaxSpread = FVector2D::ZeroVector;
 	GetSpreadBounds(BaseSpread, MaxSpread);
 
 	const double TimeSinceLastShot = Now - LastSpreadUpdateTimeSeconds;
 	if (TimeSinceLastShot > SpreadRecoveryDelay)
 	{
-		const float RecoveryAmount = static_cast<float>(TimeSinceLastShot - SpreadRecoveryDelay) * SpreadRecoveryRate;
-		CurrentSpreadDegrees -= RecoveryAmount;
+		// 회복은 축마다 자기 속도로 따로 진행한다.
+		const double RecoveryTime = TimeSinceLastShot - SpreadRecoveryDelay;
+		CurrentSpreadDegrees.X -= RecoveryTime * SpreadRecoveryRate.X;
+		CurrentSpreadDegrees.Y -= RecoveryTime * SpreadRecoveryRate.Y;
 	}
 	LastSpreadUpdateTimeSeconds = Now;
 
 	// 조준 전환 중에는 기본값/상한이 움직이므로 매번 범위 안으로 맞춘다.
 	// 장착 직후의 0도 여기서 기본값이 되고, 회복도 기본값 아래로는 내려가지 않는다.
-	CurrentSpreadDegrees = FMath::Clamp(CurrentSpreadDegrees, BaseSpread, MaxSpread);
-	const float ShotSpreadDegrees = CurrentSpreadDegrees;
+	CurrentSpreadDegrees.X = FMath::Clamp(CurrentSpreadDegrees.X, BaseSpread.X, MaxSpread.X);
+	CurrentSpreadDegrees.Y = FMath::Clamp(CurrentSpreadDegrees.Y, BaseSpread.Y, MaxSpread.Y);
+	const FVector2D ShotSpreadDegrees = CurrentSpreadDegrees;
 
 	// 이번 발은 올리기 전 값으로 쏘고, 다음 발부터 반영한다.
-	CurrentSpreadDegrees = FMath::Min(CurrentSpreadDegrees + SpreadIncreasePerShot, MaxSpread);
+	CurrentSpreadDegrees.X = FMath::Min(CurrentSpreadDegrees.X + SpreadIncreasePerShot.X, MaxSpread.X);
+	CurrentSpreadDegrees.Y = FMath::Min(CurrentSpreadDegrees.Y + SpreadIncreasePerShot.Y, MaxSpread.Y);
 
 	return ShotSpreadDegrees;
 }
 
-float UMainWeaponComponent::GetCurrentSpreadDegrees() const
+FVector UMainWeaponComponent::SampleSpreadDirection(const FVector& AimDirection, const FVector2D& SpreadDegrees)
 {
-	float BaseSpread = 0.0f;
-	float MaxSpread = 0.0f;
+	// 단위 원판에서 균등하게 한 점을 뽑는다(반지름은 sqrt로 보정해야 중심에 몰리지 않는다).
+	const double Radius = FMath::Sqrt(FMath::FRand());
+	const double Theta = 2.0 * UE_DOUBLE_PI * FMath::FRand();
+
+	// 시선에 수직인 평면(접평면)에서 X = 좌우(Right), Y = 상하(Up) 반경으로 늘려 타원을 만든다.
+	// 각도 -> 평면 거리는 tan으로 바꿔서, 화면 위에 그려지는 크로스헤어(tan 기반)와 모양이 일치한다.
+	const double OffsetRight = Radius * FMath::Cos(Theta) * FMath::Tan(FMath::DegreesToRadians(SpreadDegrees.X));
+	const double OffsetUp = Radius * FMath::Sin(Theta) * FMath::Tan(FMath::DegreesToRadians(SpreadDegrees.Y));
+
+	const FRotationMatrix AimBasis(AimDirection.Rotation());
+	const FVector Right = AimBasis.GetScaledAxis(EAxis::Y);
+	const FVector Up = AimBasis.GetScaledAxis(EAxis::Z);
+
+	return (AimDirection + Right * OffsetRight + Up * OffsetUp).GetSafeNormal();
+}
+
+FVector2D UMainWeaponComponent::GetCurrentSpreadDegreesXY() const
+{
+	FVector2D BaseSpread = FVector2D::ZeroVector;
+	FVector2D MaxSpread = FVector2D::ZeroVector;
 	GetSpreadBounds(BaseSpread, MaxSpread);
 
 	// UpdateSpread()와 같은 회복 계산(상태는 바꾸지 않음) - UI의 Current/Max 비율이 실제 산포와 일치한다.
-	float RecoveredSpread = CurrentSpreadDegrees;
+	FVector2D RecoveredSpread = CurrentSpreadDegrees;
 	if (const UWorld* World = GetWorld())
 	{
 		const double TimeSinceLastShot = World->GetTimeSeconds() - LastSpreadUpdateTimeSeconds;
 		if (TimeSinceLastShot > SpreadRecoveryDelay)
 		{
-			const float RecoveryAmount = static_cast<float>(TimeSinceLastShot - SpreadRecoveryDelay) * SpreadRecoveryRate;
-			RecoveredSpread -= RecoveryAmount;
+			const double RecoveryTime = TimeSinceLastShot - SpreadRecoveryDelay;
+			RecoveredSpread.X -= RecoveryTime * SpreadRecoveryRate.X;
+			RecoveredSpread.Y -= RecoveryTime * SpreadRecoveryRate.Y;
 		}
 	}
 
-	return FMath::Clamp(RecoveredSpread, BaseSpread, MaxSpread);
+	return FVector2D(FMath::Clamp(RecoveredSpread.X, BaseSpread.X, MaxSpread.X),
+		FMath::Clamp(RecoveredSpread.Y, BaseSpread.Y, MaxSpread.Y));
+}
+
+FVector2D UMainWeaponComponent::GetMaxSpreadDegreesXY() const
+{
+	FVector2D BaseSpread = FVector2D::ZeroVector;
+	FVector2D MaxSpread = FVector2D::ZeroVector;
+	GetSpreadBounds(BaseSpread, MaxSpread);
+	return MaxSpread;
+}
+
+float UMainWeaponComponent::GetCurrentSpreadDegrees() const
+{
+	const FVector2D Spread = GetCurrentSpreadDegreesXY();
+	return static_cast<float>(FMath::Max(Spread.X, Spread.Y));
 }
 
 float UMainWeaponComponent::GetMaxSpreadDegrees() const
 {
-	float BaseSpread = 0.0f;
-	float MaxSpread = 0.0f;
-	GetSpreadBounds(BaseSpread, MaxSpread);
-	return MaxSpread;
+	const FVector2D Spread = GetMaxSpreadDegreesXY();
+	return static_cast<float>(FMath::Max(Spread.X, Spread.Y));
 }
 
 void UMainWeaponComponent::RequestReload()
@@ -1099,9 +1137,9 @@ void UMainWeaponComponent::PlayClientBurstShot()
 
 void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const FVector_NetQuantizeNormal& TraceDirection)
 {
-	// 이번 발의 산포각을 정한다. 한 발(트리거 한 번)당 딱 한 번만 계산해야 한다 — 펠릿마다 다시
-	// 계산하면 블룸이 펠릿 수만큼 잘못 누적된다. 펠릿은 모두 이 산포각 안에서 각자 방향을 뽑는다.
-	const float SpreadDegrees = UpdateSpread();
+	// 이번 발의 산포각(X = 좌우, Y = 상하)을 정한다. 한 발(트리거 한 번)당 딱 한 번만 계산해야 한다 — 펠릿마다 다시
+	// 계산하면 블룸이 펠릿 수만큼 잘못 누적된다. 펠릿은 모두 이 산포 타원 안에서 각자 방향을 뽑는다.
+	const FVector2D SpreadDegrees = UpdateSpread();
 
 	AController* InstigatorController = Cast<APawn>(GetOwner())->GetController();
 	bool bAnyHit = false;
@@ -1121,7 +1159,7 @@ void UMainWeaponComponent::FireShot(const FVector_NetQuantize& TraceStart, const
 	// 루프가 한 번만 돌고, 샷건은 같은 루프가 여러 번 돌 뿐 별도 필드나 경로가 없다.
 	for (int32 PelletIndex = 0; PelletIndex < PelletCount; ++PelletIndex)
 	{
-		const FVector PelletDirection = FMath::VRandCone(TraceDirection, FMath::DegreesToRadians(SpreadDegrees));
+		const FVector PelletDirection = SampleSpreadDirection(TraceDirection, SpreadDegrees);
 		const FVector TraceEnd = TraceStart + PelletDirection * MaxRange;
 
 		FHitResult HitResult;

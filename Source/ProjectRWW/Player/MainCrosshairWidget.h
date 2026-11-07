@@ -21,6 +21,13 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Crosshair")
 	float MaxSpreadDegrees = 0.0f;
 
+	// 축별 산포각(도). X = 좌우, Y = 상하. 위의 단일 값은 이 둘 중 큰 쪽이다(기존 BP 호환용).
+	UPROPERTY(BlueprintReadOnly, Category = "Crosshair")
+	FVector2D CurrentSpreadDegreesXY = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Crosshair")
+	FVector2D MaxSpreadDegreesXY = FVector2D::ZeroVector;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Crosshair")
 	bool bIsAiming = false;
 
