@@ -195,11 +195,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	FName GetWeaponIndex() const { return WeaponIndex; }
 
-	// weapons.json의 FireRate_RPS(초당 발사 수)를 반환한다. EquipWeapon()이 장착할 때 채우는 값이라
-	// 실제 발사 간격(1 / FireRate_RPS)과 항상 같다. 반동 애니메이션(Kinemation) 재생 시간을
-	// 실제 발사 간격에 맞출 때 BP가 읽는 용도다.
+	// 지금 실제로 적용되는 초당 발사 수를 반환한다 = weapons.json의 FireRate_RPS(EquipWeapon()이 장착할 때 채우는 값)
+	// x 연사속도 배율(FireRateMultiplier 어트리뷰트, 스킬 버프가 올린다). 서버 검증, 클라이언트 예측, 자동 연사 타이머가
+	// 모두 이 값에서 나온 간격을 쓰므로 실제 발사 간격(1 / 이 값)과 항상 같다. 반동 애니메이션(Kinemation) 재생 시간을
+	// 실제 발사 간격에 맞출 때 BP가 읽는 용도이기도 하다.
 	UFUNCTION(BlueprintPure, Category = "Weapon")
-	float GetFireRateRPS() const { return FireRate_RPS; }
+	float GetFireRateRPS() const;
+
+	// 위 값의 역수(초). 발사 속도가 0 이하면 0.
+	float GetFireIntervalSeconds() const;
 
 	// weapons.json의 FireMode 값("Single"/"Burst"/"FullAuto")을 그대로 반환한다.
 	// GetFireMode()는 이 값을 E_FireMode(Kinemation 블루프린트 이넘)로 변환하는 역할을 한다.
@@ -629,6 +633,12 @@ protected:
 
 	// FullAuto 반복 발사용 타이머 핸들.
 	FTimerHandle AutoFireTimerHandle;
+
+	// 자동 연사 타이머를 걸 때 쓴 간격. 연사속도 배율이 연사 도중 바뀌면 타이머를 새 간격으로 다시 건다.
+	float AutoFireIntervalSeconds = 0.0f;
+
+	// 자동 연사 중 연사속도 배율이 바뀌었으면 타이머 간격을 새 값으로 갱신한다.
+	void RefreshAutoFireTimer();
 
 	// 버스트 나머지 탄 발사용 타이머 핸들.
 	FTimerHandle BurstTimerHandle;

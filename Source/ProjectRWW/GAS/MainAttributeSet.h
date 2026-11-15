@@ -54,6 +54,11 @@ public:
 	FGameplayAttributeData JumpPower;
 	MAIN_ATTRIBUTE_ACCESSORS(UMainAttributeSet, JumpPower)
 
+	// 연사속도 배율. 1.0이 기본이고 스킬 효과가 곱한다. 무기 쪽 반영은 별도 단계에서 한다.
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_FireRateMultiplier, Category = "Combat")
+	FGameplayAttributeData FireRateMultiplier;
+	MAIN_ATTRIBUTE_ACCESSORS(UMainAttributeSet, FireRateMultiplier)
+
 	// 메타 Attribute - 복제되지 않는다. GE_Damage가 여기에 Additive로 값을 넣으면
 	// PostGameplayEffectExecute가 즉시 Health로 옮기고 0으로 되돌린다(Lyra/ARPG 샘플과 동일 패턴).
 	UPROPERTY(BlueprintReadOnly, Category = "Damage")
@@ -79,4 +84,5 @@ protected:
 	UFUNCTION() void OnRep_WalkSpeed(const FGameplayAttributeData& OldValue);
 	UFUNCTION() void OnRep_RunSpeed(const FGameplayAttributeData& OldValue);
 	UFUNCTION() void OnRep_JumpPower(const FGameplayAttributeData& OldValue);
+	UFUNCTION() void OnRep_FireRateMultiplier(const FGameplayAttributeData& OldValue);
 };

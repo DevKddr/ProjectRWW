@@ -508,6 +508,39 @@ void UMainWeaponComponent::Multicast_DestroyWeaponActor_Implementation()
 	}
 }
 
+float UMainWeaponComponent::GetFireRateRPS() const
+{
+	// 어트리뷰트가 아직 없으면(초기 타이밍) 배율 1.0.
+	const AMainCharacter* Character = Cast<AMainCharacter>(GetOwner());
+	const UMainAttributeSet* Attributes = Character ? Character->GetMainAttributeSet() : nullptr;
+	const float Multiplier = Attributes ? Attributes->GetFireRateMultiplier() : 1.0f;
+	return FireRate_RPS * Multiplier;
+}
+
+float UMainWeaponComponent::GetFireIntervalSeconds() const
+{
+	const float RPS = GetFireRateRPS();
+	return RPS > 0.0f ? (1.0f / RPS) : 0.0f;
+}
+
+void UMainWeaponComponent::RefreshAutoFireTimer()
+{
+	UWorld* World = GetWorld();
+	if (!World || FireMode != TEXT("FullAuto") || !World->GetTimerManager().IsTimerActive(AutoFireTimerHandle))
+	{
+		return;
+	}
+
+	// 간격이 거의 같으면 건드리지 않는다(타이머를 다시 걸면 박자가 초기화된다).
+	const float WantedInterval = GetFireIntervalSeconds();
+	if (FMath::IsNearlyEqual(WantedInterval, AutoFireIntervalSeconds, 0.001f))
+	{
+		return;
+	}
+	AutoFireIntervalSeconds = WantedInterval;
+	World->GetTimerManager().SetTimer(AutoFireTimerHandle, this, &UMainWeaponComponent::RequestFire, WantedInterval, true, WantedInterval);
+}
+
 void UMainWeaponComponent::StartFire()
 {
 	if (!HasWeaponEquipped())
@@ -523,8 +556,8 @@ void UMainWeaponComponent::StartFire()
 	{
 		if (UWorld* World = GetWorld())
 		{
-			const float FireIntervalSeconds = FireRate_RPS > 0.0f ? (1.0f / FireRate_RPS) : 0.0f;
-			World->GetTimerManager().SetTimer(AutoFireTimerHandle, this, &UMainWeaponComponent::RequestFire, FireIntervalSeconds, true, FireIntervalSeconds);
+			AutoFireIntervalSeconds = GetFireIntervalSeconds();
+			World->GetTimerManager().SetTimer(AutoFireTimerHandle, this, &UMainWeaponComponent::RequestFire, AutoFireIntervalSeconds, true, AutoFireIntervalSeconds);
 		}
 	}
 }
@@ -549,6 +582,9 @@ void UMainWeaponComponent::StopFire(bool bCancelBurst)
 
 void UMainWeaponComponent::RequestFire()
 {
+	// 연사 도중 연사속도 배율이 바뀌었으면(장판 진입/이탈 등) 자동 연사 타이머 간격을 새 값으로 맞춘다.
+	RefreshAutoFireTimer();
+
 	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
 	if (!OwnerPawn || !OwnerPawn->GetController())
 	{
@@ -607,7 +643,7 @@ void UMainWeaponComponent::RequestFire()
 		bAmmoEmptyNotified = false;
 
 		const double Now = FPlatformTime::Seconds();
-		const float FireIntervalSeconds = FireRate_RPS > 0.0f ? (1.0f / FireRate_RPS) : 0.0f;
+		const float FireIntervalSeconds = GetFireIntervalSeconds();
 
 		// 이번 호출에서 발사 간격 검사를 통과해 실제로 발사가 일어났는지. 간격이 안 찬 시도(예측 스킵)는
 		// 서버 요청만 나가고 발사는 일어나지 않으므로, 저격소총의 발사 후 조준 해제는 이 값이 true일 때만 한다.
@@ -1016,7 +1052,7 @@ void UMainWeaponComponent::ServerFire_Implementation(const FVector_NetQuantize& 
 	// RequestFire()가 이미 스프린트 중이면 발사를 보내지 않는다.
 
 	const double Now = FPlatformTime::Seconds();
-	const float FireIntervalSeconds = FireRate_RPS > 0.0f ? (1.0f / FireRate_RPS) : 0.0f;
+	const float FireIntervalSeconds = GetFireIntervalSeconds();
 
 	// 네트워크 지연/지터로 클라이언트의 발사 요청이 서버에 도착하는 시각이 몇 ms
 	// 늦어질(또는 일찍 도착할) 수 있다. 검사할 때만 간격의 10%만큼 살짝 일찍

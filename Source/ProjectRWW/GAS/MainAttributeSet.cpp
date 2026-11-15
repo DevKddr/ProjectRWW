@@ -6,6 +6,8 @@
 
 UMainAttributeSet::UMainAttributeSet()
 {
+	// 곱셈 효과가 걸려도 0이 되지 않도록 기본값은 1.0이다(어트리뷰트 기본값은 0).
+	InitFireRateMultiplier(1.0f);
 }
 
 void UMainAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -19,6 +21,7 @@ void UMainAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME_CONDITION_NOTIFY(UMainAttributeSet, WalkSpeed, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UMainAttributeSet, RunSpeed, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UMainAttributeSet, JumpPower, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UMainAttributeSet, FireRateMultiplier, COND_None, REPNOTIFY_Always);
 }
 
 void UMainAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -112,4 +115,8 @@ void UMainAttributeSet::OnRep_JumpPower(const FGameplayAttributeData& OldValue)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UMainAttributeSet, JumpPower, OldValue);
 	OnMovementAttributesChanged.Broadcast();
+}
+void UMainAttributeSet::OnRep_FireRateMultiplier(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UMainAttributeSet, FireRateMultiplier, OldValue);
 }
