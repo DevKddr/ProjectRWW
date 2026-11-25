@@ -20,8 +20,7 @@ void UMainLobbyWidget::HandlePlayerRecordUpdated()
 {
 	if (const AMainLobbyPlayerController* PC = Cast<AMainLobbyPlayerController>(GetOwningPlayer()))
 	{
-		PlayerID = PC->GetPlayerRecord().PlayerID;
-		PlayerName = PC->GetPlayerRecord().PlayerName;
+		PlayerRecord = PC->GetPlayerRecord();
 	}
 }
 

@@ -166,10 +166,23 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 
 		// 피해자 인벤토리는 이미 위에서 비웠다(사망 페널티) - 킬 보상은 가해자에게만 별도로 지급.
 		GrantGachaBoxReward(KillerController, KillRewardBoxId);
+
+		// Credit은 사망/탈출과 상관없이 유지된다. 메모리와 DB를 같이 올린다.
+		// DB 쪽이 실패해도 이후 사망/탈출 정산이 메모리의 절대값을 저장해 따라잡는다.
+		KillerController->PlayerRecord.Credit += KillRewardCredit;
+		if (PlayerDataRepository && !KillerController->PlayerRecord.PlayerID.IsEmpty())
+		{
+			if (!PlayerDataRepository->AddCredit(KillerController->PlayerRecord.PlayerID, KillRewardCredit))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW] 킬 보상 즉시 저장 실패(정산 때 반영됨): %s"), *KillerController->PlayerRecord.PlayerID);
+			}
+		}
+		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 킬 보상: %s +%d Credit (합계 %d)"),
+			*KillerController->PlayerRecord.PlayerID, KillRewardCredit, KillerController->PlayerRecord.Credit);
 	}
 
-	// TODO: 재화/아이템 획득 로직이 생기면, 여기서 저장하기 전에
-	// 세션 중 획득분을 되돌리는 처리를 추가해야 함 (사망 시 손실 규칙)
+	// Credit은 사망해도 유지하기로 했으므로 세션 중 획득분을 되돌리지 않는다.
+	// (사망 시 잃는 재화가 생기면 여기서 되돌리는 처리를 추가한다)
 	if (PlayerDataRepository)
 	{
 		const bool bSaveSuccess = PlayerDataRepository->SavePlayerData(VictimController->PlayerRecord);

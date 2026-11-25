@@ -36,13 +36,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Lobby")
 	void OnRefreshSessionListClicked();
 
-	// PlayerController의 OnPlayerRecordUpdated가 발생할 때만 갱신된다(매 프레임 갱신 아님) —
-	// PlayerID/PlayerName은 최초 로드/닉네임 변경 시에만 바뀌는 값이라 Tick으로 볼 필요가 없다.
+	// PlayerController의 OnPlayerRecordUpdated가 발생할 때만 갱신된다(매 프레임 갱신 아님).
+	// 사망 UI(UMainDeathWidget)와 같은 방식 - 레코드를 통째로 들고 있고, BP는 필드를
+	// (PlayerID, PlayerName, Credit, KillCount ...) 꺼내서 텍스트에 바인딩한다.
 	UPROPERTY(BlueprintReadOnly, Category = "Lobby")
-	FString PlayerID;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Lobby")
-	FString PlayerName;
+	FMainPlayerRecord PlayerRecord;
 
 	// 새 세션 목록이 도착하면 자동으로 채워진다. 블루프린트는 캐스트/바인딩 없이
 	// 이 배열만 보면 된다.

@@ -39,6 +39,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Gacha")
 	FName KillRewardBoxId = TEXT("WeaponBox_Default");
 
+	// 킬 한 번당 가해자에게 지급할 Credit. 자살/자진 이탈은 지급하지 않는다.
+	UPROPERTY(EditDefaultsOnly, Category = "Reward")
+	int32 KillRewardCredit = 100;
+
 protected:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal = TEXT("")) override;

@@ -52,7 +52,7 @@ void AMainLobbyGameMode::PostLogin(APlayerController* NewPlayer)
 	const FMainPlayerRecord Record = PlayerDataRepository->LoadPlayerData(PlayerID);
 
 	LobbyController->SetPlayerRecord(Record);
-	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 로비 접속: %s - KillCount %d, Currency %d"), *PlayerID, Record.KillCount, Record.Currency);
+	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 로비 접속: %s - KillCount %d, Credit %d"), *PlayerID, Record.KillCount, Record.Credit);
 }
 
 FString AMainLobbyGameMode::AssignSessionServer()

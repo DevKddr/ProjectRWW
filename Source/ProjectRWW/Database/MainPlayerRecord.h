@@ -24,8 +24,9 @@ struct FMainPlayerRecord
 	UPROPERTY(BlueprintReadOnly)
 	int32 DeathCount = 0;
 
+	// 플레이어 개인 재화. 킬 보상 등으로 늘어나고 사망/탈출과 상관없이 유지된다.
 	UPROPERTY(BlueprintReadOnly)
-	int32 Currency = 0;
+	int32 Credit = 0;
 
 	// 아이템 스키마는 인벤토리 서브프로젝트에서 확정 전까지 JSON 문자열로만 다룬다.
 	UPROPERTY(BlueprintReadOnly)

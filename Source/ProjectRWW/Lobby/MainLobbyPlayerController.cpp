@@ -87,6 +87,27 @@ void AMainLobbyPlayerController::RWW_AddItem(const FString& ItemIndex)
 	}
 }
 
+void AMainLobbyPlayerController::RWW_AddCredit(int32 Amount)
+{
+	// 클라이언트에서 입력해도 서버의 진짜 데이터에 반영되도록 RPC를 거친다(RWW_AddItem과 같은 방식).
+	Server_DebugAddCredit(Amount);
+}
+
+void AMainLobbyPlayerController::Server_DebugAddCredit_Implementation(int32 Amount)
+{
+#if !UE_BUILD_SHIPPING
+	if (Amount <= 0)
+	{
+		return;
+	}
+
+	// PlayerRecord는 OwnerOnly로 복제되므로, 값이 바뀌면 OnRep_PlayerRecord를 거쳐 로비 UI가 갱신된다.
+	PlayerRecord.Credit += Amount;
+	SavePlayerRecord(); // 인벤토리/창고를 다시 직렬화하고 레코드 전체를 DB에 즉시 저장한다.
+	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] Credit +%d: %s (합계 %d)"), Amount, *PlayerRecord.PlayerID, PlayerRecord.Credit);
+#endif
+}
+
 void AMainLobbyPlayerController::Server_SearchSession_Implementation()
 {
 	AMainLobbyGameMode* LobbyGameMode = GetWorld()->GetAuthGameMode<AMainLobbyGameMode>();

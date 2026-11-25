@@ -43,6 +43,14 @@ public:
 	UFUNCTION(Exec)
 	void RWW_AddItem(const FString& ItemIndex);
 
+	// 디버그용: "RWW_AddCredit 500"처럼 정수를 받아 서버에서 Credit을 올리고 바로 DB에 저장한다. 양수만 받는다.
+	// 출시 빌드에서는 서버가 무시한다. 콘솔 명령(Exec)은 복제될 수 없어서, 서버에서 실행되는 건 아래 RPC가 맡는다.
+	UFUNCTION(Exec)
+	void RWW_AddCredit(int32 Amount);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugAddCredit(int32 Amount);
+
 	UFUNCTION(Server, Reliable)
 	void Server_SearchSession();
 
