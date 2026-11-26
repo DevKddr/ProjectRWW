@@ -1,0 +1,10 @@
+[
+	{ "killStreak": 3,  "reward": { "credit": 30,  "gachaBoxIds": ["WeaponBox_Default"] } },
+	{ "killStreak": 4,  "reward": { "credit": 40 } },
+	{ "killStreak": 5,  "reward": { "credit": 50,  "gachaBoxIds": ["WeaponBox_Default"] } },
+	{ "killStreak": 6,  "reward": { "credit": 60 } },
+	{ "killStreak": 7,  "reward": { "credit": 70,  "gachaBoxIds": ["WeaponBox_Default"] } },
+	{ "killStreak": 8,  "reward": { "credit": 80 } },
+	{ "killStreak": 9,  "reward": { "credit": 90 } },
+	{ "killStreak": 10, "reward": { "credit": 100, "gachaBoxIds": ["WeaponBox_Default"] } }
+]

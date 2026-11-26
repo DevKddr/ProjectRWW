@@ -31,6 +31,8 @@ public:
 	FMainPlayerRecord PlayerRecord;
 
 	// 죽으면 0으로 리셋되는 순수 런타임 값. DB에 저장 안 함.
+	// 서버가 바꾸고 본인 클라이언트에게만 복제되어(COND_OwnerOnly) HUD가 읽는다.
+	UPROPERTY(Replicated)
 	int32 KillStreak = 0;
 
 	// 서버가 "죽었다"고 판단한 상태. 리스폰/로비복귀 RPC의 유효성 검증에 사용 —

@@ -15,6 +15,10 @@ protected:
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 public:
+	// 이번 목숨의 연속 킬 수.
+	UPROPERTY(BlueprintReadOnly, Category = "HUD")
+	int32 KillStreak = 0;
+
 	UPROPERTY(BlueprintReadOnly, Category = "HUD")
 	float CurrentHP = 0.0f;
 

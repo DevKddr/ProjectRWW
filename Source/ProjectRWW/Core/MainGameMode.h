@@ -65,6 +65,14 @@ private:
 	UPROPERTY()
 	TObjectPtr<class UMainPlayerDataRepository> PlayerDataRepository;
 
+	// 이번 연속 킬 수(Killer->KillStreak)가 kill_streak_rewards.json에 있으면 그 보상(Credit/아이템/상자)을
+	// 지급한다. 없으면 아무것도 하지 않는다. 기본 킬 보상은 여기서 다루지 않는다.
+	void GrantKillStreakReward(AMainPlayerController* Killer);
+
+	// 연속 킬 보상 표. InitGame에서 한 번 로드한다.
+	UPROPERTY()
+	TObjectPtr<class UKillStreakRewardTable> KillStreakRewardTable;
+
 	// -serveraddress= 인자로 받는 "이 서버의 주소". 안 주어지면 127.0.0.1:포트로 기본 동작(로컬 테스트용).
 	FString MySessionServerAddress;
 };

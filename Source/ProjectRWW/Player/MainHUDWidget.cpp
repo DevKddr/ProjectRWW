@@ -48,6 +48,7 @@ void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 	if (const AMainPlayerController* PC = Cast<AMainPlayerController>(GetOwningPlayer()))
 	{
+		KillStreak = PC->KillStreak;
 		bIsExtracting = PC->bIsExtracting;
 		ExtractionDuration = PC->ExtractionDuration;
 		ExtractionStartTimeSeconds = PC->ExtractionStartTimeSeconds;

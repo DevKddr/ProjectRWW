@@ -80,3 +80,12 @@ Loot (지역별 아이템 스폰)
 - World Partition 맵: ALootRegion/ALootSpawnPoint 는 항상 로드되도록(Is Spatially Loaded = false) 기본값을 꺼 두었습니다.
   서버가 플레이어 없이 레이드 시작 시점에 스폰하기 때문입니다. 이 값을 켜면 스폰이 0개가 됩니다.
 - 디버그 콘솔: rww.Loot.Respawn (다시 스폰), rww.Loot.Dump (지역별 포인트/스폰 수 로그)
+
+KillStreak Reward (연속 킬 보상)
+-------------------------------
+- output/kill_streak_rewards.json (엑셀 컨버터 없이 직접 편집)
+    [ { "killStreak": 3, "reward": { "credit": 30, "items": ["I_1"], "gachaBoxIds": ["WeaponBox_Default"] } }, ... ]
+- 이번 목숨의 킬 수가 killStreak과 정확히 같을 때만 reward를 기본 킬 보상에 더해 지급합니다.
+- credit / items / gachaBoxIds 중 필요한 것만 적습니다. gachaBoxIds는 항목 하나당 1회 추첨합니다.
+- 연속 킬은 사망하면 0으로 돌아갑니다.
+- 서버가 맵을 시작할 때 로드하므로, 고친 뒤에는 서버를 다시 시작해야 합니다(빌드 불필요).

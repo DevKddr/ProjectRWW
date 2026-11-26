@@ -631,6 +631,7 @@ void AMainPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME_CONDITION(AMainPlayerController, KillStreak, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AMainPlayerController, bIsExtracting, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AMainPlayerController, ExtractionDuration, COND_OwnerOnly);
 }
