@@ -1,0 +1,14 @@
+{
+	"rewards": {
+		"Spawn":         { "gachaBoxIds": ["WeaponBox_Default"] },
+		"Kill":          { "credit": 100, "gachaBoxIds": ["WeaponBox_Default"] },
+		"KillStreak_3":  { "credit": 30,  "gachaBoxIds": ["WeaponBox_Default"] },
+		"KillStreak_4":  { "credit": 40 },
+		"KillStreak_5":  { "credit": 50,  "gachaBoxIds": ["WeaponBox_Default"] },
+		"KillStreak_6":  { "credit": 60 },
+		"KillStreak_7":  { "credit": 70,  "gachaBoxIds": ["WeaponBox_Default"] },
+		"KillStreak_8":  { "credit": 80 },
+		"KillStreak_9":  { "credit": 90 },
+		"KillStreak_10": { "credit": 100, "gachaBoxIds": ["WeaponBox_Default"] }
+	}
+}

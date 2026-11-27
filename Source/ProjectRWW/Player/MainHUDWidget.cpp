@@ -5,6 +5,7 @@
 #include "GAS/MainAttributeSet.h"
 #include "Combat/MainWeaponComponent.h"
 #include "Player/MainPlayerController.h"
+#include "Player/ItemPopupWidget.h"
 
 void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
@@ -72,4 +73,20 @@ void UMainHUDWidget::HideSkillProgress()
 	}
 	bSkillProgressActive = false;
 	ReceiveSkillProgressHidden();
+}
+
+void UMainHUDWidget::ShowItemPopup(FName ItemIndex)
+{
+	if (ItemPopupWidget)
+	{
+		ItemPopupWidget->AddItem(ItemIndex);
+	}
+}
+
+void UMainHUDWidget::ClearItemPopup()
+{
+	if (ItemPopupWidget)
+	{
+		ItemPopupWidget->ClearRows();
+	}
 }

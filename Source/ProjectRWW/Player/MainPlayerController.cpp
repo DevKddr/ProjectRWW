@@ -15,12 +15,14 @@
 #include "InputActionValue.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Items/ItemDataManager.h"
 #include "Items/MainInventoryComponent.h"
 #include "Items/MainInventoryScreenWidget.h"
 #include "Items/MainSlotGridWidget.h"
 #include "Net/UnrealNetwork.h"
 #include "InputCoreTypes.h"
 #include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
 #include "GameFramework/DamageType.h"
 #include "MainPlayerState.h"
 
@@ -123,6 +125,8 @@ void AMainPlayerController::CloseAllGameplayUI()
 	{
 		// 충전 중에 사망 등으로 HUD가 떨어지면 진행도 링이 켜진 채 남을 수 있어 먼저 끈다.
 		HUDWidgetInstance->HideSkillProgress();
+		// 사망하면 아이템을 잃으므로 획득 팝업도 바로 비운다.
+		HUDWidgetInstance->ClearItemPopup();
 		HUDWidgetInstance->RemoveFromParent();
 	}
 
@@ -178,6 +182,18 @@ void AMainPlayerController::Client_OnKillConfirmed_Implementation()
 	if (HUDWidgetInstance)
 	{
 		HUDWidgetInstance->ReceiveKillConfirmed();
+	}
+}
+
+void AMainPlayerController::Client_OnItemAcquired_Implementation(FName ItemIndex)
+{
+	const UItemDataManager* ItemMgr = GetGameInstance() ? GetGameInstance()->GetSubsystem<UItemDataManager>() : nullptr;
+	const FString ItemName = ItemMgr ? ItemMgr->GetItemNameText(ItemIndex).ToString() : FString();
+	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 아이템 획득: %s (%s)"), *ItemIndex.ToString(), *ItemName);
+
+	if (HUDWidgetInstance)
+	{
+		HUDWidgetInstance->ShowItemPopup(ItemIndex);
 	}
 }
 

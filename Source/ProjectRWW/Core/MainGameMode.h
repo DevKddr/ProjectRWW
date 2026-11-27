@@ -26,23 +26,6 @@ public:
 	// 스폰 보상 지급, 1번 슬롯 장착을 이 함수 하나가 전부 처리한다.
 	void HandlePlayerSpawned(AMainPlayerController* PC);
 
-	// gacha_tables.json의 BoxId로 1회 추첨해서 TargetController의 인벤토리에 바로 지급한다.
-	// 어떤 상황(스폰/킬 등)에 어떤 박스를 쓸지는 호출부가 BoxId로 정한다 - 이 함수 자체는
-	// 상황을 모른다. 인벤토리가 가득 차 있으면 보상은 조용히 유실된다(월드 드랍 없음).
-	void GrantGachaBoxReward(APlayerController* TargetController, FName BoxId);
-
-	// 스폰(최초 접속 포함)/킬마다 지급할 박스. 같은 박스를 쓰거나, 나중에 gacha_tables.json에
-	// 박스를 더 추가해서 각각 다르게 지정할 수 있다.
-	UPROPERTY(EditDefaultsOnly, Category = "Gacha")
-	FName SpawnRewardBoxId = TEXT("WeaponBox_Default");
-
-	UPROPERTY(EditDefaultsOnly, Category = "Gacha")
-	FName KillRewardBoxId = TEXT("WeaponBox_Default");
-
-	// 킬 한 번당 가해자에게 지급할 Credit. 자살/자진 이탈은 지급하지 않는다.
-	UPROPERTY(EditDefaultsOnly, Category = "Reward")
-	int32 KillRewardCredit = 100;
-
 protected:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal = TEXT("")) override;
@@ -64,14 +47,6 @@ private:
 	// 로비 GameMode와 동일한 리포지토리 — 세션 서버도 같은 PlayerData.db를 직접 읽고 쓴다.
 	UPROPERTY()
 	TObjectPtr<class UMainPlayerDataRepository> PlayerDataRepository;
-
-	// 이번 연속 킬 수(Killer->KillStreak)가 kill_streak_rewards.json에 있으면 그 보상(Credit/아이템/상자)을
-	// 지급한다. 없으면 아무것도 하지 않는다. 기본 킬 보상은 여기서 다루지 않는다.
-	void GrantKillStreakReward(AMainPlayerController* Killer);
-
-	// 연속 킬 보상 표. InitGame에서 한 번 로드한다.
-	UPROPERTY()
-	TObjectPtr<class UKillStreakRewardTable> KillStreakRewardTable;
 
 	// -serveraddress= 인자로 받는 "이 서버의 주소". 안 주어지면 127.0.0.1:포트로 기본 동작(로컬 테스트용).
 	FString MySessionServerAddress;

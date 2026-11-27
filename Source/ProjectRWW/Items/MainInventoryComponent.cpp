@@ -7,6 +7,7 @@
 #include "ItemDataManager.h"
 #include "Net/UnrealNetwork.h"
 #include "Abilities/GameplayAbility.h"
+#include "Player/MainPlayerController.h"
 
 UMainWeaponComponent* UMainInventoryComponent::GetWeaponComponent() const
 {
@@ -33,6 +34,16 @@ int32 UMainInventoryComponent::AddItem(FName ItemIndex, int32 InCurrentAmmo)
 	if (FilledSlot != INDEX_NONE && FilledSlot == EquippedSlotIndex)
 	{
 		EquipItem(EquippedSlotIndex);
+	}
+
+	// 보상, 줍기 등 경로와 상관없이 새로 들어온 아이템을 본인에게 알린다.
+	// 로비의 컨트롤러는 다른 클래스라 Cast가 실패해서 아무 일도 하지 않는다.
+	if (FilledSlot != INDEX_NONE)
+	{
+		if (AMainPlayerController* PC = Cast<AMainPlayerController>(GetOwner()))
+		{
+			PC->Client_OnItemAcquired(ItemIndex);
+		}
 	}
 	return FilledSlot;
 }

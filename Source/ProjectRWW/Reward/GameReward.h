@@ -6,7 +6,7 @@
 #include "GameReward.generated.h"
 
 // 보상 한 묶음. 어떤 조건으로 주는지는 모르고 "무엇을 얼마나"만 담는다.
-// 새 재화를 추가하면 여기에 필드를 넣고 AMainGameMode::GrantKillStreakReward에서 지급한다.
+// 새 재화를 추가하면 여기에 필드를 넣고 Append와 URewardManager::GrantReward에 처리를 추가한다.
 USTRUCT()
 struct FGameReward
 {
@@ -22,4 +22,12 @@ struct FGameReward
 	// 추첨할 가챠 상자의 BoxId(gacha_tables.json). 항목 하나당 1회 추첨한다.
 	UPROPERTY()
 	TArray<FName> GachaBoxIds;
+
+	// 다른 보상 묶음을 여기에 더한다.
+	void Append(const FGameReward& Other)
+	{
+		Credit += Other.Credit;
+		Items.Append(Other.Items);
+		GachaBoxIds.Append(Other.GachaBoxIds);
+	}
 };

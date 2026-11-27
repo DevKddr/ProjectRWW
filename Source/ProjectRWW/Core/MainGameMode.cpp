@@ -11,9 +11,7 @@
 #include "Items/MainInventoryComponent.h"
 #include "Items/InventorySlotSerialization.h"
 #include "Core/MainNetworkSettings.h"
-#include "RandomBox/GachaManager.h"
-#include "Reward/KillStreakRewardTable.h"
-#include "Items/ItemDataManager.h"
+#include "Reward/RewardManager.h"
 
 AMainGameMode::AMainGameMode()
 {
@@ -39,8 +37,6 @@ void AMainGameMode::InitGame(const FString& MapName, const FString& Options, FSt
 
 	StatusRepository = NewObject<UMainSessionServerStatusRepository>(this);
 	PlayerDataRepository = NewObject<UMainPlayerDataRepository>(this);
-	KillStreakRewardTable = NewObject<UKillStreakRewardTable>(this);
-	KillStreakRewardTable->Load();
 
 	// 시작하자마자 DB에 자기 존재를 등록해둔다 — 로비가 이 서버를 배정 후보로 인식하려면
 	// 첫 플레이어가 들어오기 전부터 DB에 행이 있어야 하기 때문 (인원 0으로 등록).
@@ -129,7 +125,10 @@ void AMainGameMode::HandlePlayerSpawned(AMainPlayerController* PC)
 	PC->InventoryComponent->EquippedSlotIndex = -1;
 
 	// 스폰 보상은 최초 접속/리스폰 모두 지급한다. 첫 빈 슬롯(보통 0번)에 들어간다.
-	GrantGachaBoxReward(PC, SpawnRewardBoxId);
+	if (URewardManager* Rewards = GetGameInstance() ? GetGameInstance()->GetSubsystem<URewardManager>() : nullptr)
+	{
+		Rewards->GrantReward(PC, { TEXT("Spawn") });
+	}
 
 	// 1번 슬롯(인덱스 0)을 선택하고 그 안의 것을 장착한다. 비어있으면 UNARMED.
 	PC->InventoryComponent->EquipItem(0);
@@ -169,23 +168,21 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 		KillerController->Client_OnKillConfirmed();
 
 		// 피해자 인벤토리는 이미 위에서 비웠다(사망 페널티) - 킬 보상은 가해자에게만 별도로 지급.
-		GrantGachaBoxReward(KillerController, KillRewardBoxId);
-
-		// Credit은 사망/탈출과 상관없이 유지된다. 메모리와 DB를 같이 올린다.
-		// DB 쪽이 실패해도 이후 사망/탈출 정산이 메모리의 절대값을 저장해 따라잡는다.
-		KillerController->PlayerRecord.Credit += KillRewardCredit;
-		if (PlayerDataRepository && !KillerController->PlayerRecord.PlayerID.IsEmpty())
+		if (URewardManager* Rewards = GetGameInstance() ? GetGameInstance()->GetSubsystem<URewardManager>() : nullptr)
 		{
-			if (!PlayerDataRepository->AddCredit(KillerController->PlayerRecord.PlayerID, KillRewardCredit))
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW] 킬 보상 즉시 저장 실패(정산 때 반영됨): %s"), *KillerController->PlayerRecord.PlayerID);
-			}
-		}
-		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 킬 보상: %s +%d Credit (합계 %d)"),
-			*KillerController->PlayerRecord.PlayerID, KillRewardCredit, KillerController->PlayerRecord.Credit);
+			TArray<FName> RewardIds = { TEXT("Kill") };
 
-		// 기본 보상과 별개로, 표에 이번 연속 킬 수가 있으면 추가 보상을 지급한다.
-		GrantKillStreakReward(KillerController);
+			// 연속 킬 보상은 표에 이번 숫자가 있을 때만 더한다.
+			const FName StreakRewardId(*FString::Printf(TEXT("KillStreak_%d"), KillerController->KillStreak));
+			if (Rewards->HasReward(StreakRewardId))
+			{
+				RewardIds.Add(StreakRewardId);
+			}
+
+			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 킬 보상: %s %d연속 킬"),
+				*KillerController->PlayerRecord.PlayerID, KillerController->KillStreak);
+			Rewards->GrantReward(KillerController, RewardIds);
+		}
 	}
 
 	// Credit은 사망해도 유지하기로 했으므로 세션 중 획득분을 되돌리지 않는다.
@@ -226,86 +223,6 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 
 	VictimController->Client_OnPlayerDied(VictimController->PlayerRecord, VictimController->KillStreak);
 	VictimController->KillStreak = 0;
-}
-
-void AMainGameMode::GrantGachaBoxReward(APlayerController* TargetController, FName BoxId)
-{
-	AMainPlayerController* MainPC = Cast<AMainPlayerController>(TargetController);
-	if (!MainPC || !MainPC->InventoryComponent)
-	{
-		return;
-	}
-
-	UGachaManager* GachaMgr = GetGameInstance() ? GetGameInstance()->GetSubsystem<UGachaManager>() : nullptr;
-	if (!GachaMgr)
-	{
-		return; // 서버에서도 데이터 로드 실패 등으로 없을 수 있음 - 조용히 무시
-	}
-
-	FName Category, ItemIndex, RarityId;
-	if (!GachaMgr->DrawFromBox(BoxId, Category, ItemIndex, RarityId))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW][Gacha] 추첨 실패: BoxId=%s, Target=%s"), *BoxId.ToString(), *TargetController->GetName());
-		return;
-	}
-
-	if (MainPC->InventoryComponent->AddItem(ItemIndex) == INDEX_NONE)
-	{
-		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW][Gacha] 인벤토리 가득 참 - 보상 유실: %s, Item=%s"), *TargetController->GetName(), *ItemIndex.ToString());
-	}
-}
-
-void AMainGameMode::GrantKillStreakReward(AMainPlayerController* Killer)
-{
-	if (!Killer || !KillStreakRewardTable)
-	{
-		return;
-	}
-
-	FGameReward Reward;
-	if (!KillStreakRewardTable->FindReward(Killer->KillStreak, Reward))
-	{
-		return; // 표에 없는 연속 킬 수 - 추가 보상 없음
-	}
-
-	UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 연속 킬 보상: %s (%d연속 킬)"), *Killer->PlayerRecord.PlayerID, Killer->KillStreak);
-
-	if (Reward.Credit > 0)
-	{
-		// Credit은 사망/탈출과 상관없이 유지된다. DB 쪽이 실패해도 이후 사망/탈출 정산이
-		// 메모리의 절대값을 저장해 따라잡는다.
-		Killer->PlayerRecord.Credit += Reward.Credit;
-		if (PlayerDataRepository && !Killer->PlayerRecord.PlayerID.IsEmpty())
-		{
-			if (!PlayerDataRepository->AddCredit(Killer->PlayerRecord.PlayerID, Reward.Credit))
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW] 연속 킬 보상 즉시 저장 실패(정산 때 반영됨): %s"), *Killer->PlayerRecord.PlayerID);
-			}
-		}
-		UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 연속 킬 보상 Credit +%d (합계 %d)"), Reward.Credit, Killer->PlayerRecord.Credit);
-	}
-
-	const UItemDataManager* ItemMgr = GetGameInstance() ? GetGameInstance()->GetSubsystem<UItemDataManager>() : nullptr;
-	for (const FName& ItemIndex : Reward.Items)
-	{
-		// AddItem은 없는 Index도 그대로 넣기 때문에 여기서 먼저 거른다.
-		FItemData ItemData;
-		if (!ItemMgr || !ItemMgr->GetItemData(ItemIndex, ItemData))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[ProjectRWW] 보상에 없는 아이템 Index: %s"), *ItemIndex.ToString());
-			continue;
-		}
-		if (!Killer->InventoryComponent || Killer->InventoryComponent->AddItem(ItemIndex) == INDEX_NONE)
-		{
-			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 인벤토리 가득 참 - 보상 유실: %s, Item=%s"), *Killer->PlayerRecord.PlayerID, *ItemIndex.ToString());
-		}
-	}
-
-	// 상자 추첨은 기존 경로를 그대로 쓴다(없는 BoxId 경고, 인벤토리 가득 참 처리 포함).
-	for (const FName& BoxId : Reward.GachaBoxIds)
-	{
-		GrantGachaBoxReward(Killer, BoxId);
-	}
 }
 
 void AMainGameMode::HandleExtraction(APlayerController* Player)

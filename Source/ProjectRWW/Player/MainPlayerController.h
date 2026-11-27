@@ -78,6 +78,11 @@ public:
 	UFUNCTION(Client, Unreliable)
 	void Client_OnKillConfirmed();
 
+	// 서버 -> 본인: 아이템이 인벤토리에 새로 들어왔다. 획득 팝업용.
+	// 화면 표시용이라 유실돼도 게임에 영향이 없어 Unreliable로 보낸다.
+	UFUNCTION(Client, Unreliable)
+	void Client_OnItemAcquired(FName ItemIndex);
+
 	// 본인 클라이언트에서만 부른다(서버 RPC가 아님). 충전/시전 스킬이 시작/종료될 때 HUD 진행도 링을 켜고 끈다.
 	void ShowSkillProgress(float DurationSeconds);
 	void HideSkillProgress();
