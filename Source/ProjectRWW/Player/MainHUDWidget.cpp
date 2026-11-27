@@ -6,6 +6,7 @@
 #include "Combat/MainWeaponComponent.h"
 #include "Player/MainPlayerController.h"
 #include "Player/ItemPopupWidget.h"
+#include "Player/KillPopupWidget.h"
 
 void UMainHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
@@ -88,5 +89,21 @@ void UMainHUDWidget::ClearItemPopup()
 	if (ItemPopupWidget)
 	{
 		ItemPopupWidget->ClearRows();
+	}
+}
+
+void UMainHUDWidget::ShowKillPopup(const FKillNotice& Notice)
+{
+	if (KillPopupWidget)
+	{
+		KillPopupWidget->AddKill(Notice);
+	}
+}
+
+void UMainHUDWidget::ClearKillPopup()
+{
+	if (KillPopupWidget)
+	{
+		KillPopupWidget->ClearPopup();
 	}
 }

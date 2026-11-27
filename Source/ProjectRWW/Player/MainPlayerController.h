@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "Database/MainPlayerRecord.h"
+#include "Reward/KillNotice.h"
 #include "MainPlayerController.generated.h"
 
 // 인게임에서 키로 여닫는 UI 패널 종류. 한 번에 하나만 열린다.
@@ -74,9 +75,10 @@ public:
 	UFUNCTION(Client, Unreliable)
 	void Client_OnDamaged(const FVector_NetQuantize& SourceLocation, float Damage, bool bHeadshot);
 
-	// 서버 -> 킬한 사람: "네가 죽였다". 화면 표시용이라 유실돼도 게임에 영향이 없어 Unreliable로 보낸다.
+	// 서버 -> 킬한 사람: "네가 죽였다" + 처치 결과.
+	// 화면 표시용이라 유실돼도 게임에 영향이 없어 Unreliable로 보낸다.
 	UFUNCTION(Client, Unreliable)
-	void Client_OnKillConfirmed();
+	void Client_OnKillConfirmed(const FKillNotice& Notice);
 
 	// 서버 -> 본인: 아이템이 인벤토리에 새로 들어왔다. 획득 팝업용.
 	// 화면 표시용이라 유실돼도 게임에 영향이 없어 Unreliable로 보낸다.

@@ -164,8 +164,11 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 		KillerController->PlayerRecord.KillCount += 1;
 		KillerController->KillStreak += 1;
 
-		// 킬 확인 마커/소리 - 총 외의 킬(스킬 등)도 사망 처리 한 곳에서 한 번에 보낸다.
-		KillerController->Client_OnKillConfirmed();
+		// 팝업에는 접속 ID가 아니라 닉네임을 보여준다. 닉네임이 없으면 ID를 쓴다.
+		const FMainPlayerRecord& VictimRecord = VictimController->PlayerRecord;
+		FKillNotice Notice;
+		Notice.KillStreak = KillerController->KillStreak;
+		Notice.VictimName = VictimRecord.PlayerName.IsEmpty() ? VictimRecord.PlayerID : VictimRecord.PlayerName;
 
 		// 피해자 인벤토리는 이미 위에서 비웠다(사망 페널티) - 킬 보상은 가해자에게만 별도로 지급.
 		if (URewardManager* Rewards = GetGameInstance() ? GetGameInstance()->GetSubsystem<URewardManager>() : nullptr)
@@ -181,8 +184,11 @@ void AMainGameMode::HandlePlayerDeath(APlayerController* Victim, AController* Ki
 
 			UE_LOG(LogTemp, Log, TEXT("[ProjectRWW] 킬 보상: %s %d연속 킬"),
 				*KillerController->PlayerRecord.PlayerID, KillerController->KillStreak);
-			Rewards->GrantReward(KillerController, RewardIds);
+			Notice.Credit = Rewards->GrantReward(KillerController, RewardIds).Credit;
 		}
+
+		// 킬 확인 마커/소리와 처치 팝업 - 총 외의 킬(스킬 등)도 여기 한 곳에서, 지급이 끝난 뒤 한 번에 보낸다.
+		KillerController->Client_OnKillConfirmed(Notice);
 	}
 
 	// Credit은 사망해도 유지하기로 했으므로 세션 중 획득분을 되돌리지 않는다.

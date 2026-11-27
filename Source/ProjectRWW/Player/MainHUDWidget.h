@@ -6,6 +6,8 @@
 #include "Blueprint/UserWidget.h"
 #include "MainHUDWidget.generated.h"
 
+struct FKillNotice;
+
 UCLASS()
 class PROJECTRWW_API UMainHUDWidget : public UUserWidget
 {
@@ -93,6 +95,13 @@ public:
 
 	void ShowItemPopup(FName ItemIndex);
 	void ClearItemPopup();
+
+	// 처치 팝업. HUD 블루프린트가 Construct에서 배치해 둔 팝업 위젯을 넣어 준다.
+	UPROPERTY(BlueprintReadWrite, Category = "HUD")
+	TObjectPtr<class UKillPopupWidget> KillPopupWidget;
+
+	void ShowKillPopup(const FKillNotice& Notice);
+	void ClearKillPopup();
 
 	// [본인] 충전/시전 스킬 진행도 링. Show하면 DurationSeconds 동안 0→1로 차오르고 1에서 멈춰 있다가 Hide하면 사라진다.
 	// 링을 보이고 숨기고 채우는 연출은 BP 구현부가 한다.

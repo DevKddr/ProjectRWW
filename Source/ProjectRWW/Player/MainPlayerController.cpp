@@ -127,6 +127,8 @@ void AMainPlayerController::CloseAllGameplayUI()
 		HUDWidgetInstance->HideSkillProgress();
 		// 사망하면 아이템을 잃으므로 획득 팝업도 바로 비운다.
 		HUDWidgetInstance->ClearItemPopup();
+		// 사망하면 연속 킬이 끊기므로 처치 팝업도 바로 비운다.
+		HUDWidgetInstance->ClearKillPopup();
 		HUDWidgetInstance->RemoveFromParent();
 	}
 
@@ -177,11 +179,12 @@ void AMainPlayerController::Client_OnDamaged_Implementation(const FVector_NetQua
 	}
 }
 
-void AMainPlayerController::Client_OnKillConfirmed_Implementation()
+void AMainPlayerController::Client_OnKillConfirmed_Implementation(const FKillNotice& Notice)
 {
 	if (HUDWidgetInstance)
 	{
 		HUDWidgetInstance->ReceiveKillConfirmed();
+		HUDWidgetInstance->ShowKillPopup(Notice);
 	}
 }
 
